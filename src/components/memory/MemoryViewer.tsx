@@ -197,8 +197,8 @@ export function MemoryViewer({ isOpen, onClose }: MemoryViewerProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[900px] h-[680px] max-w-[90vw] max-h-[85vh] p-0 gap-0 flex flex-col">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+      <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5" />
             {t('tools.memory.name')}
@@ -206,18 +206,16 @@ export function MemoryViewer({ isOpen, onClose }: MemoryViewerProps) {
         </DialogHeader>
 
         {loading && !currentDiary ? (
-          <p className="text-sm text-muted-foreground py-4 px-6">{t('common.loading')}</p>
+          <p className="text-sm text-muted-foreground py-4">{t('common.loading')}</p>
         ) : (
-          <Tabs defaultValue="memory" className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="px-6 pt-4 shrink-0">
-              <TabsList className="shrink-0">
-                <TabsTrigger value="memory">{t('tools.memory.tabMemory')}</TabsTrigger>
-                <TabsTrigger value="diary">{t('tools.memory.tabDiary')}</TabsTrigger>
-              </TabsList>
-            </div>
+          <Tabs defaultValue="memory" className="flex-1 flex flex-col min-h-0">
+            <TabsList className="shrink-0">
+              <TabsTrigger value="memory">{t('tools.memory.tabMemory')}</TabsTrigger>
+              <TabsTrigger value="diary">{t('tools.memory.tabDiary')}</TabsTrigger>
+            </TabsList>
 
             {/* Long-term Memory Tab */}
-            <TabsContent value="memory" className="flex-1 flex flex-col gap-3 min-h-0 mt-0 px-6 pb-6 overflow-hidden">
+            <TabsContent value="memory" className="flex-1 flex flex-col gap-3 min-h-0 mt-3">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">{t('tools.memory.memoryContent')}</Label>
                 <div className="flex items-center gap-2">
@@ -275,7 +273,7 @@ export function MemoryViewer({ isOpen, onClose }: MemoryViewerProps) {
             </TabsContent>
 
             {/* Diary Tab */}
-            <TabsContent value="diary" className="flex-1 flex flex-col gap-3 min-h-0 mt-0 px-6 pb-6 overflow-hidden">
+            <TabsContent value="diary" className="flex-1 flex flex-col gap-3 min-h-0 mt-3">
               {currentDiary ? (
                 // Diary Editor View
                 <>
@@ -405,6 +403,7 @@ export function MemoryViewer({ isOpen, onClose }: MemoryViewerProps) {
                           modifiers={modifiers}
                           modifiersClassNames={modifiersClassNames}
                           className="rounded-md"
+                          hideNavigation
                           components={{
                             CaptionLabel: () => (
                               <div className="flex gap-1.5 items-center">
