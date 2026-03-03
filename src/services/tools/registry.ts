@@ -11,6 +11,7 @@ import {
   FileToolLoader,
   HttpToolLoader,
   MCPToolLoader,
+  CodeToolLoader,
 } from './loaders';
 
 /**
@@ -28,6 +29,7 @@ export class ToolRegistry {
     this.registerLoader(new FileToolLoader());
     this.registerLoader(new HttpToolLoader());
     this.registerLoader(new MCPToolLoader());
+    this.registerLoader(new CodeToolLoader());
 
     // 自动加载内置工具
     this.loadBuiltinTools();
@@ -50,7 +52,11 @@ export class ToolRegistry {
     }
 
     try {
-      const tools = await loader.load(source.source);
+      // code 类型的源，代码存在 metadata.code 中
+      const loadTarget = source.type === 'code' && source.metadata?.code
+        ? source.metadata.code as string
+        : source.source;
+      const tools = await loader.load(loadTarget);
 
       // 注册所有工具
       for (const tool of tools) {
@@ -195,6 +201,13 @@ export class ToolRegistry {
   }
 
   /**
+   * 获取属于指定源的所有工具
+   */
+  getToolsBySource(source: ToolSource): ITool[] {
+    return this.getAll().filter(tool => this.isToolFromSource(tool, source));
+  }
+
+  /**
    * 检查工具是否属于指定源
    */
   private isToolFromSource(tool: ITool, source: ToolSource): boolean {
@@ -202,7 +215,8 @@ export class ToolRegistry {
     if (source.type === 'builtin') {
       return !tool.metadata.id.startsWith('mcp_') &&
              !tool.metadata.tags?.includes('file') &&
-             !tool.metadata.tags?.includes('http');
+             !tool.metadata.tags?.includes('http') &&
+             !tool.metadata.tags?.includes('code');
     }
 
     if (source.type === 'mcp') {
@@ -210,7 +224,7 @@ export class ToolRegistry {
              (tool.metadata.tags?.includes(source.id) ?? false);
     }
 
-    if (source.type === 'file' || source.type === 'http') {
+    if (source.type === 'file' || source.type === 'http' || source.type === 'code') {
       return tool.metadata.tags?.includes(source.id) ?? false;
     }
 

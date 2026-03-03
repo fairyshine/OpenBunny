@@ -3,34 +3,36 @@ import { persist } from 'zustand/middleware';
 import { setProxyWorkerUrl as persistProxyUrl } from '../utils/api';
 import { logSettings } from '../services/console/logger';
 import { applyTheme, type Theme } from '../utils/theme';
+import i18n from '../i18n';
+
+export type Language = 'zh-CN' | 'en-US' | 'system';
+
+function resolveLanguage(lang: Language): string {
+  if (lang !== 'system') return lang;
+  const nav = navigator.language || '';
+  return nav.startsWith('zh') ? 'zh-CN' : 'en-US';
+}
 
 interface SettingsState {
-  // Python 设置
+  // Python settings
   initializePython: boolean;
   setInitializePython: (value: boolean) => void;
 
-  // MCP 设置
-  mcpServers: Array<{
-    id: string;
-    name: string;
-    url: string;
-    autoConnect: boolean;
-  }>;
-  addMCPServer: (server: { name: string; url: string; autoConnect?: boolean }) => void;
-  removeMCPServer: (id: string) => void;
-  toggleAutoConnect: (id: string) => void;
-
-  // 界面设置
+  // UI settings
   theme: Theme;
   setTheme: (theme: Theme) => void;
 
-  // 工具设置
+  // Language settings
+  language: Language;
+  setLanguage: (lang: Language) => void;
+
+  // Tool settings
   enabledTools: string[];
   toggleTool: (toolId: string) => void;
   enableAllTools: () => void;
   disableAllTools: () => void;
 
-  // CORS 代理设置
+  // CORS proxy settings
   proxyWorkerUrl: string;
   setProxyWorkerUrl: (url: string) => void;
 }
@@ -40,28 +42,9 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       initializePython: true,
       setInitializePython: (value) => {
-        logSettings('info', `Python 预加载: ${value ? '启用' : '禁用'}`);
+        logSettings('info', `Python preload: ${value ? 'enabled' : 'disabled'}`);
         set({ initializePython: value });
       },
-
-      mcpServers: [],
-      addMCPServer: (server) =>
-        set((state) => ({
-          mcpServers: [
-            ...state.mcpServers,
-            { ...server, id: crypto.randomUUID(), autoConnect: server.autoConnect ?? false },
-          ],
-        })),
-      removeMCPServer: (id) =>
-        set((state) => ({
-          mcpServers: state.mcpServers.filter((s) => s.id !== id),
-        })),
-      toggleAutoConnect: (id) =>
-        set((state) => ({
-          mcpServers: state.mcpServers.map((s) =>
-            s.id === id ? { ...s, autoConnect: !s.autoConnect } : s
-          ),
-        })),
 
       theme: 'system',
       setTheme: (theme) => {
@@ -69,26 +52,32 @@ export const useSettingsStore = create<SettingsState>()(
         applyTheme(theme);
       },
 
+      language: 'system',
+      setLanguage: (lang) => {
+        set({ language: lang });
+        i18n.changeLanguage(resolveLanguage(lang));
+      },
+
       enabledTools: ['python', 'calculator', 'web_search', 'read_file', 'write_file', 'list_files', 'create_folder'],
       toggleTool: (toolId) =>
         set((state) => {
           const isEnabling = !state.enabledTools.includes(toolId);
-          logSettings('info', `工具 ${toolId}: ${isEnabling ? '启用' : '禁用'}`);
+          logSettings('info', `Tool ${toolId}: ${isEnabling ? 'enabled' : 'disabled'}`);
           return {
             enabledTools: isEnabling
               ? [...state.enabledTools, toolId]
               : state.enabledTools.filter((id) => id !== toolId),
           };
         }),
-      enableAllTools: () => set({ 
-        enabledTools: ['python', 'calculator', 'web_search', 'read_file', 'write_file', 
-          'list_files', 'create_folder', 'delete_file', 'mcp_tool'] 
+      enableAllTools: () => set({
+        enabledTools: ['python', 'calculator', 'web_search', 'read_file', 'write_file',
+          'list_files', 'create_folder', 'delete_file', 'mcp_tool']
       }),
       disableAllTools: () => set({ enabledTools: [] }),
 
       proxyWorkerUrl: '',
       setProxyWorkerUrl: (url) => {
-        logSettings('info', `CORS 代理 URL: ${url || '(未设置)'}`);
+        logSettings('info', `CORS proxy URL: ${url || '(not set)'}`);
         persistProxyUrl(url);
         set({ proxyWorkerUrl: url });
       },

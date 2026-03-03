@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ToolSource } from '../services/tools/base';
 import { toolRegistry } from '../services/tools/registry';
+import { mcpClient } from '../services/mcp/client';
 
 interface ToolState {
   sources: ToolSource[];
@@ -17,6 +18,7 @@ interface ToolState {
   toggleSource: (sourceId: string) => Promise<void>;
   reloadSource: (sourceId: string) => Promise<void>;
   refreshTools: () => void;
+  initSources: () => Promise<void>;
 }
 
 export const useToolStore = create<ToolState>()(
@@ -35,6 +37,19 @@ export const useToolStore = create<ToolState>()(
             enabled: true,
           };
 
+          // MCP 桥接：先注册到 mcpClient
+          if (source.type === 'mcp' && source.metadata?.url) {
+            const mcpServer = {
+              id: source.id,
+              name: source.name,
+              url: source.metadata.url as string,
+              status: 'disconnected' as const,
+              tools: [],
+            };
+            mcpClient.addServer(mcpServer);
+            source.source = source.id; // MCPToolLoader 使用 source 作为 serverId
+          }
+
           await toolRegistry.loadSource(source);
           set(state => ({
             sources: [...state.sources, source],
@@ -50,7 +65,15 @@ export const useToolStore = create<ToolState>()(
       removeSource: async (sourceId) => {
         set({ loading: true, error: null });
         try {
+          const source = get().sources.find(s => s.id === sourceId);
+
           await toolRegistry.unloadSource(sourceId);
+
+          // MCP 桥接：从 mcpClient 移除
+          if (source?.type === 'mcp') {
+            mcpClient.removeServer(sourceId);
+          }
+
           set(state => ({
             sources: state.sources.filter(s => s.id !== sourceId),
             loading: false,
@@ -106,6 +129,28 @@ export const useToolStore = create<ToolState>()(
       refreshTools: () => {
         // 触发重新渲染
         set(state => ({ ...state }));
+      },
+
+      initSources: async () => {
+        const { sources } = get();
+        for (const source of sources) {
+          if (!source.enabled) continue;
+          try {
+            // MCP 源需要先重新注册到 mcpClient
+            if (source.type === 'mcp' && source.metadata?.url) {
+              mcpClient.addServer({
+                id: source.id,
+                name: source.name,
+                url: source.metadata.url as string,
+                status: 'disconnected' as const,
+                tools: [],
+              });
+            }
+            await toolRegistry.loadSource(source);
+          } catch (e) {
+            console.error(`Failed to reload source ${source.name}:`, e);
+          }
+        }
       },
     }),
     {

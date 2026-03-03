@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -9,28 +10,29 @@ interface WelcomeScreenProps {
 }
 
 export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
+  const { t } = useTranslation();
   const [, setStep] = useState(0);
 
   const features: { icon: ReactNode; title: string; description: string }[] = [
     {
       icon: <FileCode className="w-7 h-7" />,
-      title: 'Python 执行',
-      description: '浏览器内 Python 运行时，支持科学计算库',
+      title: t('welcome.feature.python.title'),
+      description: t('welcome.feature.python.desc'),
     },
     {
       icon: <Globe className="w-7 h-7" />,
-      title: '网页搜索',
-      description: '快速获取网络信息和实时资讯',
+      title: t('welcome.feature.search.title'),
+      description: t('welcome.feature.search.desc'),
     },
     {
       icon: <Calculator className="w-7 h-7" />,
-      title: '智能计算',
-      description: '数学计算和数据分析能力',
+      title: t('welcome.feature.calc.title'),
+      description: t('welcome.feature.calc.desc'),
     },
     {
       icon: <FolderOpen className="w-7 h-7" />,
-      title: '文件管理',
-      description: '沙盒文件系统，安全可靠',
+      title: t('welcome.feature.file.title'),
+      description: t('welcome.feature.file.desc'),
     },
   ];
 
@@ -51,7 +53,7 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
             CyberBunny
           </h1>
           <p className="text-base text-muted-foreground max-w-md mx-auto leading-relaxed">
-            浏览器端智能代理系统
+            {t('welcome.subtitle')}
           </p>
         </div>
 
@@ -82,30 +84,30 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
             size="lg"
             className="px-10 py-6 text-base font-medium shadow-elegant-lg hover-lift"
           >
-            开始使用
+            {t('welcome.startButton')}
           </Button>
           <p className="text-xs text-muted-foreground">
-            在设置中配置 API Key 后即可使用完整功能
+            {t('welcome.configHint')}
           </p>
         </div>
 
         {/* Quick Tips */}
         <div className="mt-12 p-6 rounded-lg border-elegant bg-muted/30">
           <p className="text-sm font-medium mb-3 text-foreground">
-            快速开始
+            {t('welcome.quickStart')}
           </p>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="font-mono text-xs border-elegant">
-              Python 代码执行
+              {t('welcome.badge.python')}
             </Badge>
             <Badge variant="outline" className="font-mono text-xs border-elegant">
-              网页搜索
+              {t('welcome.badge.search')}
             </Badge>
             <Badge variant="outline" className="font-mono text-xs border-elegant">
-              数学计算
+              {t('welcome.badge.calc')}
             </Badge>
             <Badge variant="outline" className="font-mono text-xs border-elegant">
-              文件操作
+              {t('welcome.badge.file')}
             </Badge>
           </div>
         </div>

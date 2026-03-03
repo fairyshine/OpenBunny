@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Settings, Plus, Menu } from '../icons';
 import { useSessionStore } from '../../stores/session';
 import SettingsModal from '../settings/SettingsModal';
@@ -12,6 +13,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps) {
+  const { t } = useTranslation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { createSession } = useSessionStore();
 
@@ -40,13 +42,13 @@ export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps
         <TooltipProvider>
           <div className="flex items-center gap-1">
             <Button
-              onClick={() => createSession('新会话')}
+              onClick={() => createSession(t('header.newSession'))}
               size="sm"
               variant="ghost"
               className="flex items-center gap-2 font-medium"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">新会话</span>
+              <span className="hidden sm:inline">{t('header.newSession')}</span>
             </Button>
 
             {onToggleConsole && (
@@ -60,7 +62,7 @@ export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps
                     <span className="font-mono text-sm font-medium">&gt;_</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>控制台</TooltipContent>
+                <TooltipContent>{t('header.console')}</TooltipContent>
               </Tooltip>
             )}
 
@@ -76,7 +78,7 @@ export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps
                   <Settings className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>设置</TooltipContent>
+              <TooltipContent>{t('header.settings')}</TooltipContent>
             </Tooltip>
           </div>
         </TooltipProvider>

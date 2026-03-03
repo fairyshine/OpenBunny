@@ -2,5 +2,5 @@
 // 统一导出所有加载器
 
 export { BuiltinToolLoader } from './builtin';
-export { FileToolLoader, HttpToolLoader } from './file';
+export { FileToolLoader, HttpToolLoader, CodeToolLoader } from './file';
 export { MCPToolLoader } from './mcp';

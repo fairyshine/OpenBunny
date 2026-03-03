@@ -155,3 +155,73 @@ export class HttpToolLoader implements IToolLoader {
     }
   }
 }
+
+/**
+ * 代码工具加载器
+ * 直接从用户输入的 JavaScript 代码加载工具
+ * 代码通过 Blob URL 动态执行
+ */
+export class CodeToolLoader implements IToolLoader {
+  readonly type = 'code';
+
+  async load(source: string): Promise<ITool[]> {
+    if (!source) {
+      throw new Error('No code provided');
+    }
+
+    try {
+      const blob = new Blob([source], { type: 'application/javascript' });
+      const url = URL.createObjectURL(blob);
+
+      try {
+        const module = await import(/* @vite-ignore */ url);
+
+        const tools: ITool[] = [];
+
+        if (module.default && this.isValidTool(module.default)) {
+          tools.push(module.default);
+        }
+
+        if (Array.isArray(module.tools)) {
+          tools.push(...module.tools.filter((t: unknown) => this.isValidTool(t)));
+        }
+
+        for (const key of Object.keys(module)) {
+          if (key !== 'default' && key !== 'tools') {
+            const exported = module[key] as unknown;
+            if (this.isValidTool(exported)) {
+              tools.push(exported);
+            }
+          }
+        }
+
+        if (tools.length === 0) {
+          throw new Error('No valid tools found in code');
+        }
+
+        await Promise.all(tools.map(tool => tool.onLoad?.()));
+
+        return tools;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      throw new Error(
+        `Failed to load tool from code: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  private isValidTool(obj: unknown): obj is ITool {
+    if (!obj || typeof obj !== 'object') return false;
+
+    const tool = obj as Partial<ITool>;
+    return (
+      typeof tool.metadata === 'object' &&
+      tool.metadata !== null &&
+      typeof tool.metadata.id === 'string' &&
+      typeof tool.metadata.name === 'string' &&
+      typeof tool.execute === 'function'
+    );
+  }
+}

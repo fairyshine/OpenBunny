@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import ChatContainer from './components/chat/ChatContainer';
 import Sidebar from './components/sidebar/Sidebar';
 import Header from './components/layout/Header';
@@ -7,15 +8,18 @@ import FileEditor from './components/sidebar/FileEditor';
 import ConsolePanel from './components/layout/ConsolePanel';
 import { useSessionStore, selectCurrentSession } from './stores/session';
 import { useSettingsStore } from './stores/settings';
+import { useToolStore } from './stores/tools';
 import { pythonExecutor } from './services/python/executor';
 import { fileSystem } from './services/filesystem';
 import { logSystem } from './services/console/logger';
 import { applyTheme, setupSystemThemeListener } from './utils/theme';
 
 function App() {
+  const { t } = useTranslation();
   const currentSession = useSessionStore(selectCurrentSession);
   const { createSession } = useSessionStore();
   const { initializePython, theme } = useSettingsStore();
+  const { initSources } = useToolStore();
   const [showWelcome, setShowWelcome] = useState(!currentSession);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -40,7 +44,7 @@ function App() {
 
   // 启动日志（只执行一次）
   useEffect(() => {
-    logSystem('info', 'CyberBunny 启动');
+    logSystem('info', t('logger.startup'));
   }, []);
 
   // 初始化
@@ -54,7 +58,10 @@ function App() {
     if (initializePython) {
       pythonExecutor.initialize().catch(console.error);
     }
-  }, [currentSession, initializePython]);
+
+    // 初始化工具源（重新加载持久化的源）
+    initSources().catch(console.error);
+  }, [currentSession, initializePython, initSources]);
 
   // 键盘快捷键: Ctrl+` 切换控制台
   useEffect(() => {
@@ -78,7 +85,7 @@ function App() {
   }, [selectedFile]);
 
   const handleStart = () => {
-    createSession('新会话');
+    createSession(t('header.newSession'));
     setShowWelcome(false);
   };
 
@@ -154,7 +161,7 @@ function App() {
               <ChatContainer sessionId={currentSession.id} />
             ) : (
               <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                <p>创建一个新会话开始聊天，或在侧边栏选择一个文件</p>
+                <p>{t('chat.noSessionHint')}</p>
               </div>
             )}
           </main>

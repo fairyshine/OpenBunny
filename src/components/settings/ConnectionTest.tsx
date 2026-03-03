@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useSessionStore } from '../../stores/session';
 import { buildChatCompletionsUrl } from '../../utils/api';
 import { Button } from '../ui/button';
@@ -9,10 +9,21 @@ export default function ConnectionTest() {
   const [result, setResult] = useState<string>('');
   const [testing, setTesting] = useState(false);
   const { llmConfig } = useSessionStore();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const scrollParentToBottom = () => {
+    requestAnimationFrame(() => {
+      const tabPanel = containerRef.current?.closest('[role="tabpanel"]');
+      if (tabPanel) {
+        tabPanel.scrollTo({ top: tabPanel.scrollHeight, behavior: 'smooth' });
+      }
+    });
+  };
 
   const testConnection = async () => {
     setTesting(true);
     setResult('');
+    scrollParentToBottom();
 
     const log = (msg: string) => {
       setResult(prev => prev + msg + '\n');
@@ -112,9 +123,7 @@ export default function ConnectionTest() {
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold">连接测试</h2>
-
+    <div className="space-y-4" ref={containerRef}>
       <Button
         onClick={testConnection}
         disabled={testing}

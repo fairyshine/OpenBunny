@@ -76,7 +76,7 @@ export interface IToolLoader {
  */
 export interface ToolSource {
   id: string;
-  type: 'builtin' | 'mcp' | 'file' | 'http';
+  type: 'builtin' | 'mcp' | 'file' | 'http' | 'code';
   name: string;
   source: string; // URL, file path, etc.
   enabled: boolean;
