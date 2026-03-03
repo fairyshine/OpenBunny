@@ -18,6 +18,10 @@ export {
   CircleAlert,
   MessageCircle,
   CircleCheck,
+  Undo2,
+  Trash2 as TrashIcon,
+  Languages,
+  Check as CheckIcon,
 } from 'lucide-react';
 
 export function Plus({ className }: { className?: string }) {

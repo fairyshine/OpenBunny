@@ -4,7 +4,6 @@ import { fileSystem, FileSystemEntry } from '../../services/filesystem';
 import { Folder, File as FileIcon, ChevronRight, ChevronDown, Search, Plus, Upload, Download, Edit2, X } from '../icons';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ScrollArea } from '../ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface FileTreeProps {
@@ -42,14 +41,14 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
       return entries
         .filter(entry => entry.name !== '.memory')
         .sort((a, b) => {
-        if (a.type === 'directory' && b.type !== 'directory') return -1;
-        if (a.type !== 'directory' && b.type === 'directory') return 1;
-        return a.name.localeCompare(b.name);
-      }).map(entry => ({
-        ...entry,
-        children: entry.type === 'directory' ? [] : undefined,
-        isExpanded: expandedPaths.has(entry.path)
-      }));
+          if (a.type === 'directory' && b.type !== 'directory') return -1;
+          if (a.type !== 'directory' && b.type === 'directory') return 1;
+          return a.name.localeCompare(b.name);
+        }).map(entry => ({
+          ...entry,
+          children: entry.type === 'directory' ? [] : undefined,
+          isExpanded: expandedPaths.has(entry.path)
+        }));
     } catch (error) {
       console.error('Failed to load directory:', error);
       return [];
@@ -324,9 +323,10 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="h-full flex flex-col">
+      {/* Toolbar - Fixed */}
       <TooltipProvider>
-        <div className="flex items-center gap-1 px-2 py-2 border-b border-border">
+        <div className="flex items-center gap-1 px-2 py-2 border-b border-border shrink-0">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button onClick={() => startCreate('/sandbox', 'folder')} variant="ghost" size="icon" className="h-8 w-8">
@@ -383,7 +383,8 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
         </div>
       </TooltipProvider>
 
-      <div className="px-2 py-2">
+      {/* Search Bar - Fixed */}
+      <div className="px-2 py-2 shrink-0">
         <div className="flex items-center gap-2 px-2 py-1.5 bg-muted rounded-lg">
           <Search className="w-3.5 h-3.5 text-muted-foreground" />
           <Input
@@ -401,8 +402,9 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
         </div>
       </div>
 
+      {/* Create Input - Fixed (conditional) */}
       {creating?.path === '/sandbox' && (
-        <div className="flex items-center gap-1 px-2 py-1 bg-primary/5">
+        <div className="flex items-center gap-1 px-2 py-1 bg-primary/5 shrink-0">
           {creating.type === 'folder' ? <Folder className="w-4 h-4 text-yellow-500" /> : <FileIcon className="w-4 h-4 text-blue-500" />}
           <Input
             ref={createInputRef}
@@ -417,8 +419,9 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
         </div>
       )}
 
-      <ScrollArea
-        className="flex-1"
+      {/* File Tree - Scrollable */}
+      <div
+        className="flex-1 overflow-y-auto"
         onDragOver={(e: any) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }}
         onDrop={(e: any) => { if (e.dataTransfer.files.length > 0) handleDrop(e, '/sandbox', true); }}
       >
@@ -429,8 +432,9 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
         ) : (
           <div className="py-1">{tree.map(entry => <TreeItem key={entry.path} entry={entry} />)}</div>
         )}
-      </ScrollArea>
+      </div>
 
+      {/* Context Menu */}
       {contextMenu && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />

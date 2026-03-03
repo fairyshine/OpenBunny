@@ -253,6 +253,14 @@ export default {
   'sidebar.noSessions': '暂无会话',
   'sidebar.expand': '展开',
   'sidebar.collapse': '收起',
+  'sidebar.trash': '回收站',
+  'sidebar.trashCount': '回收站 ({{count}})',
+  'sidebar.backToSessions': '返回会话',
+  'sidebar.restore': '还原',
+  'sidebar.permanentlyDelete': '永久删除',
+  'sidebar.clearTrash': '清空回收站',
+  'sidebar.confirmClearTrash': '确定要永久删除回收站中的所有会话吗？',
+  'sidebar.emptyTrash': '回收站为空',
 
   // File Editor
   'fileEditor.close': '关闭',

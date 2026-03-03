@@ -1,11 +1,19 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings, Menu, Brain } from '../icons';
+import { Settings, Menu, Brain, Languages, CheckIcon } from '../icons';
+import { useSettingsStore } from '../../stores/settings';
+import type { Language } from '../../stores/settings';
 import SettingsModal from '../settings/SettingsModal';
 import { MemoryViewer } from '../memory/MemoryViewer';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 
 interface HeaderProps {
   onToggleConsole?: () => void;
@@ -16,6 +24,14 @@ export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps
   const { t } = useTranslation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+  const { enabledTools, language, setLanguage } = useSettingsStore();
+  const isMemoryEnabled = enabledTools.includes('memory');
+
+  const languageOptions: { value: Language; label: string }[] = [
+    { value: 'system', label: t('settings.language.system') },
+    { value: 'zh-CN', label: '简体中文' },
+    { value: 'en-US', label: 'English' },
+  ];
 
   return (
     <>
@@ -41,18 +57,20 @@ export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps
 
         <TooltipProvider>
           <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={() => setIsMemoryOpen(true)}
-                  variant="ghost"
-                  size="icon"
-                >
-                  <Brain className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t('tools.memory.name')}</TooltipContent>
-            </Tooltip>
+            {isMemoryEnabled && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => setIsMemoryOpen(true)}
+                    variant="ghost"
+                    size="icon"
+                  >
+                    <Brain className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('tools.memory.name')}</TooltipContent>
+              </Tooltip>
+            )}
 
             {onToggleConsole && (
               <Tooltip>
@@ -70,6 +88,36 @@ export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps
             )}
 
             <ThemeToggle />
+
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                    >
+                      <Languages className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>{t('settings.language')}</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                {languageOptions.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    onClick={() => setLanguage(option.value)}
+                    className="flex items-center justify-between min-w-[140px]"
+                  >
+                    <span>{option.label}</span>
+                    {language === option.value && (
+                      <CheckIcon className="w-4 h-4 ml-2" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <Tooltip>
               <TooltipTrigger asChild>

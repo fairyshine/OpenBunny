@@ -253,6 +253,14 @@ export default {
   'sidebar.noSessions': 'No sessions',
   'sidebar.expand': 'Expand',
   'sidebar.collapse': 'Collapse',
+  'sidebar.trash': 'Trash',
+  'sidebar.trashCount': 'Trash ({{count}})',
+  'sidebar.backToSessions': 'Back to Sessions',
+  'sidebar.restore': 'Restore',
+  'sidebar.permanentlyDelete': 'Delete Permanently',
+  'sidebar.clearTrash': 'Clear Trash',
+  'sidebar.confirmClearTrash': 'Are you sure you want to permanently delete all sessions in trash?',
+  'sidebar.emptyTrash': 'Trash is empty',
 
   // File Editor
   'fileEditor.close': 'Close',

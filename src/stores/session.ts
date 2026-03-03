@@ -12,6 +12,9 @@ interface SessionState {
   createSession: (name?: string) => Session;
   renameSession: (id: string, name: string) => void;
   deleteSession: (id: string) => void;
+  restoreSession: (id: string) => void;
+  permanentlyDeleteSession: (id: string) => void;
+  clearTrash: () => void;
   setCurrentSession: (id: string) => void;
   addMessage: (sessionId: string, message: Message) => void;
   updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => void;
@@ -23,6 +26,16 @@ interface SessionState {
 export const selectCurrentSession = (state: SessionState): Session | null => {
   if (!state.currentSessionId) return null;
   return state.sessions.find(s => s.id === state.currentSessionId) || null;
+};
+
+// Selector to get active sessions (not deleted)
+export const selectActiveSessions = (state: SessionState): Session[] => {
+  return state.sessions.filter(s => !s.deletedAt);
+};
+
+// Selector to get deleted sessions (in trash)
+export const selectDeletedSessions = (state: SessionState): Session[] => {
+  return state.sessions.filter(s => s.deletedAt).sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0));
 };
 
 export const useSessionStore = create<SessionState>()(
@@ -67,9 +80,12 @@ export const useSessionStore = create<SessionState>()(
 
       deleteSession: (id: string) => {
         set((state) => {
-          const newSessions = state.sessions.filter((s) => s.id !== id);
+          const newSessions = state.sessions.map((s) =>
+            s.id === id ? { ...s, deletedAt: Date.now() } : s
+          );
+          const activeSessions = newSessions.filter(s => !s.deletedAt);
           const newCurrentId = state.currentSessionId === id
-            ? (newSessions[0]?.id || null)
+            ? (activeSessions[0]?.id || null)
             : state.currentSessionId;
 
           return {
@@ -77,6 +93,27 @@ export const useSessionStore = create<SessionState>()(
             currentSessionId: newCurrentId,
           };
         });
+      },
+
+      restoreSession: (id: string) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === id ? { ...s, deletedAt: undefined, updatedAt: Date.now() } : s
+          ),
+        }));
+      },
+
+      permanentlyDeleteSession: (id: string) => {
+        set((state) => ({
+          sessions: state.sessions.filter((s) => s.id !== id),
+          currentSessionId: state.currentSessionId === id ? null : state.currentSessionId,
+        }));
+      },
+
+      clearTrash: () => {
+        set((state) => ({
+          sessions: state.sessions.filter((s) => !s.deletedAt),
+        }));
       },
 
       setCurrentSession: (id: string) => {
@@ -89,7 +126,7 @@ export const useSessionStore = create<SessionState>()(
       addMessage: (sessionId: string, message: Message) => {
         set((state) => ({
           sessions: state.sessions.map((session) =>
-            session.id === sessionId
+            session.id === sessionId && !session.deletedAt
               ? {
                   ...session,
                   messages: [...session.messages, message],
@@ -103,7 +140,7 @@ export const useSessionStore = create<SessionState>()(
       updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => {
         set((state) => ({
           sessions: state.sessions.map((session) =>
-            session.id === sessionId
+            session.id === sessionId && !session.deletedAt
               ? {
                   ...session,
                   messages: session.messages.map((msg) =>
