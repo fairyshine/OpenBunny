@@ -369,3 +369,166 @@ class FileManagerTool extends BaseTool {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 }
+
+// 记忆存储工具
+class MemoryTool extends BaseTool {
+  private static readonly MEMORY_DIR = '/sandbox/.memory';
+  private static readonly MEMORY_FILE = '/sandbox/.memory/MEMORY.md';
+
+  constructor() {
+    super({
+      id: 'memory',
+      name: t('tools.memory.name'),
+      description: t('tools.memory.description'),
+      icon: 'brain',
+      parameters: [
+        {
+          name: 'operation',
+          type: 'string',
+          description: t('tools.memory.param.operation'),
+          required: true,
+          enum: ['read_memory', 'write_memory', 'read_diary', 'write_diary', 'list_diaries'],
+        },
+        {
+          name: 'content',
+          type: 'string',
+          description: t('tools.memory.param.content'),
+          required: false,
+        },
+        {
+          name: 'date',
+          type: 'string',
+          description: t('tools.memory.param.date'),
+          required: false,
+        },
+        {
+          name: 'mode',
+          type: 'string',
+          description: t('tools.memory.param.mode'),
+          required: false,
+          enum: ['append', 'overwrite'],
+        },
+      ],
+    });
+  }
+
+  async execute(input: string, _context: ToolContext): Promise<ToolExecuteResult> {
+    try {
+      const params = JSON.parse(input);
+      const { operation, content, date, mode } = params;
+
+      if (!operation) {
+        return { content: t('tools.exec.memoryParamError'), metadata: { error: true } };
+      }
+
+      await fileSystem.initialize();
+      if (!(await fileSystem.exists(MemoryTool.MEMORY_DIR))) {
+        await fileSystem.mkdir(MemoryTool.MEMORY_DIR);
+      }
+
+      switch (operation) {
+        case 'read_memory':
+          return await this.readMemory();
+        case 'write_memory':
+          return await this.writeMemory(content || '', mode || 'append');
+        case 'read_diary':
+          return await this.readDiary(date);
+        case 'write_diary':
+          return await this.writeDiary(content || '', date);
+        case 'list_diaries':
+          return await this.listDiaries();
+        default:
+          return {
+            content: t('tools.exec.unknownMemoryOp', { operation }),
+            metadata: { error: true },
+          };
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return { content: t('tools.exec.jsonError', { error: error.message }), metadata: { error: true } };
+      }
+      return {
+        content: t('tools.exec.memoryOpFailed', { error: getErrorMessage(error) }),
+        metadata: { error: true },
+      };
+    }
+  }
+
+  private async readMemory(): Promise<ToolExecuteResult> {
+    const content = await fileSystem.readFileText(MemoryTool.MEMORY_FILE);
+    if (!content) {
+      return { content: t('tools.exec.noMemory'), metadata: { operation: 'read_memory' } };
+    }
+    return {
+      content: t('tools.exec.memoryRead', { content }),
+      metadata: { operation: 'read_memory', size: content.length },
+    };
+  }
+
+  private async writeMemory(content: string, mode: string): Promise<ToolExecuteResult> {
+    if (mode === 'overwrite') {
+      await fileSystem.writeFile(MemoryTool.MEMORY_FILE, content);
+    } else {
+      const existing = await fileSystem.readFileText(MemoryTool.MEMORY_FILE);
+      const timestamp = new Date().toLocaleString();
+      const newContent = existing
+        ? `${existing}\n\n---\n_${timestamp}_\n${content}`
+        : `_${timestamp}_\n${content}`;
+      await fileSystem.writeFile(MemoryTool.MEMORY_FILE, newContent);
+    }
+    return {
+      content: t('tools.exec.memoryUpdated'),
+      metadata: { operation: 'write_memory' },
+    };
+  }
+
+  private async readDiary(date?: string): Promise<ToolExecuteResult> {
+    const targetDate = date || new Date().toISOString().slice(0, 10);
+    const diaryPath = `${MemoryTool.MEMORY_DIR}/${targetDate}.md`;
+    const content = await fileSystem.readFileText(diaryPath);
+    if (!content) {
+      return { content: t('tools.exec.noDiary', { date: targetDate }), metadata: { operation: 'read_diary' } };
+    }
+    return {
+      content: t('tools.exec.diaryRead', { date: targetDate, content }),
+      metadata: { operation: 'read_diary', date: targetDate, size: content.length },
+    };
+  }
+
+  private async writeDiary(content: string, date?: string): Promise<ToolExecuteResult> {
+    const targetDate = date || new Date().toISOString().slice(0, 10);
+    const diaryPath = `${MemoryTool.MEMORY_DIR}/${targetDate}.md`;
+    const existing = await fileSystem.readFileText(diaryPath);
+    const timestamp = new Date().toLocaleTimeString();
+    const newContent = existing
+      ? `${existing}\n\n**${timestamp}**\n${content}`
+      : `# ${targetDate}\n\n**${timestamp}**\n${content}`;
+    await fileSystem.writeFile(diaryPath, newContent);
+    return {
+      content: t('tools.exec.diaryUpdated', { date: targetDate }),
+      metadata: { operation: 'write_diary', date: targetDate },
+    };
+  }
+
+  private async listDiaries(): Promise<ToolExecuteResult> {
+    const entries = await fileSystem.readdir(MemoryTool.MEMORY_DIR);
+    const diaries = entries
+      .filter(e => e.type === 'file' && e.name !== 'MEMORY.md' && e.name.endsWith('.md'))
+      .sort((a, b) => b.name.localeCompare(a.name));
+
+    if (diaries.length === 0) {
+      return { content: t('tools.exec.noDiary', { date: '' }).replace('  ', ' '), metadata: { operation: 'list_diaries', count: 0 } };
+    }
+
+    const list = diaries.map(d => {
+      const date = d.name.replace('.md', '');
+      const size = d.size < 1024 ? `${d.size} B` : `${(d.size / 1024).toFixed(1)} KB`;
+      return `- 📅 ${date} (${size})`;
+    }).join('\n');
+
+    return {
+      content: t('tools.exec.diariesListed', { count: diaries.length, list }),
+      metadata: { operation: 'list_diaries', count: diaries.length },
+    };
+  }
+}

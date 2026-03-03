@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { ScrollArea } from '../ui/scroll-area';
 import { ToolIcon } from '../ToolIcon';
 import { ChevronRight } from 'lucide-react';
+import { fileSystem } from '../../services/filesystem';
 
 /** 单个工具行：名称 + 描述 + 开关 */
 function ToolRow({ tool, enabled, onToggle }: {
@@ -37,9 +38,32 @@ function ToolRow({ tool, enabled, onToggle }: {
     setInitializePython,
   } = useSettingsStore();
   const [showConfig, setShowConfig] = useState(false);
+  const [memoryContent, setMemoryContent] = useState<string | null>(null);
+  const [diaryList, setDiaryList] = useState<{ name: string; size: number }[]>([]);
+  const [memoryLoading, setMemoryLoading] = useState(false);
 
   const isWebSearch = tool.metadata.id === 'web_search';
   const isPython = tool.metadata.id === 'python';
+  const isMemory = tool.metadata.id === 'memory';
+
+  const loadMemoryData = async () => {
+    setMemoryLoading(true);
+    try {
+      await fileSystem.initialize();
+      const content = await fileSystem.readFileText('/sandbox/.memory/MEMORY.md');
+      setMemoryContent(content);
+      const entries = await fileSystem.readdir('/sandbox/.memory');
+      const diaries = entries
+        .filter(e => e.type === 'file' && e.name !== 'MEMORY.md' && e.name.endsWith('.md'))
+        .sort((a, b) => b.name.localeCompare(a.name));
+      setDiaryList(diaries.map(d => ({ name: d.name, size: d.size })));
+    } catch {
+      setMemoryContent(null);
+      setDiaryList([]);
+    } finally {
+      setMemoryLoading(false);
+    }
+  };
 
   return (
     <div>
@@ -70,6 +94,20 @@ function ToolRow({ tool, enabled, onToggle }: {
               className="h-7 text-xs"
             >
               {showConfig ? t('common.close') : t('settings.preloadPython')}
+            </Button>
+          )}
+          {isMemory && (
+            <Button
+              onClick={() => {
+                const next = !showConfig;
+                setShowConfig(next);
+                if (next) loadMemoryData();
+              }}
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+            >
+              {showConfig ? t('common.close') : t('tools.memory.viewContent')}
             </Button>
           )}
           <Switch
@@ -147,6 +185,44 @@ function ToolRow({ tool, enabled, onToggle }: {
               className="flex-shrink-0 ml-3"
             />
           </div>
+        </div>
+      )}
+
+      {isMemory && showConfig && (
+        <div className="px-3 pb-3 pt-1 space-y-3 bg-muted/30 rounded-md mx-3 mb-2">
+          {memoryLoading ? (
+            <p className="text-xs text-muted-foreground py-2">{t('common.loading')}</p>
+          ) : (
+            <>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">{t('tools.memory.memoryContent')}</Label>
+                <ScrollArea className="h-32 rounded-md border bg-background p-2">
+                  <pre className="text-xs whitespace-pre-wrap font-mono">
+                    {memoryContent || t('tools.memory.noMemoryYet')}
+                  </pre>
+                </ScrollArea>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">{t('tools.memory.diaryList')}</Label>
+                <ScrollArea className="h-24 rounded-md border bg-background p-2">
+                  {diaryList.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">{t('tools.memory.noDiariesYet')}</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {diaryList.map(d => (
+                        <div key={d.name} className="flex items-center justify-between text-xs">
+                          <span className="font-mono">{d.name.replace('.md', '')}</span>
+                          <span className="text-muted-foreground">
+                            {d.size < 1024 ? `${d.size} B` : `${(d.size / 1024).toFixed(1)} KB`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

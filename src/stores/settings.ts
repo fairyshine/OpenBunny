@@ -66,7 +66,7 @@ export const useSettingsStore = create<SettingsState>()(
         i18n.changeLanguage(resolveLanguage(lang));
       },
 
-      enabledTools: ['python', 'calculator', 'web_search', 'read_file', 'write_file', 'list_files', 'create_folder'],
+      enabledTools: ['python', 'calculator', 'web_search', 'read_file', 'write_file', 'list_files', 'create_folder', 'memory'],
       toggleTool: (toolId) =>
         set((state) => {
           const isEnabling = !state.enabledTools.includes(toolId);
@@ -79,7 +79,7 @@ export const useSettingsStore = create<SettingsState>()(
         }),
       enableAllTools: () => set({
         enabledTools: ['python', 'calculator', 'web_search', 'read_file', 'write_file',
-          'list_files', 'create_folder', 'delete_file']
+          'list_files', 'create_folder', 'delete_file', 'memory']
       }),
       disableAllTools: () => set({ enabledTools: [] }),
 
