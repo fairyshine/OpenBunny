@@ -60,6 +60,15 @@ export function buildChatCompletionsUrl(config: LLMConfig): BuildResult {
     return { url: directUrl };
   }
 
+  // Anthropic provider
+  if (config.provider === 'anthropic') {
+    const directUrl = 'https://api.anthropic.com/v1/messages';
+    if (workerUrl) {
+      return { url: `${workerUrl.replace(/\/$/, '')}/proxy`, targetUrl: directUrl };
+    }
+    return { url: directUrl };
+  }
+
   // Default OpenAI
   if (import.meta.env.DEV) {
     // Vite dev proxy handles CORS

@@ -4,6 +4,7 @@ import { LLMConfig, LLMMessage } from '../types';
 import { buildChatCompletionsUrl } from '../utils/api';
 import { logLLM } from '../services/console/logger';
 import { OpenAITool, OpenAIToolCall } from '../services/tools/openai-format';
+import { AnthropicTool, AnthropicToolUse } from '../services/tools/anthropic-format';
 import { getErrorMessage, isAbortError } from '../utils/errors';
 
 interface UseLLMOptions {
@@ -12,6 +13,7 @@ interface UseLLMOptions {
   onComplete?: () => void;
   onToolCalls?: (toolCalls: OpenAIToolCall[]) => void;
   tools?: OpenAITool[];
+  anthropicTools?: AnthropicTool[];
 }
 
 export function useLLM(config: LLMConfig) {
@@ -31,7 +33,7 @@ export function useLLM(config: LLMConfig) {
     messages: LLMMessage[],
     options: UseLLMOptions = {}
   ): Promise<{ content: string; toolCalls?: OpenAIToolCall[] }> => {
-    const { onChunk, onError, onComplete, onToolCalls, tools } = options;
+    const { onChunk, onError, onComplete, onToolCalls, tools, anthropicTools } = options;
 
     if (!config.apiKey) {
       throw new Error('未配置 API Key');
@@ -52,8 +54,15 @@ export function useLLM(config: LLMConfig) {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
-        'Authorization': `Bearer ${config.apiKey}`,
       };
+
+      // Anthropic 使用不同的认证头
+      if (config.provider === 'anthropic') {
+        headers['x-api-key'] = config.apiKey;
+        headers['anthropic-version'] = '2023-06-01';
+      } else {
+        headers['Authorization'] = `Bearer ${config.apiKey}`;
+      }
 
       if (targetUrl) {
         headers['X-Target-URL'] = targetUrl;
@@ -63,26 +72,49 @@ export function useLLM(config: LLMConfig) {
       let maxTokens = config.maxTokens ?? 4096;
 
       const makeRequest = async (tokens: number) => {
-        const requestBody: {
-          model: string;
-          messages: LLMMessage[];
-          stream: boolean;
-          temperature: number;
-          max_tokens: number;
-          tools?: unknown[];
-          tool_choice?: string;
-        } = {
-          model: config.model,
-          messages,
-          stream: true,
-          temperature: config.temperature ?? 0.7,
-          max_tokens: tokens,
-        };
+        let requestBody: Record<string, unknown>;
 
-        // 如果提供了工具定义，添加到请求中
-        if (tools && tools.length > 0) {
-          requestBody.tools = tools;
-          requestBody.tool_choice = 'auto'; // 让模型自动决定是否调用工具
+        if (config.provider === 'anthropic') {
+          // Anthropic Messages API 格式
+          // 提取 system 消息
+          const systemMessages = messages.filter(m => m.role === 'system');
+          const nonSystemMessages = messages.filter(m => m.role !== 'system');
+
+          requestBody = {
+            model: config.model,
+            messages: nonSystemMessages.map(m => ({
+              role: m.role === 'assistant' ? 'assistant' : 'user',
+              content: m.content || '',
+            })),
+            max_tokens: tokens,
+            temperature: config.temperature ?? 0.7,
+            stream: true,
+          };
+
+          // 添加 system prompt
+          if (systemMessages.length > 0) {
+            requestBody.system = systemMessages.map(m => m.content).join('\n\n');
+          }
+
+          // 添加工具定义
+          if (anthropicTools && anthropicTools.length > 0) {
+            requestBody.tools = anthropicTools;
+          }
+        } else {
+          // OpenAI Chat Completions API 格式
+          requestBody = {
+            model: config.model,
+            messages,
+            stream: true,
+            temperature: config.temperature ?? 0.7,
+            max_tokens: tokens,
+          };
+
+          // 如果提供了工具定义，添加到请求中
+          if (tools && tools.length > 0) {
+            requestBody.tools = tools;
+            requestBody.tool_choice = 'auto';
+          }
         }
 
         return fetch(apiUrl, {
@@ -144,6 +176,9 @@ export function useLLM(config: LLMConfig) {
       let toolCalls: OpenAIToolCall[] = [];
       let currentToolCall: Partial<OpenAIToolCall> | null = null;
 
+      // Anthropic 特有状态
+      let anthropicToolUses: AnthropicToolUse[] = [];
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -168,54 +203,130 @@ export function useLLM(config: LLMConfig) {
 
           try {
             const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta;
-            const finishReason = parsed.choices?.[0]?.finish_reason;
 
-            // 处理文本内容
-            if (delta?.content) {
-              fullContent += delta.content;
-              onChunk?.(fullContent);
-            }
+            if (config.provider === 'anthropic') {
+              // Anthropic Messages API 流式响应格式
+              const eventType = parsed.type;
 
-            // 处理工具调用
-            if (delta?.tool_calls) {
-              for (const toolCallDelta of delta.tool_calls) {
-                const index = toolCallDelta.index;
-
-                // 初始化新的工具调用
-                if (toolCallDelta.id) {
-                  currentToolCall = {
-                    id: toolCallDelta.id,
-                    type: 'function',
+              if (eventType === 'content_block_start') {
+                const contentBlock = parsed.content_block;
+                if (contentBlock?.type === 'tool_use') {
+                  // 开始工具调用
+                  anthropicToolUses.push({
+                    id: contentBlock.id,
+                    type: 'tool_use',
+                    name: contentBlock.name,
+                    input: {},
+                  });
+                  console.log('[LLM] 🔧 开始工具调用:', contentBlock.name);
+                }
+              } else if (eventType === 'content_block_delta') {
+                const delta = parsed.delta;
+                if (delta?.type === 'text_delta') {
+                  // 文本内容增量
+                  fullContent += delta.text;
+                  onChunk?.(fullContent);
+                } else if (delta?.type === 'input_json_delta') {
+                  // 工具输入增量 - 累积 JSON 字符串
+                  const index = parsed.index;
+                  if (anthropicToolUses[index]) {
+                    // 初始化 inputBuffer 如果不存在
+                    if (!anthropicToolUses[index].inputBuffer) {
+                      anthropicToolUses[index].inputBuffer = '';
+                    }
+                    anthropicToolUses[index].inputBuffer += delta.partial_json;
+                  }
+                }
+              } else if (eventType === 'content_block_stop') {
+                // 内容块结束，解析完整的工具输入
+                const index = parsed.index;
+                if (anthropicToolUses[index]?.inputBuffer) {
+                  try {
+                    anthropicToolUses[index].input = JSON.parse(anthropicToolUses[index].inputBuffer);
+                  } catch (e) {
+                    console.warn('[LLM] Failed to parse tool input:', e);
+                    anthropicToolUses[index].input = {};
+                  }
+                  delete anthropicToolUses[index].inputBuffer;
+                }
+              } else if (eventType === 'message_delta') {
+                const stopReason = parsed.delta?.stop_reason;
+                if (stopReason === 'tool_use') {
+                  // 转换为 OpenAI 格式的 tool calls
+                  toolCalls = anthropicToolUses.map(tu => ({
+                    id: tu.id,
+                    type: 'function' as const,
                     function: {
-                      name: toolCallDelta.function?.name || '',
-                      arguments: toolCallDelta.function?.arguments || '',
+                      name: tu.name,
+                      arguments: JSON.stringify(tu.input),
                     },
-                  };
-                  toolCalls[index] = currentToolCall as OpenAIToolCall;
-                  console.log('[LLM] 🔧 开始工具调用:', toolCallDelta.function?.name);
-                } else if (currentToolCall && toolCalls[index]) {
-                  // 累积参数
-                  if (toolCallDelta.function?.arguments) {
-                    toolCalls[index].function.arguments += toolCallDelta.function.arguments;
+                  }));
+
+                  logLLM('info', '模型请求调用工具', { count: toolCalls.length });
+                  console.group('[LLM] 🔧 完整工具调用');
+                  toolCalls.forEach((tc, i) => {
+                    console.log(`[${i}] ${tc.function.name}:`, tc.function.arguments);
+                  });
+                  console.groupEnd();
+                  onToolCalls?.(toolCalls);
+                } else if (stopReason === 'end_turn') {
+                  logLLM('debug', 'stop_reason: end_turn');
+                  if (fullContent) {
+                    console.log('[LLM] 💬 完整响应内容:', fullContent);
                   }
                 }
               }
-            }
+            } else {
+              // OpenAI Chat Completions API 流式响应格式
+              const delta = parsed.choices?.[0]?.delta;
+              const finishReason = parsed.choices?.[0]?.finish_reason;
 
-            // 完成原因
-            if (finishReason === 'tool_calls') {
-              logLLM('info', '模型请求调用工具', { count: toolCalls.length });
-              console.group('[LLM] 🔧 完整工具调用');
-              toolCalls.forEach((tc, i) => {
-                console.log(`[${i}] ${tc.function.name}:`, tc.function.arguments);
-              });
-              console.groupEnd();
-              onToolCalls?.(toolCalls);
-            } else if (finishReason === 'stop') {
-              logLLM('debug', 'finish_reason: stop');
-              if (fullContent) {
-                console.log('[LLM] 💬 完整响应内容:', fullContent);
+              // 处理文本内容
+              if (delta?.content) {
+                fullContent += delta.content;
+                onChunk?.(fullContent);
+              }
+
+              // 处理工具调用
+              if (delta?.tool_calls) {
+                for (const toolCallDelta of delta.tool_calls) {
+                  const index = toolCallDelta.index;
+
+                  // 初始化新的工具调用
+                  if (toolCallDelta.id) {
+                    currentToolCall = {
+                      id: toolCallDelta.id,
+                      type: 'function',
+                      function: {
+                        name: toolCallDelta.function?.name || '',
+                        arguments: toolCallDelta.function?.arguments || '',
+                      },
+                    };
+                    toolCalls[index] = currentToolCall as OpenAIToolCall;
+                    console.log('[LLM] 🔧 开始工具调用:', toolCallDelta.function?.name);
+                  } else if (currentToolCall && toolCalls[index]) {
+                    // 累积参数
+                    if (toolCallDelta.function?.arguments) {
+                      toolCalls[index].function.arguments += toolCallDelta.function.arguments;
+                    }
+                  }
+                }
+              }
+
+              // 完成原因
+              if (finishReason === 'tool_calls') {
+                logLLM('info', '模型请求调用工具', { count: toolCalls.length });
+                console.group('[LLM] 🔧 完整工具调用');
+                toolCalls.forEach((tc, i) => {
+                  console.log(`[${i}] ${tc.function.name}:`, tc.function.arguments);
+                });
+                console.groupEnd();
+                onToolCalls?.(toolCalls);
+              } else if (finishReason === 'stop') {
+                logLLM('debug', 'finish_reason: stop');
+                if (fullContent) {
+                  console.log('[LLM] 💬 完整响应内容:', fullContent);
+                }
               }
             }
           } catch (e) {

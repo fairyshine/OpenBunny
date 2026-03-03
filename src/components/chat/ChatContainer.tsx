@@ -4,6 +4,7 @@ import { useSessionStore } from '../../stores/session';
 import { useSettingsStore } from '../../stores/settings';
 import { toolRegistry } from '../../services/tools/registry';
 import { getOpenAITools, parseToolCallArguments, convertArgumentsToInput, generateOpenAISystemPrompt } from '../../services/tools/openai-format';
+import { getAnthropicTools, generateAnthropicSystemPrompt } from '../../services/tools/anthropic-format';
 import { Message } from '../../types';
 import { useLLM } from '../../hooks/useLLM';
 import { logLLM, logTool } from '../../services/console/logger';
@@ -92,12 +93,22 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
 
     const groupId = crypto.randomUUID();
 
-    const tools = getOpenAITools(enabledTools);
-    logTool('info', `${tools.length} tools enabled`, {
-      tools: tools.map(t => t.function.name).join(', ')
+    // 根据 provider 选择工具格式
+    const isAnthropicProvider = llmConfig.provider === 'anthropic';
+    const openaiTools = isAnthropicProvider ? undefined : getOpenAITools(enabledTools);
+    const anthropicTools = isAnthropicProvider ? getAnthropicTools(enabledTools) : undefined;
+
+    const toolCount = isAnthropicProvider ? (anthropicTools?.length || 0) : (openaiTools?.length || 0);
+    logTool('info', `${toolCount} tools enabled`, {
+      provider: llmConfig.provider,
+      tools: isAnthropicProvider
+        ? anthropicTools?.map(t => t.name).join(', ')
+        : openaiTools?.map(t => t.function.name).join(', ')
     });
 
-    const systemPrompt = generateOpenAISystemPrompt(enabledTools);
+    const systemPrompt = isAnthropicProvider
+      ? generateAnthropicSystemPrompt(enabledTools)
+      : generateOpenAISystemPrompt(enabledTools);
     const conversation = new LLMConversation(systemPrompt);
 
     conversation.addUserMessage(userInput);
@@ -121,7 +132,8 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
       });
 
       const response = await sendLLMMessage(conversation.getMessages(), {
-        tools: tools.length > 0 ? tools : undefined,
+        tools: openaiTools && openaiTools.length > 0 ? openaiTools : undefined,
+        anthropicTools: anthropicTools && anthropicTools.length > 0 ? anthropicTools : undefined,
         onChunk: (content) => {
           updateMessage(sessionId, thinkingMessageId, { content });
         },
