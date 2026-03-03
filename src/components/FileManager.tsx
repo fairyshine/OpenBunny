@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fileSystem, FileSystemEntry } from '../services/filesystem';
 import { Folder, File as FileIcon, FileText, Trash2, Upload, Download, RefreshCw, X, Check } from './icons';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { ScrollArea } from './ui/scroll-area';
 
 interface FileManagerProps {
   isOpen: boolean;
@@ -161,51 +165,48 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="w-full max-w-4xl h-[600px] bg-[var(--bg-primary)] rounded-xl shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl h-[600px] flex flex-col p-0">
+        <DialogHeader className="p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">📁 文件沙盒</h2>
-            <button onClick={navigateUp} disabled={currentPath === '/workspace'} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50">
+            <DialogTitle>📁 文件沙盒</DialogTitle>
+            <button onClick={navigateUp} disabled={currentPath === '/workspace'} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50">
               {currentPath}
             </button>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        
-        <div className="flex items-center justify-between p-3 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+        </DialogHeader>
+
+        <div className="flex items-center justify-between p-3 border-b border-border bg-muted/50">
           <div className="flex items-center gap-2">
-            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-              <Upload className="w-4 h-4" />上传
-            </button>
+            <Button onClick={() => fileInputRef.current?.click()} size="sm">
+              <Upload className="w-4 h-4 mr-1.5" />上传
+            </Button>
             <input ref={fileInputRef} type="file" onChange={handleFileSelect} className="hidden" />
-            <button onClick={handleCreateFolder} className="flex items-center gap-1.5 px-3 py-1.5 border border-[var(--border)] rounded-lg hover:bg-[var(--bg-tertiary)]">
-              <Folder className="w-4 h-4" />新建文件夹
-            </button>
-            <button onClick={handleCreateFile} className="flex items-center gap-1.5 px-3 py-1.5 border border-[var(--border)] rounded-lg hover:bg-[var(--bg-tertiary)]">
-              <FileText className="w-4 h-4" />新建文件
-            </button>
+            <Button onClick={handleCreateFolder} variant="outline" size="sm">
+              <Folder className="w-4 h-4 mr-1.5" />新建文件夹
+            </Button>
+            <Button onClick={handleCreateFile} variant="outline" size="sm">
+              <FileText className="w-4 h-4 mr-1.5" />新建文件
+            </Button>
           </div>
-          <button onClick={loadFiles} disabled={isLoading} className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg">
+          <Button onClick={loadFiles} disabled={isLoading} variant="ghost" size="icon" className="h-8 w-8">
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
+          </Button>
         </div>
-        
-        <div className={`flex-1 overflow-y-auto p-4 ${dragOver ? 'bg-blue-50 border-2 border-dashed' : ''}`}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+
+        <ScrollArea className={`flex-1 p-4 ${dragOver ? 'bg-primary/5 border-2 border-dashed border-primary' : ''}`}
+          onDragOver={(e: any) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}>
+          onDrop={handleDrop as any}>
           {isLoading ? (
-            <div className="flex items-center justify-center h-full text-[var(--text-secondary)]">加载中...</div>
+            <div className="flex items-center justify-center h-full text-muted-foreground">加载中...</div>
           ) : (
             <div className="space-y-1">
               {isCreating && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
-                  {createType === 'folder' ? <Folder className="w-8 h-8 text-yellow-500" /> : <FileIcon className="w-8 h-8 text-blue-500" />}
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  {createType === 'folder' ? <Folder className="w-8 h-8 text-yellow-500" /> : <FileIcon className="w-8 h-8 text-primary" />}
                   <div className="flex-1">
-                    <input
+                    <Input
                       ref={newItemInputRef}
                       type="text"
                       value={newItemName}
@@ -215,53 +216,53 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
                         if (e.key === 'Escape') cancelCreate();
                       }}
                       placeholder={createType === 'folder' ? '文件夹名称' : '文件名'}
-                      className="w-full px-2 py-1 text-sm border border-[var(--border)] rounded focus:outline-none focus:border-blue-500"
+                      className="h-8"
                     />
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={submitCreate} className="p-2 hover:bg-green-100 text-green-600 rounded-lg">
+                    <Button onClick={submitCreate} variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-600">
                       <Check className="w-4 h-4" />
-                    </button>
-                    <button onClick={cancelCreate} className="p-2 hover:bg-red-100 text-red-500 rounded-lg">
+                    </Button>
+                    <Button onClick={cancelCreate} variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
                       <X className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
-              
+
               {files.length === 0 && !isCreating ? (
-                <div className="flex flex-col items-center justify-center h-64 text-[var(--text-secondary)]">
+                <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
                   <Folder className="w-16 h-16 mb-4 opacity-50" />
                   <p>文件夹为空，拖拽文件到此处上传</p>
                 </div>
               ) : (
                 files.map((entry) => (
-                  <div key={entry.path} onClick={() => handleEntryClick(entry)} 
-                    className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer ${selectedFile?.path === entry.path ? 'bg-blue-50 border border-blue-200' : 'hover:bg-[var(--bg-secondary)]'}`}>
+                  <div key={entry.path} onClick={() => handleEntryClick(entry)}
+                    className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer ${selectedFile?.path === entry.path ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted'}`}>
                     <div className="flex items-center gap-3">
-                      {entry.type === 'directory' ? <Folder className="w-8 h-8 text-yellow-500" /> : <FileIcon className="w-8 h-8 text-blue-500" />}
+                      {entry.type === 'directory' ? <Folder className="w-8 h-8 text-yellow-500" /> : <FileIcon className="w-8 h-8 text-primary" />}
                       <div>
                         <p className="font-medium">{entry.name}</p>
-                        <p className="text-xs text-[var(--text-secondary)]">{formatSize(entry.size)} • {new Date(entry.modifiedAt).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground">{formatSize(entry.size)} • {new Date(entry.modifiedAt).toLocaleDateString()}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                       {entry.type === 'file' && (
-                        <button onClick={(e) => { e.stopPropagation(); handleDownload(entry); }} className="p-2 hover:bg-gray-100 rounded-lg">
+                        <Button onClick={(e) => { e.stopPropagation(); handleDownload(entry); }} variant="ghost" size="icon" className="h-8 w-8">
                           <Download className="w-4 h-4" />
-                        </button>
+                        </Button>
                       )}
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(entry); }} className="p-2 hover:bg-red-50 text-red-500 rounded-lg">
+                      <Button onClick={(e) => { e.stopPropagation(); handleDelete(entry); }} variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))
               )}
             </div>
           )}
-        </div>
-      </div>
-    </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }

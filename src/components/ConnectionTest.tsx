@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { useSessionStore } from '../stores/session';
+import { buildChatCompletionsUrl } from '../utils/api';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
+import { ScrollArea } from './ui/scroll-area';
 
 export default function ConnectionTest() {
   const [result, setResult] = useState<string>('');
@@ -28,31 +32,27 @@ export default function ConnectionTest() {
       }
 
       // 构建 URL
-      let apiUrl: string;
-      if (llmConfig.baseUrl) {
-        const baseUrlClean = llmConfig.baseUrl.replace(/\/$/, '');
-        const path = baseUrlClean.endsWith('/v1')
-          ? '/chat/completions'
-          : '/v1/chat/completions';
-        apiUrl = `${baseUrlClean}${path}`;
-      } else {
-        if (import.meta.env.DEV) {
-          apiUrl = '/api/openai/v1/chat/completions';
-        } else {
-          apiUrl = 'https://api.openai.com/v1/chat/completions';
-        }
-      }
+      const { url: apiUrl, targetUrl } = buildChatCompletionsUrl(llmConfig);
 
       log('=== 测试连接 ===');
       log(`请求 URL: ${apiUrl}`);
+      if (targetUrl) {
+        log(`目标 URL (代理): ${targetUrl}`);
+      }
       log('');
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${llmConfig.apiKey}`,
+      };
+
+      if (targetUrl) {
+        headers['X-Target-URL'] = targetUrl;
+      }
 
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${llmConfig.apiKey}`,
-        },
+        headers,
         body: JSON.stringify({
           model: llmConfig.model,
           messages: [{ role: 'user', content: 'test' }],
@@ -112,21 +112,26 @@ export default function ConnectionTest() {
   };
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">连接测试</h2>
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold">连接测试</h2>
 
-      <button
+      <Button
         onClick={testConnection}
         disabled={testing}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
       >
         {testing ? '测试中...' : '测试连接'}
-      </button>
+      </Button>
 
       {result && (
-        <pre className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded overflow-auto text-sm">
-          {result}
-        </pre>
+        <Card>
+          <CardContent className="p-0">
+            <ScrollArea className="h-64">
+              <pre className="p-4 text-sm font-mono whitespace-pre-wrap">
+                {result}
+              </pre>
+            </ScrollArea>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

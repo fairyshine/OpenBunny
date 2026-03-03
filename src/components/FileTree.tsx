@@ -1,10 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fileSystem, FileSystemEntry } from '../services/filesystem';
 import { Folder, File as FileIcon, ChevronRight, ChevronDown, Search, Plus, Upload, Download, Edit2, X } from './icons';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { ScrollArea } from './ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface FileTreeProps {
   onSelectFile?: (path: string) => void;
   selectedPath?: string;
+  onItemClick?: () => void;
 }
 
 interface TreeNode extends FileSystemEntry {
@@ -12,7 +17,7 @@ interface TreeNode extends FileSystemEntry {
   isExpanded?: boolean;
 }
 
-export default function FileTree({ onSelectFile, selectedPath }: FileTreeProps) {
+export default function FileTree({ onSelectFile, selectedPath, onItemClick }: FileTreeProps) {
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['/workspace']));
@@ -264,11 +269,18 @@ export default function FileTree({ onSelectFile, selectedPath }: FileTreeProps) 
           onDragEnd={handleDragEnd}
           onDragOver={(e) => handleDragOver(e, entry.path)}
           onDrop={(e) => handleDrop(e, entry.path, entry.type === 'directory')}
-          onClick={() => entry.type === 'directory' ? toggleExpand(entry) : onSelectFile?.(entry.path)}
+          onClick={() => {
+            if (entry.type === 'directory') {
+              toggleExpand(entry);
+            } else {
+              onSelectFile?.(entry.path);
+              onItemClick?.();
+            }
+          }}
           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, entry }); }}
           className={`group flex items-center gap-1 px-2 py-1 cursor-pointer transition-colors ${
-            isSelected ? 'bg-blue-500 text-white' : 'hover:bg-[var(--bg-tertiary)]'
-          } ${isDragOver ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-500 border-dashed' : ''}`}
+            isSelected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+          } ${isDragOver ? 'bg-primary/10 border-2 border-primary border-dashed' : ''}`}
           style={{ paddingLeft: `${8 + depth * 16}px` }}
         >
           {entry.type === 'directory' ? (
@@ -280,7 +292,7 @@ export default function FileTree({ onSelectFile, selectedPath }: FileTreeProps) 
           {entry.type === 'directory' ? (
             <Folder className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-yellow-500'}`} />
           ) : (
-            <FileIcon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-blue-500'}`} />
+            <FileIcon className={`w-4 h-4 ${isSelected ? 'text-primary-foreground' : 'text-primary'}`} />
           )}
           
           {isRenamingHere ? (
@@ -291,7 +303,7 @@ export default function FileTree({ onSelectFile, selectedPath }: FileTreeProps) 
               onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
               onKeyDown={(e) => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenaming(null); }}
               onBlur={submitRename}
-              className="flex-1 px-1 py-0.5 text-sm bg-white dark:bg-gray-800 border border-blue-500 rounded"
+              className="flex-1 px-1 py-0.5 text-sm bg-background border border-primary rounded"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -300,8 +312,8 @@ export default function FileTree({ onSelectFile, selectedPath }: FileTreeProps) 
         </div>
         
         {isCreatingHere && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50" style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}>
-            {creating.type === 'folder' ? <Folder className="w-4 h-4 text-yellow-500" /> : <FileIcon className="w-4 h-4 text-blue-500" />}
+          <div className="flex items-center gap-1 px-2 py-1 bg-primary/5" style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}>
+            {creating.type === 'folder' ? <Folder className="w-4 h-4 text-yellow-500" /> : <FileIcon className="w-4 h-4 text-primary" />}
             <input
               ref={createInputRef}
               type="text"
@@ -309,7 +321,7 @@ export default function FileTree({ onSelectFile, selectedPath }: FileTreeProps) 
               onChange={(e) => setCreateName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') submitCreate(); if (e.key === 'Escape') setCreating(null); }}
               placeholder={creating.type === 'folder' ? '文件夹名称' : '文件名称'}
-              className="flex-1 px-1 py-0.5 text-sm bg-white dark:bg-gray-800 border border-blue-500 rounded"
+              className="flex-1 px-1 py-0.5 text-sm bg-background border border-primary rounded"
               onBlur={() => setTimeout(() => setCreating(null), 200)}
             />
           </div>
@@ -325,116 +337,146 @@ export default function FileTree({ onSelectFile, selectedPath }: FileTreeProps) 
   return (
     <div className="flex flex-col h-full">
       {/* 工具栏 */}
-      <div className="flex items-center gap-1 px-2 py-2 border-b border-[var(--border)]">
-        <button onClick={() => startCreate('/workspace', 'folder')} className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded" title="新建文件夹">
-          <Folder className="w-4 h-4 text-yellow-500" />
-        </button>
-        <button onClick={() => startCreate('/workspace', 'file')} className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded" title="新建文件">
-          <Plus className="w-4 h-4" />
-        </button>
-        <button onClick={() => {
-          const input = document.createElement('input');
-          input.type = 'file';
-          input.multiple = true;
-          input.onchange = async (e) => {
-            const files = (e.target as HTMLInputElement).files;
-            if (files) {
-              for (const file of files) {
-                try { await fileSystem.writeFile(`/workspace/${file.name}`, file); } catch (err) { console.error(err); }
-              }
-              await loadTree();
-            }
-          };
-          input.click();
-        }} className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded" title="上传文件">
-          <Upload className="w-4 h-4" />
-        </button>
-        <div className="flex-1" />
-        <button onClick={loadTree} className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded" title="刷新">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
-      </div>
+      <TooltipProvider>
+        <div className="flex items-center gap-1 px-2 py-2 border-b border-border">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={() => startCreate('/workspace', 'folder')} variant="ghost" size="icon" className="h-8 w-8">
+                <Folder className="w-4 h-4 text-yellow-500" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>新建文件夹</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={() => startCreate('/workspace', 'file')} variant="ghost" size="icon" className="h-8 w-8">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>新建文件</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                input.onchange = async (e) => {
+                  const files = (e.target as HTMLInputElement).files;
+                  if (files) {
+                    for (const file of files) {
+                      try { await fileSystem.writeFile(`/workspace/${file.name}`, file); } catch (err) { console.error(err); }
+                    }
+                    await loadTree();
+                  }
+                };
+                input.click();
+              }} variant="ghost" size="icon" className="h-8 w-8">
+                <Upload className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>上传文件</TooltipContent>
+          </Tooltip>
+
+          <div className="flex-1" />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={loadTree} variant="ghost" size="icon" className="h-8 w-8">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>刷新</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
 
       {/* 搜索框 */}
       <div className="px-2 py-2">
-        <div className="flex items-center gap-2 px-2 py-1.5 bg-[var(--bg-tertiary)] rounded-lg">
-          <Search className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
-          <input
+        <div className="flex items-center gap-2 px-2 py-1.5 bg-muted rounded-lg">
+          <Search className="w-3.5 h-3.5 text-muted-foreground" />
+          <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="搜索文件..."
-            className="flex-1 bg-transparent text-sm outline-none"
+            className="flex-1 bg-transparent text-sm border-none h-auto p-0 focus-visible:ring-0"
           />
-          {searchQuery && <button onClick={() => setSearchQuery('')}><X className="w-3.5 h-3.5" /></button>}
+          {searchQuery && (
+            <Button onClick={() => setSearchQuery('')} variant="ghost" size="icon" className="h-5 w-5">
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
       {/* 根目录创建输入框 */}
       {creating?.path === '/workspace' && (
-        <div className="flex items-center gap-1 px-2 py-1 bg-blue-50">
+        <div className="flex items-center gap-1 px-2 py-1 bg-primary/5">
           {creating.type === 'folder' ? <Folder className="w-4 h-4 text-yellow-500" /> : <FileIcon className="w-4 h-4 text-blue-500" />}
-          <input
+          <Input
             ref={createInputRef}
             type="text"
             value={createName}
             onChange={(e) => setCreateName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submitCreate(); if (e.key === 'Escape') setCreating(null); }}
             placeholder={creating.type === 'folder' ? '文件夹名称' : '文件名称'}
-            className="flex-1 px-1 py-0.5 text-sm bg-white border border-blue-500 rounded"
+            className="flex-1 h-7 text-sm"
             onBlur={() => setTimeout(() => setCreating(null), 200)}
           />
         </div>
       )}
 
       {/* 文件列表 */}
-      <div 
-        className="flex-1 overflow-y-auto"
-        onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }}
-        onDrop={(e) => { if (e.dataTransfer.files.length > 0) handleDrop(e, '/workspace', true); }}
+      <ScrollArea
+        className="flex-1"
+        onDragOver={(e: any) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }}
+        onDrop={(e: any) => { if (e.dataTransfer.files.length > 0) handleDrop(e, '/workspace', true); }}
       >
         {isLoading ? (
-          <div className="text-center py-8 text-[var(--text-secondary)]">加载中...</div>
+          <div className="text-center py-8 text-muted-foreground">加载中...</div>
         ) : tree.length === 0 && !creating ? (
-          <div className="text-center py-8 text-[var(--text-secondary)]">文件夹为空</div>
+          <div className="text-center py-8 text-muted-foreground">文件夹为空</div>
         ) : (
           <div className="py-1">{tree.map(entry => <TreeItem key={entry.path} entry={entry} />)}</div>
         )}
-      </div>
+      </ScrollArea>
 
       {/* 右键菜单 */}
       {contextMenu && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
-          <div className="fixed z-50 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg shadow-lg py-1 min-w-[160px]" style={{ left: contextMenu.x, top: contextMenu.y }}>
+          <div className="fixed z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[160px]" style={{ left: contextMenu.x, top: contextMenu.y }}>
             {contextMenu.entry.type === 'file' && (
-              <button onClick={() => { onSelectFile?.(contextMenu.entry.path); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] flex items-center gap-2">
+              <button onClick={() => { onSelectFile?.(contextMenu.entry.path); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2">
                 <FileIcon className="w-4 h-4" /> 打开
               </button>
             )}
             {contextMenu.entry.type === 'directory' && (
               <>
-                <button onClick={() => { startCreate(contextMenu.entry.path, 'folder'); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] flex items-center gap-2">
+                <button onClick={() => { startCreate(contextMenu.entry.path, 'folder'); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2">
                   <Folder className="w-4 h-4 text-yellow-500" /> 新建文件夹
                 </button>
-                <button onClick={() => { startCreate(contextMenu.entry.path, 'file'); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] flex items-center gap-2">
+                <button onClick={() => { startCreate(contextMenu.entry.path, 'file'); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2">
                   <Plus className="w-4 h-4" /> 新建文件
                 </button>
-                <div className="border-t border-[var(--border)] my-1" />
+                <div className="border-t border-border my-1" />
               </>
             )}
             {contextMenu.entry.type === 'file' && (
-              <button onClick={() => { handleDownload(contextMenu.entry); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] flex items-center gap-2">
+              <button onClick={() => { handleDownload(contextMenu.entry); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2">
                 <Download className="w-4 h-4" /> 下载
               </button>
             )}
-            <button onClick={() => { startRename(contextMenu.entry); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] flex items-center gap-2">
+            <button onClick={() => { startRename(contextMenu.entry); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2">
               <Edit2 className="w-4 h-4" /> 重命名
             </button>
-            <div className="border-t border-[var(--border)] my-1" />
-            <button onClick={() => { handleDelete(contextMenu.entry); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50 flex items-center gap-2">
+            <div className="border-t border-border my-1" />
+            <button onClick={() => { handleDelete(contextMenu.entry); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10 flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
               删除
             </button>

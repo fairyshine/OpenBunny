@@ -5,6 +5,15 @@ import { useState } from 'react';
 import { useToolStore } from '../stores/tools';
 import { toolRegistry } from '../services/tools/registry';
 import { ToolSource } from '../services/tools/base';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Badge } from './ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Alert, AlertDescription } from './ui/alert';
+import { ScrollArea } from './ui/scroll-area';
 
 export function ToolManager() {
   const { sources, loading, error, addSource, removeSource, toggleSource, reloadSource } = useToolStore();
@@ -33,205 +42,199 @@ export function ToolManager() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-muted/30">
       {/* 头部 */}
-      <div className="flex items-center justify-between p-4 bg-white border-b">
+      <div className="flex items-center justify-between p-4 bg-background border-b">
         <h2 className="text-lg font-semibold">工具管理</h2>
-        <button
-          onClick={() => setShowAddDialog(true)}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
+        <Button onClick={() => setShowAddDialog(true)}>
           添加工具源
-        </button>
+        </Button>
       </div>
 
       {/* 错误提示 */}
       {error && (
-        <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700">
-          {error}
+        <div className="mx-4 mt-4">
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         </div>
       )}
 
       {/* 工具源列表 */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">工具源 ({sources.length})</h3>
-          <div className="space-y-2">
-            {sources.map(source => (
-              <div
-                key={source.id}
-                className="bg-white p-4 rounded-lg border hover:shadow-sm transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{source.name}</span>
-                      <span className="px-2 py-0.5 text-xs bg-gray-100 rounded">
-                        {source.type}
-                      </span>
-                      {source.enabled && (
-                        <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
-                          已启用
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 text-xs text-gray-500 truncate">
-                      {source.source}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <button
-                      onClick={() => toggleSource(source.id)}
-                      disabled={loading}
-                      className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      {source.enabled ? '禁用' : '启用'}
-                    </button>
-                    {source.enabled && (
-                      <button
-                        onClick={() => reloadSource(source.id)}
-                        disabled={loading}
-                        className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        重载
-                      </button>
-                    )}
-                    {source.type !== 'builtin' && (
-                      <button
-                        onClick={() => removeSource(source.id)}
-                        disabled={loading}
-                        className="px-3 py-1 text-sm text-red-600 border border-red-200 rounded hover:bg-red-50 disabled:opacity-50"
-                      >
-                        删除
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 已加载工具列表 */}
-        <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">
-            已加载工具 ({allTools.length})
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {allTools.map(tool => (
-              <div
-                key={tool.metadata.id}
-                className="bg-white p-3 rounded-lg border hover:shadow-sm transition-shadow"
-              >
-                <div className="flex items-start gap-2">
-                  {tool.metadata.icon && (
-                    <span className="text-2xl">{tool.metadata.icon}</span>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      {tool.metadata.name}
-                    </div>
-                    <div className="text-xs text-gray-500 line-clamp-2 mt-1">
-                      {tool.metadata.description}
-                    </div>
-                    {tool.metadata.tags && tool.metadata.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {tool.metadata.tags.map(tag => (
-                          <span
-                            key={tag}
-                            className="px-1.5 py-0.5 text-xs bg-gray-100 rounded"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-6">
+          <div>
+            <h3 className="text-sm font-semibold mb-3">工具源 ({sources.length})</h3>
+            <div className="space-y-2">
+              {sources.map(source => (
+                <Card key={source.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{source.name}</span>
+                          <Badge variant="secondary">{source.type}</Badge>
+                          {source.enabled && (
+                            <Badge variant="default">已启用</Badge>
+                          )}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground truncate">
+                          {source.source}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          onClick={() => toggleSource(source.id)}
+                          disabled={loading}
+                          variant="outline"
+                          size="sm"
+                        >
+                          {source.enabled ? '禁用' : '启用'}
+                        </Button>
+                        {source.enabled && (
+                          <Button
+                            onClick={() => reloadSource(source.id)}
+                            disabled={loading}
+                            variant="outline"
+                            size="sm"
+                          >
+                            重载
+                          </Button>
+                        )}
+                        {source.type !== 'builtin' && (
+                          <Button
+                            onClick={() => removeSource(source.id)}
+                            disabled={loading}
+                            variant="destructive"
+                            size="sm"
+                          >
+                            删除
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* 已加载工具列表 */}
+          <div>
+            <h3 className="text-sm font-semibold mb-3">
+              已加载工具 ({allTools.length})
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {allTools.map(tool => (
+                <Card key={tool.metadata.id}>
+                  <CardHeader className="p-3">
+                    <div className="flex items-start gap-2">
+                      {tool.metadata.icon && (
+                        <span className="text-2xl">{tool.metadata.icon}</span>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-sm truncate">
+                          {tool.metadata.name}
+                        </CardTitle>
+                        <CardDescription className="text-xs line-clamp-2 mt-1">
+                          {tool.metadata.description}
+                        </CardDescription>
+                        {tool.metadata.tags && tool.metadata.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {tool.metadata.tags.map(tag => (
+                              <Badge key={tag} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </ScrollArea>
 
       {/* 添加工具源对话框 */}
-      {showAddDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">添加工具源</h3>
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>添加工具源</DialogTitle>
+          </DialogHeader>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  类型
-                </label>
-                <select
-                  value={newSource.type}
-                  onChange={e => setNewSource({ ...newSource, type: e.target.value as ToolSource['type'] })}
-                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="file">本地文件 (.ts)</option>
-                  <option value="http">HTTP URL</option>
-                  <option value="mcp">MCP 服务器</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  名称
-                </label>
-                <input
-                  type="text"
-                  value={newSource.name}
-                  onChange={e => setNewSource({ ...newSource, name: e.target.value })}
-                  placeholder="例如: 我的自定义工具"
-                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {newSource.type === 'file' && '文件路径'}
-                  {newSource.type === 'http' && 'URL'}
-                  {newSource.type === 'mcp' && 'MCP 服务器 ID'}
-                </label>
-                <input
-                  type="text"
-                  value={newSource.source}
-                  onChange={e => setNewSource({ ...newSource, source: e.target.value })}
-                  placeholder={
-                    newSource.type === 'file' ? '/tools/my-tool.ts' :
-                    newSource.type === 'http' ? 'https://example.com/tool.js' :
-                    'server-id'
-                  }
-                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  {newSource.type === 'file' && '相对于项目根目录的路径'}
-                  {newSource.type === 'http' && '工具定义的 HTTP URL'}
-                  {newSource.type === 'mcp' && '已配置的 MCP 服务器 ID'}
-                </p>
-              </div>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="type">类型</Label>
+              <Select
+                value={newSource.type}
+                onValueChange={(value) => setNewSource({ ...newSource, type: value as ToolSource['type'] })}
+              >
+                <SelectTrigger id="type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="file">本地文件 (.ts)</SelectItem>
+                  <SelectItem value="http">HTTP URL</SelectItem>
+                  <SelectItem value="mcp">MCP 服务器</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                onClick={() => setShowAddDialog(false)}
-                className="px-4 py-2 border rounded hover:bg-gray-50"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleAddSource}
-                disabled={loading}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-              >
-                添加
-              </button>
+            <div className="space-y-2">
+              <Label htmlFor="name">名称</Label>
+              <Input
+                id="name"
+                type="text"
+                value={newSource.name}
+                onChange={e => setNewSource({ ...newSource, name: e.target.value })}
+                placeholder="例如: 我的自定义工具"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="source">
+                {newSource.type === 'file' && '文件路径'}
+                {newSource.type === 'http' && 'URL'}
+                {newSource.type === 'mcp' && 'MCP 服务器 ID'}
+              </Label>
+              <Input
+                id="source"
+                type="text"
+                value={newSource.source}
+                onChange={e => setNewSource({ ...newSource, source: e.target.value })}
+                placeholder={
+                  newSource.type === 'file' ? '/tools/my-tool.ts' :
+                  newSource.type === 'http' ? 'https://example.com/tool.js' :
+                  'server-id'
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                {newSource.type === 'file' && '相对于项目根目录的路径'}
+                {newSource.type === 'http' && '工具定义的 HTTP URL'}
+                {newSource.type === 'mcp' && '已配置的 MCP 服务器 ID'}
+              </p>
             </div>
           </div>
-        </div>
-      )}
+
+          <div className="flex justify-end gap-2 mt-6">
+            <Button
+              onClick={() => setShowAddDialog(false)}
+              variant="outline"
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleAddSource}
+              disabled={loading}
+            >
+              添加
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3,12 +3,27 @@
 import { ToolContext, ToolExecuteResult } from '../../types';
 
 /**
+ * 工具参数定义
+ */
+export interface ToolParameter {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  description: string;
+  required?: boolean;
+  default?: any;
+  enum?: any[];
+  properties?: Record<string, ToolParameter>; // For object type
+  items?: ToolParameter; // For array type
+}
+
+/**
  * 工具元数据
  */
 export interface ToolMetadata {
   id: string;
   name: string;
   description: string;
+  parameters?: ToolParameter[]; // 工具参数定义
   icon?: string;
   version?: string;
   author?: string;

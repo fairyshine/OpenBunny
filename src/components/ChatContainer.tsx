@@ -2,83 +2,55 @@ import { useState, useRef, useEffect } from 'react';
 import { useSessionStore } from '../stores/session';
 import { useSettingsStore } from '../stores/settings';
 import { toolRegistry } from '../services/tools/registry';
+import { getOpenAITools, parseToolCallArguments, convertArgumentsToInput, generateOpenAISystemPrompt } from '../services/tools/openai-format';
 import { Message } from '../types';
 import { useLLM } from '../hooks/useLLM';
+import { logLLM, logTool } from '../services/console/logger';
+import { LLMConversation } from '../services/llm/conversation';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ToolBar from './ToolBar';
+import ExportDialog from './ExportDialog';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Download } from './icons';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface ChatContainerProps {
   sessionId: string;
 }
 
-interface Tool {
-  id: string;
-  name: string;
-  description: string;
-}
-
-const AVAILABLE_TOOLS: Tool[] = [
-  { id: 'python', name: 'Python', description: '执行 Python 代码，解决数学问题、数据分析等' },
-  { id: 'web_search', name: 'WebSearch', description: '搜索网页获取实时信息' },
-  { id: 'read_file', name: 'ReadFile', description: '读取沙盒中的文件内容' },
-  { id: 'write_file', name: 'WriteFile', description: '写入或编辑沙盒中的文件' },
-  { id: 'list_files', name: 'ListFiles', description: '列出文件夹内容' },
-  { id: 'create_folder', name: 'CreateFolder', description: '创建新文件夹' },
-];
-
-// ReAct 系统提示词
-const REACT_SYSTEM_PROMPT = `你是一个智能助手，可以使用工具来完成任务。
-
-请使用以下格式进行思考和行动：
-
-Thought: 分析当前情况，思考下一步该做什么
-Action: ToolName[参数]
-Observation: 工具执行结果（系统会自动提供）
-... (可以重复 Thought/Action/Observation)
-Thought: 总结分析，给出最终答案
-Final Answer: 给用户的最终回复
-
-可用工具：
-${AVAILABLE_TOOLS.map(t => `- ${t.name}: ${t.description}`).join('\n')}
-
-工具调用示例：
-Thought: 用户要求计算 15 的平方，我可以用 Python 计算
-Action: Python[15 ** 2]
-
-Thought: 需要读取文件 /workspace/data.txt 的内容
-Action: ReadFile[/workspace/data.txt]
-
-Thought: 要搜索最新关于 AI 的新闻
-Action: WebSearch[AI 最新进展 2024]
-
-Thought: 需要创建一个新文件夹
-Action: CreateFolder[/workspace/project]
-
-重要规则：
-1. 每次只能调用一个工具
-2. 等待 Observation 后再进行下一步
-3. 如果一次工具调用不足以完成任务，继续思考并调用更多工具
-4. 最终必须使用 Final Answer 回复用户`;
-
 export default function ChatContainer({ sessionId }: ChatContainerProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [currentThought, setCurrentThought] = useState<string>('');
+  const [currentStatus, setCurrentStatus] = useState<string>('');
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const { sessions, addMessage, updateMessage, llmConfig } = useSessionStore();
   const { enabledTools } = useSettingsStore();
-  const { sendMessage: sendLLMMessage } = useLLM(llmConfig);
-  
+  const { sendMessage: sendLLMMessage, abort: abortLLM } = useLLM(llmConfig);
+
   const session = sessions.find((s) => s.id === sessionId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [session?.messages, currentThought]);
+  }, [session?.messages, currentStatus]);
+
+  const handleStop = () => {
+    abortLLM();
+    setIsLoading(false);
+    setCurrentStatus('');
+    addMessage(sessionId, {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: '⏸️ 已停止生成',
+      timestamp: Date.now(),
+    });
+  };
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
 
-    // 添加用户消息
+    // 添加用户消息到 UI
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -87,10 +59,11 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     };
     addMessage(sessionId, userMessage);
     setIsLoading(true);
-    setCurrentThought('');
+    setCurrentStatus('');
+    logLLM('info', `用户消息: ${content.trim().slice(0, 100)}${content.length > 100 ? '...' : ''}`);
 
     try {
-      await runReactLoop();
+      await runAgentLoop(content.trim());
     } catch (error) {
       console.error('Error:', error);
       addMessage(sessionId, {
@@ -101,11 +74,11 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
       });
     } finally {
       setIsLoading(false);
-      setCurrentThought('');
+      setCurrentStatus('');
     }
   };
 
-  const runReactLoop = async () => {
+  const runAgentLoop = async (userInput: string) => {
     if (!llmConfig.apiKey) {
       addMessage(sessionId, {
         id: crypto.randomUUID(),
@@ -116,176 +89,209 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
       return;
     }
 
-    const assistantMessageId = crypto.randomUUID();
-    addMessage(sessionId, {
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      timestamp: Date.now(),
+    // 生成本轮对话的 groupId
+    const groupId = crypto.randomUUID();
+
+    // 获取 OpenAI 格式的工具定义
+    const tools = getOpenAITools(enabledTools);
+    logTool('info', `已启用 ${tools.length} 个工具`, {
+      tools: tools.map(t => t.function.name).join(', ')
     });
 
-    // 构建对话历史
-    const messages = [
-      { role: 'system' as const, content: REACT_SYSTEM_PROMPT },
-      ...session!.messages.map(m => ({ 
-        role: m.role as 'user' | 'assistant' | 'system', 
-        content: m.content 
-      })),
-    ];
+    // 创建独立的 LLM 对话管理器
+    const systemPrompt = generateOpenAISystemPrompt(enabledTools);
+    const conversation = new LLMConversation(systemPrompt);
 
-    let fullResponse = '';
+    // 添加用户消息到 LLM 对话
+    conversation.addUserMessage(userInput);
+
+    // 调试：打印对话历史
+    conversation.debug();
+
     let maxIterations = 10;
     let iteration = 0;
 
     while (iteration < maxIterations) {
       iteration++;
-      
-      // 调用 LLM
-      const response = await callLLM(messages);
-      fullResponse += response;
-      
-      // 检查是否有 Final Answer
-      const finalAnswerMatch = response.match(/Final Answer:\s*(.+)/s);
-      if (finalAnswerMatch) {
-        updateMessage(sessionId, assistantMessageId, { 
-          content: fullResponse + '\n\n---\n\n📝 **最终回复**:\n' + finalAnswerMatch[1].trim()
+      logLLM('info', `Agent 循环 - 第 ${iteration} 轮`);
+
+      // 创建思考消息（UI 层）
+      const thinkingMessageId = crypto.randomUUID();
+      addMessage(sessionId, {
+        id: thinkingMessageId,
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+        type: 'thought',
+        groupId,
+      });
+
+      // 调用 LLM（使用独立的对话历史）
+      const response = await sendLLMMessage(conversation.getMessages(), {
+        tools: tools.length > 0 ? tools : undefined,
+        onChunk: (content) => {
+          updateMessage(sessionId, thinkingMessageId, { content });
+        },
+        onToolCalls: (toolCalls) => {
+          logTool('info', `模型请求调用 ${toolCalls.length} 个工具`, {
+            tools: toolCalls.map(tc => tc.function.name).join(', ')
+          });
+        },
+      });
+
+      // 检查是否有工具调用
+      if (response.toolCalls && response.toolCalls.length > 0) {
+        // 更新思考消息类型（UI 层）
+        updateMessage(sessionId, thinkingMessageId, {
+          type: 'thought',
+          content: response.content || '正在调用工具...',
         });
-        break;
-      }
 
-      // 解析 Thought 和 Action
-      const thoughtMatch = response.match(/Thought:\s*(.+?)(?=\n(?:Action|Final Answer):|$)/s);
-      const actionMatch = response.match(/Action:\s*(\w+)\[(.*?)\]/s);
+        // 将 assistant 消息添加到 LLM 对话历史
+        conversation.addAssistantMessage(response.content || null, response.toolCalls);
 
-      if (thoughtMatch) {
-        setCurrentThought(thoughtMatch[1].trim());
-        updateMessage(sessionId, assistantMessageId, { 
-          content: fullResponse + '\n\n💭 **思考中**: ' + thoughtMatch[1].trim() + '...'
-        });
-      }
+        // 执行所有工具调用
+        for (const toolCall of response.toolCalls) {
+          const toolName = toolCall.function.name;
+          const args = parseToolCallArguments(toolCall);
+          const input = convertArgumentsToInput(args);
 
-      if (actionMatch) {
-        const toolName = actionMatch[1];
-        const toolInput = actionMatch[2].trim();
+          logTool('info', `执行工具: ${toolName}`, {
+            args: JSON.stringify(args).slice(0, 200),
+            input: input.slice(0, 200)
+          });
 
-        // 执行工具
-        const observation = await executeTool(toolName, toolInput);
-        
-        // 添加 Observation 到对话
-        const observationText = `\n\nObservation: ${observation}\n`;
-        fullResponse += observationText;
-        messages.push({ 
-          role: 'assistant' as const, 
-          content: response + observationText 
-        });
-        
-        updateMessage(sessionId, assistantMessageId, { 
-          content: fullResponse + '\n\n✅ 工具执行完成，继续分析...'
-        });
-      } else {
-        // 没有 Action，直接输出
-        updateMessage(sessionId, assistantMessageId, { content: fullResponse });
-        break;
-      }
-    }
-  };
+          // 创建工具调用消息（UI 层）
+          const toolCallMessageId = crypto.randomUUID();
+          addMessage(sessionId, {
+            id: toolCallMessageId,
+            role: 'assistant',
+            content: `🔧 调用工具: ${toolName}`,
+            timestamp: Date.now(),
+            type: 'tool_call',
+            toolName,
+            toolInput: JSON.stringify(args, null, 2),
+            toolCallId: toolCall.id,
+            groupId,
+          });
 
-  const callLLM = async (messages: Array<{role: string; content: string}>): Promise<string> => {
-    try {
-      const response = await sendLLMMessage(
-        messages.map(m => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
-        {
-          onChunk: (fullContent) => {
-            // onChunk 接收的是完整内容，不是增量
-            // 可以在这里更新 UI 显示流式输出
-          },
-          onError: (error) => {
-            console.error('[ChatContainer] LLM Error:', error);
-          },
-          onComplete: () => {
-            console.log('[ChatContainer] LLM Complete');
-          },
+          setCurrentStatus(`正在执行: ${toolName}`);
+
+          // 执行工具
+          const result = await executeTool(toolName, input);
+
+          // 创建工具结果消息（UI 层）
+          const toolResultMessageId = crypto.randomUUID();
+          addMessage(sessionId, {
+            id: toolResultMessageId,
+            role: 'tool',
+            content: result,
+            timestamp: Date.now(),
+            type: 'tool_result',
+            toolName,
+            toolOutput: result,
+            toolCallId: toolCall.id,
+            groupId,
+          });
+
+          // 添加工具结果到 LLM 对话历史
+          conversation.addToolResult(toolCall.id, result);
         }
-      );
-      return response;
-    } catch (error) {
-      throw new Error(`LLM 调用失败: ${error instanceof Error ? error.message : String(error)}`);
+
+        // 调试：打印更新后的对话历史
+        conversation.debug();
+
+        // 继续循环，让 LLM 处理工具结果
+        setCurrentStatus('');
+      } else {
+        // 没有工具调用，这是最终响应
+        updateMessage(sessionId, thinkingMessageId, {
+          type: 'response',
+          content: response.content,
+          groupId,
+        });
+        logLLM('success', 'Agent 循环完成');
+        break;
+      }
     }
+
+    if (iteration >= maxIterations) {
+      logLLM('warning', `达到最大迭代次数 ${maxIterations}`);
+      addMessage(sessionId, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: '⚠️ 已达到最大工具调用次数限制',
+        timestamp: Date.now(),
+        groupId,
+      });
+    }
+
+    setCurrentStatus('');
   };
 
   const executeTool = async (toolName: string, input: string): Promise<string> => {
-    const toolMap: Record<string, string> = {
-      'Python': 'python',
-      'WebSearch': 'web_search',
-      'ReadFile': 'read_file',
-      'WriteFile': 'write_file',
-      'ListFiles': 'list_files',
-      'CreateFolder': 'create_folder',
-      'DeleteFile': 'delete_file',
-      'Calculator': 'calculator',
-    };
+    // 工具名就是工具 ID（OpenAI 格式使用 ID）
+    const toolId = toolName;
 
-    const skillId = toolMap[toolName];
-    if (!skillId || !enabledTools.includes(skillId)) {
-      return `工具 "${toolName}" 不可用或未启用`;
+    if (!enabledTools.includes(toolId)) {
+      const allTools = toolRegistry.getAll();
+      logTool('warning', `工具未启用: ${toolName}`, {
+        availableTools: allTools.map(t => t.metadata.id).join(', ')
+      });
+      return `工具 "${toolName}" 未启用，请在设置中启用该工具`;
     }
 
     try {
-      // 处理 WriteFile 的特殊格式
-      if (skillId === 'write_file') {
-        return await executeWriteFile(input);
-      }
-
-      const result = await toolRegistry.execute(skillId, input);
+      logTool('info', `执行工具: ${toolName} (${toolId})`);
+      const result = await toolRegistry.execute(toolId, input);
+      logTool('success', `工具执行成功: ${toolName}`, { resultLength: result.content.length });
       return result.content;
     } catch (error) {
+      logTool('error', `工具执行错误: ${toolName}`, error instanceof Error ? error.message : error);
       return `工具执行错误: ${error instanceof Error ? error.message : String(error)}`;
     }
   };
 
-  const executeWriteFile = async (input: string): Promise<string> => {
-    // 尝试解析不同的格式
-    // 格式1: path|||content
-    const pipeMatch = input.match(/^(.+?)\|\|\|(.+)$/s);
-    if (pipeMatch) {
-      const result = await toolRegistry.execute('write_file', input);
-      return result.content;
-    }
-
-    // 格式2: 路径 内容 (空格分隔)
-    const spaceMatch = input.match(/^(\/[^\s]+)\s+(.+)$/s);
-    if (spaceMatch) {
-      const formatted = `${spaceMatch[1]}|||${spaceMatch[2]}`;
-      const result = await toolRegistry.execute('write_file', formatted);
-      return result.content;
-    }
-
-    return '格式错误，请使用: WriteFile[/path/to/file.txt|||内容]';
-  };
-
   if (!session) {
     return (
-      <div className="flex-1 flex items-center justify-center text-[var(--text-secondary)]">
+      <div className="flex-1 flex items-center justify-center text-muted-foreground">
         <p>会话不存在</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* 工具栏 */}
-      <ToolBar />
+      <div className="border-b px-4 py-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <ToolBar />
 
-      {/* 思考状态指示器 */}
-      {currentThought && (
-        <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
-          <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-            <span className="font-medium">💭 思考:</span>
-            <span className="truncate">{currentThought}</span>
-          </div>
+        <div className="flex items-center gap-2">
+          {/* 状态指示 */}
+          {currentStatus && (
+            <Badge variant="secondary" className="animate-pulse">
+              {currentStatus}
+            </Badge>
+          )}
+
+          {/* 导出按钮 */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => setShowExportDialog(true)}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                >
+                  <Download className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>导出对话</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
-      )}
+      </div>
 
       {/* 消息列表 */}
       <div className="flex-1 overflow-y-auto">
@@ -294,11 +300,17 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
       </div>
 
       {/* 输入框 */}
-      <ChatInput 
-        onSend={handleSendMessage} 
+      <ChatInput
+        onSend={handleSendMessage}
         isLoading={isLoading}
-        disabled={isLoading}
-        placeholder={isLoading ? "Agent 正在思考..." : "输入消息，Agent 会自动调用工具 (ReAct 模式)"}
+        onStop={handleStop}
+      />
+
+      {/* 导出对话框 */}
+      <ExportDialog
+        messages={session.messages}
+        isOpen={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
       />
     </div>
   );

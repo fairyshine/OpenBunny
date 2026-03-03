@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Save, Download } from './icons';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 
 interface FileEditorProps {
   path: string;
@@ -59,53 +61,56 @@ export default function FileEditor({ path, content, onClose, onSave }: FileEdito
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-primary)]">
+    <div className="flex flex-col h-full bg-background">
       {/* 工具栏 */}
-      <div className="h-12 border-b border-[var(--border)] flex items-center justify-between px-4 bg-[var(--bg-secondary)]">
+      <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/50">
         <div className="flex items-center gap-4">
-          <button
+          <Button
             onClick={onClose}
-            className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
             title="关闭"
           >
             <X className="w-5 h-5" />
-          </button>
-          
+          </Button>
+
           <div className="flex flex-col">
-            <span className="font-medium text-sm text-[var(--text-primary)]">
+            <span className="font-medium text-sm">
               {path.split('/').pop()}
             </span>
-            <span className="text-xs text-[var(--text-secondary)]">
+            <span className="text-xs text-muted-foreground">
               {path}
-              {hasChanges && <span className="ml-2 text-yellow-500">● 已修改</span>}
+              {hasChanges && <Badge variant="outline" className="ml-2 text-yellow-500 border-yellow-500">● 已修改</Badge>}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+            variant="outline"
+            size="sm"
           >
-            <Download className="w-4 h-4" />
-            下载
-          </button>
-          
-          <button
+            <Download className="w-4 h-4 md:mr-1.5" />
+            <span className="hidden sm:inline">下载</span>
+          </Button>
+
+          <Button
             onClick={handleSave}
             disabled={isSaving || !hasChanges}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            size="sm"
           >
-            <Save className="w-4 h-4" />
-            {isSaving ? '保存中...' : '保存'}
-          </button>
+            <Save className="w-4 h-4 md:mr-1.5" />
+            <span className="hidden sm:inline">{isSaving ? '保存中...' : '保存'}</span>
+          </Button>
         </div>
       </div>
 
       {/* 编辑器 */}
       <div className="flex-1 flex overflow-hidden">
         {/* 行号 */}
-        <div className="w-12 bg-[var(--bg-tertiary)] border-r border-[var(--border)] py-4 text-right text-xs text-[var(--text-secondary)] select-none">
+        <div className="w-12 bg-muted border-r border-border py-4 text-right text-xs text-muted-foreground select-none hidden md:block">
           {editedContent.split('\n').map((_, i) => (
             <div key={i} className="px-2 leading-6">
               {i + 1}
@@ -120,9 +125,9 @@ export default function FileEditor({ path, content, onClose, onSave }: FileEdito
             setEditedContent(e.target.value);
             setHasChanges(e.target.value !== content);
           }}
-          className="flex-1 p-4 font-mono text-sm resize-none outline-none bg-[var(--bg-primary)] text-[var(--text-primary)] leading-6"
+          className="flex-1 p-4 font-mono text-sm resize-none outline-none bg-background text-foreground leading-6"
           spellCheck={false}
-          style={{ 
+          style={{
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
             tabSize: 2
           }}
@@ -130,7 +135,7 @@ export default function FileEditor({ path, content, onClose, onSave }: FileEdito
       </div>
 
       {/* 底部状态栏 */}
-      <div className="h-8 border-t border-[var(--border)] flex items-center justify-between px-4 bg-[var(--bg-secondary)] text-xs text-[var(--text-secondary)]">
+      <div className="h-8 border-t border-border flex items-center justify-between px-4 bg-muted/50 text-xs text-muted-foreground">
         <div className="flex items-center gap-4">
           <span>{getLanguage(path).toUpperCase()}</span>
           <span>UTF-8</span>

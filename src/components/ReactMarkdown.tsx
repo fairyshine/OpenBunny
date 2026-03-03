@@ -8,7 +8,7 @@ export default function ReactMarkdown({ content }: ReactMarkdownProps) {
   const renderCodeBlock = (code: string, language?: string) => {
     return (
       <pre className="my-2 overflow-x-auto">
-        <div className="flex items-center justify-between px-4 py-2 bg-gray-800 text-gray-400 text-xs rounded-t-lg">
+        <div className="flex items-center justify-between px-4 py-2 bg-muted text-muted-foreground text-xs rounded-t-lg">
           <span>{language || 'code'}</span>
           <button
             onClick={() => navigator.clipboard.writeText(code)}
@@ -17,7 +17,7 @@ export default function ReactMarkdown({ content }: ReactMarkdownProps) {
             复制
           </button>
         </div>
-        <code className="block p-4 pt-2 bg-gray-900 text-gray-100 overflow-x-auto">
+        <code className="block p-4 pt-2 bg-secondary text-secondary-foreground overflow-x-auto">
           {code}
         </code>
       </pre>
@@ -86,7 +86,7 @@ export default function ReactMarkdown({ content }: ReactMarkdownProps) {
         // 引用
         if (line.startsWith('> ')) {
           return (
-            <blockquote key={i} className="border-l-4 border-blue-500 pl-4 my-2 text-[var(--text-secondary)]">
+            <blockquote key={i} className="border-l-4 border-primary pl-4 my-2 text-muted-foreground">
               {line.slice(2)}
             </blockquote>
           );
@@ -146,7 +146,7 @@ export default function ReactMarkdown({ content }: ReactMarkdownProps) {
           break;
         case 'code':
           parts.push(
-            <code key={key++} className="px-1.5 py-0.5 bg-yellow-100 text-red-600 rounded text-sm">
+            <code key={key++} className="px-1.5 py-0.5 bg-muted text-destructive rounded text-sm">
               {first.match![1]}
             </code>
           );
@@ -158,7 +158,7 @@ export default function ReactMarkdown({ content }: ReactMarkdownProps) {
               href={first.match![2]}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-500 hover:underline"
+              className="text-primary hover:underline"
             >
               {first.match![1]}
             </a>

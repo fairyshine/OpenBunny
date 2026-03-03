@@ -4,6 +4,10 @@ import { BaseTool, IToolLoader, ITool } from '../base';
 import { ToolContext, ToolExecuteResult } from '../../../types';
 import { pythonExecutor } from '../../python/executor';
 import { mcpClient } from '../../mcp/client';
+import { proxiedFetch } from '../../../utils/api';
+import { logFile, logPython } from '../../console/logger';
+import { fileSystem } from '../../filesystem';
+import { getErrorMessage } from '../../../utils/errors';
 
 /**
  * 内置工具加载器
@@ -16,11 +20,7 @@ export class BuiltinToolLoader implements IToolLoader {
       new PythonTool(),
       new WebSearchTool(),
       new CalculatorTool(),
-      new ReadFileTool(),
-      new WriteFileTool(),
-      new ListFilesTool(),
-      new CreateFolderTool(),
-      new DeleteFileTool(),
+      new FileManagerTool(),
       new MCPToolCallTool(),
     ];
   }
@@ -32,13 +32,27 @@ class PythonTool extends BaseTool {
     super({
       id: 'python',
       name: 'Python 代码执行',
-      description: '执行 Python 代码并返回结果',
+      description: '执行 Python 代码并返回结果，支持数学计算、数据分析、绘图等',
       icon: '🐍',
+      parameters: [
+        {
+          name: 'code',
+          type: 'string',
+          description: 'Python 代码字符串',
+          required: true,
+        }
+      ],
     });
   }
 
   async execute(code: string, _context: ToolContext): Promise<ToolExecuteResult> {
+    logPython('info', `执行代码 (${code.length} 字符)`, code.slice(0, 200));
     const result = await pythonExecutor.execute(code);
+    if (result.error) {
+      logPython('error', `执行失败`, result.error);
+    } else {
+      logPython('success', `执行完成`, result.output.slice(0, 200));
+    }
     return {
       content: result.error
         ? `❌ 错误:\n${result.error}`
@@ -54,20 +68,28 @@ class WebSearchTool extends BaseTool {
     super({
       id: 'web_search',
       name: '网页搜索',
-      description: '使用 DuckDuckGo 搜索网络信息',
+      description: '使用 DuckDuckGo 搜索网络信息，获取实时资讯',
       icon: '🔍',
+      parameters: [
+        {
+          name: 'query',
+          type: 'string',
+          description: '搜索关键词',
+          required: true,
+        }
+      ],
     });
   }
 
   async execute(query: string, _context: ToolContext): Promise<ToolExecuteResult> {
     try {
-      const response = await fetch(
+      const response = await proxiedFetch(
         `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
         {
           headers: {
             'Accept': 'text/html',
-            'User-Agent': 'Mozilla/5.0 (compatible; CyberBunny/0.1)'
-          }
+            'User-Agent': 'Mozilla/5.0 (compatible; CyberBunny/0.1)',
+          },
         }
       );
 
@@ -117,8 +139,16 @@ class CalculatorTool extends BaseTool {
     super({
       id: 'calculator',
       name: '计算器',
-      description: '执行数学计算',
+      description: '执行数学计算表达式，支持 Python math 库',
       icon: '🧮',
+      parameters: [
+        {
+          name: 'expression',
+          type: 'string',
+          description: '数学表达式，如 2**10 或 math.sqrt(144)',
+          required: true,
+        }
+      ],
     });
   }
 
@@ -139,159 +169,177 @@ class CalculatorTool extends BaseTool {
   }
 }
 
-// 读取文件工具
-class ReadFileTool extends BaseTool {
+// 文件管理工具（统一的文件操作）
+class FileManagerTool extends BaseTool {
   constructor() {
     super({
-      id: 'read_file',
-      name: '读取文件',
-      description: '读取沙盒中的文件内容，支持路径如 /workspace/data.txt',
-      icon: '📄',
-    });
-  }
-
-  async execute(path: string, _context: ToolContext): Promise<ToolExecuteResult> {
-    try {
-      const { fileSystem } = await import('../../filesystem');
-      await fileSystem.initialize();
-      const content = await fileSystem.readFileText(path);
-      if (content === null) {
-        return { content: `❌ 文件不存在: ${path}`, metadata: { error: true } };
-      }
-      return { content: `📄 ${path}:\n\`\`\`\n${content.slice(0, 5000)}\n\`\`\``, metadata: { size: content.length } };
-    } catch (error) {
-      return { content: `❌ 读取失败: ${error instanceof Error ? error.message : String(error)}`, metadata: { error: true } };
-    }
-  }
-}
-
-// 写入文件工具
-class WriteFileTool extends BaseTool {
-  constructor() {
-    super({
-      id: 'write_file',
-      name: '写入文件',
-      description: '写入或编辑沙盒中的文件。格式: 路径|||内容（如 /workspace/note.txt|||Hello World）',
-      icon: '✏️',
+      id: 'file_manager',
+      name: '文件管理',
+      description: '管理沙盒文件系统：读取、写入、列出、创建文件夹、删除文件',
+      icon: '📁',
+      parameters: [
+        {
+          name: 'operation',
+          type: 'string',
+          description: '操作类型：read（读取文件）、write（写入文件）、list（列出目录）、mkdir（创建文件夹）、delete（删除）',
+          required: true,
+          enum: ['read', 'write', 'list', 'mkdir', 'delete'],
+        },
+        {
+          name: 'path',
+          type: 'string',
+          description: '文件或目录路径，如 /workspace/data.txt',
+          required: true,
+        },
+        {
+          name: 'content',
+          type: 'string',
+          description: '文件内容（仅 write 操作需要）',
+          required: false,
+        }
+      ],
     });
   }
 
   async execute(input: string, _context: ToolContext): Promise<ToolExecuteResult> {
     try {
-      const separator = input.indexOf('|||');
-      if (separator === -1) {
-        return { content: `❌ 格式错误，请使用: 路径|||内容`, metadata: { error: true } };
-      }
-      const path = input.slice(0, separator).trim();
-      const content = input.slice(separator + 3);
+      const params = JSON.parse(input);
+      const { operation, path, content } = params;
 
-      const { fileSystem } = await import('../../filesystem');
+      if (!operation || !path) {
+        return {
+          content: `❌ 参数错误：需要 operation 和 path 参数`,
+          metadata: { error: true }
+        };
+      }
+
       await fileSystem.initialize();
-      await fileSystem.writeFile(path, content);
-      return { content: `✅ 文件已保存: ${path} (${content.length} 字符)`, metadata: { path, size: content.length } };
+
+      switch (operation) {
+        case 'read':
+          return await this.readFile(path);
+
+        case 'write':
+          if (!content && content !== '') {
+            return {
+              content: `❌ write 操作需要 content 参数`,
+              metadata: { error: true }
+            };
+          }
+          return await this.writeFile(path, content);
+
+        case 'list':
+          return await this.listFiles(path);
+
+        case 'mkdir':
+          return await this.createFolder(path);
+
+        case 'delete':
+          return await this.deleteFile(path);
+
+        default:
+          return {
+            content: `❌ 未知操作: ${operation}。支持的操作：read, write, list, mkdir, delete`,
+            metadata: { error: true }
+          };
+      }
     } catch (error) {
-      return { content: `❌ 写入失败: ${error instanceof Error ? error.message : String(error)}`, metadata: { error: true } };
-    }
-  }
-}
-
-// 列出文件工具
-class ListFilesTool extends BaseTool {
-  constructor() {
-    super({
-      id: 'list_files',
-      name: '列出文件',
-      description: '列出沙盒目录中的文件和文件夹，默认为 /workspace',
-      icon: '📁',
-    });
-  }
-
-  async execute(path: string = '/workspace', _context: ToolContext): Promise<ToolExecuteResult> {
-    try {
-      const targetPath = path.trim() || '/workspace';
-      const { fileSystem } = await import('../../filesystem');
-      await fileSystem.initialize();
-      const entries = await fileSystem.readdir(targetPath);
-
-      if (entries.length === 0) {
-        return { content: `📁 ${targetPath}\n(空文件夹)`, metadata: { path: targetPath, count: 0 } };
+      if (error instanceof SyntaxError) {
+        return {
+          content: `❌ JSON 解析错误：${error.message}`,
+          metadata: { error: true }
+        };
       }
-
-      const sorted = entries.sort((a, b) => {
-        if (a.type === 'directory' && b.type !== 'directory') return -1;
-        if (a.type !== 'directory' && b.type === 'directory') return 1;
-        return a.name.localeCompare(b.name);
-      });
-
-      const lines = sorted.map(e => {
-        const icon = e.type === 'directory' ? '📂' : '📄';
-        const size = e.type === 'file' ? ` (${this.formatSize(e.size)})` : '';
-        return `${icon} ${e.name}${size}`;
-      });
-
+      const errorMsg = getErrorMessage(error);
+      logFile('error', '文件管理操作失败', errorMsg);
       return {
-        content: `📁 ${targetPath} (${entries.length} 项):\n\n${lines.join('\n')}`,
-        metadata: { path: targetPath, count: entries.length, entries }
+        content: `❌ 操作失败: ${errorMsg}`,
+        metadata: { error: true }
       };
-    } catch (error) {
-      return { content: `❌ 列出失败: ${error instanceof Error ? error.message : String(error)}`, metadata: { error: true } };
     }
+  }
+
+  private async readFile(path: string): Promise<ToolExecuteResult> {
+    const content = await fileSystem.readFileText(path);
+    if (content === null) {
+      logFile('warning', `文件不存在: ${path}`);
+      return { content: `❌ 文件不存在: ${path}`, metadata: { error: true } };
+    }
+    logFile('success', `读取文件: ${path}`, { size: content.length });
+    return {
+      content: `📄 ${path}:\n\`\`\`\n${content.slice(0, 5000)}\n\`\`\``,
+      metadata: { operation: 'read', path, size: content.length }
+    };
+  }
+
+  private async writeFile(path: string, content: string): Promise<ToolExecuteResult> {
+    await fileSystem.writeFile(path, content);
+    logFile('success', `写入文件: ${path}`, { size: content.length });
+    return {
+      content: `✅ 文件已保存: ${path} (${content.length} 字符)`,
+      metadata: { operation: 'write', path, size: content.length }
+    };
+  }
+
+  private async listFiles(path: string): Promise<ToolExecuteResult> {
+    const targetPath = path.trim() || '/workspace';
+    const entries = await fileSystem.readdir(targetPath);
+
+    if (entries.length === 0) {
+      return {
+        content: `📁 ${targetPath}\n(空文件夹)`,
+        metadata: { operation: 'list', path: targetPath, count: 0 }
+      };
+    }
+
+    const sorted = entries.sort((a: any, b: any) => {
+      if (a.type === 'directory' && b.type !== 'directory') return -1;
+      if (a.type !== 'directory' && b.type === 'directory') return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    const lines = sorted.map((e: any) => {
+      const icon = e.type === 'directory' ? '📂' : '📄';
+      const size = e.type === 'file' ? ` (${this.formatSize(e.size)})` : '';
+      return `${icon} ${e.name}${size}`;
+    });
+
+    logFile('info', `列出目录: ${targetPath}`, { count: entries.length });
+    return {
+      content: `📁 ${targetPath} (${entries.length} 项):\n\n${lines.join('\n')}`,
+      metadata: { operation: 'list', path: targetPath, count: entries.length, entries }
+    };
+  }
+
+  private async createFolder(path: string): Promise<ToolExecuteResult> {
+    await fileSystem.mkdir(path.trim());
+    logFile('success', `创建文件夹: ${path}`);
+    return {
+      content: `✅ 文件夹已创建: ${path}`,
+      metadata: { operation: 'mkdir', path }
+    };
+  }
+
+  private async deleteFile(path: string): Promise<ToolExecuteResult> {
+    const entry = await fileSystem.stat(path.trim());
+    if (!entry) {
+      return {
+        content: `❌ 不存在: ${path}`,
+        metadata: { error: true }
+      };
+    }
+    await fileSystem.rm(path, entry.type === 'directory');
+    logFile('success', `删除: ${path}`, { type: entry.type });
+    return {
+      content: `🗑️ 已删除: ${path}`,
+      metadata: { operation: 'delete', path, type: entry.type }
+    };
   }
 
   private formatSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-}
-
-// 创建文件夹工具
-class CreateFolderTool extends BaseTool {
-  constructor() {
-    super({
-      id: 'create_folder',
-      name: '创建文件夹',
-      description: '在沙盒中创建新文件夹，如 /workspace/myfolder',
-      icon: '📂',
-    });
-  }
-
-  async execute(path: string, _context: ToolContext): Promise<ToolExecuteResult> {
-    try {
-      const { fileSystem } = await import('../../filesystem');
-      await fileSystem.initialize();
-      await fileSystem.mkdir(path.trim());
-      return { content: `✅ 文件夹已创建: ${path}`, metadata: { path } };
-    } catch (error) {
-      return { content: `❌ 创建失败: ${error instanceof Error ? error.message : String(error)}`, metadata: { error: true } };
-    }
-  }
-}
-
-// 删除文件工具
-class DeleteFileTool extends BaseTool {
-  constructor() {
-    super({
-      id: 'delete_file',
-      name: '删除文件/文件夹',
-      description: '删除沙盒中的文件或文件夹（文件夹会被递归删除）',
-      icon: '🗑️',
-    });
-  }
-
-  async execute(path: string, _context: ToolContext): Promise<ToolExecuteResult> {
-    try {
-      const { fileSystem } = await import('../../filesystem');
-      await fileSystem.initialize();
-      const entry = await fileSystem.stat(path.trim());
-      if (!entry) {
-        return { content: `❌ 不存在: ${path}`, metadata: { error: true } };
-      }
-      await fileSystem.rm(path, entry.type === 'directory');
-      return { content: `🗑️ 已删除: ${path}`, metadata: { path, type: entry.type } };
-    } catch (error) {
-      return { content: `❌ 删除失败: ${error instanceof Error ? error.message : String(error)}`, metadata: { error: true } };
-    }
   }
 }
 
@@ -303,6 +351,26 @@ class MCPToolCallTool extends BaseTool {
       name: 'MCP 工具调用',
       description: '调用已连接的 MCP 服务器工具',
       icon: '🔌',
+      parameters: [
+        {
+          name: 'serverId',
+          type: 'string',
+          description: 'MCP 服务器 ID',
+          required: true,
+        },
+        {
+          name: 'toolName',
+          type: 'string',
+          description: '工具名称',
+          required: true,
+        },
+        {
+          name: 'args',
+          type: 'object',
+          description: '工具参数对象',
+          required: true,
+        }
+      ],
     });
   }
 

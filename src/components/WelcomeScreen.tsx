@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
 
 interface WelcomeScreenProps {
   onStart: () => void;
@@ -40,70 +43,77 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-8">
+    <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
       <div className="max-w-2xl w-full">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🐰</div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="text-5xl sm:text-6xl mb-4">🐰</div>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">
             CyberBunny
           </h1>
-          <p className="text-[var(--text-secondary)]">
+          <p className="text-sm sm:text-base text-muted-foreground">
             浏览器端 AI Agent · 支持 Python · MCP · 技能系统
           </p>
         </div>
 
         {/* 功能特性 */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {features.map((feature, index) => (
-            <div
+            <Card
               key={index}
-              className="p-4 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl hover:border-blue-500/50 transition-colors"
+              className="hover:border-primary/50 transition-colors"
             >
-              <div className="text-2xl mb-2">{feature.icon}</div>
-              <h3 className="font-semibold text-[var(--text-primary)] mb-1">
-                {feature.title}
-              </h3>
-              <p className="text-sm text-[var(--text-secondary)] mb-2">
-                {feature.description}
-              </p>
-              <code className="text-xs bg-[var(--bg-tertiary)] px-2 py-1 rounded">
-                {feature.example}
-              </code>
-            </div>
+              <CardHeader>
+                <div className="text-2xl mb-2">{feature.icon}</div>
+                <CardTitle className="text-base">
+                  {feature.title}
+                </CardTitle>
+                <CardDescription className="text-sm">
+                  {feature.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Badge variant="secondary" className="text-xs font-mono">
+                  {feature.example}
+                </Badge>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
         {/* 开始使用按钮 */}
         <div className="text-center">
-          <button
+          <Button
             onClick={handleStart}
-            className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors shadow-lg shadow-blue-500/25"
+            size="lg"
+            className="px-8 shadow-lg"
           >
             开始对话
-          </button>
-          <p className="mt-4 text-sm text-[var(--text-secondary)]">
+          </Button>
+          <p className="mt-4 text-sm text-muted-foreground">
             在设置中配置 API Key 后可以使用 LLM 功能
           </p>
         </div>
 
         {/* 快捷提示 */}
-        <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-          <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mb-2">
-            💡 试试这些命令
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <code className="text-xs bg-white dark:bg-gray-800 px-2 py-1 rounded">
-              /python import numpy as np
-            </code>
-            <code className="text-xs bg-white dark:bg-gray-800 px-2 py-1 rounded">
-              /calc 2**10
-            </code>
-            <code className="text-xs bg-white dark:bg-gray-800 px-2 py-1 rounded">
-              /search Python教程
-            </code>
-          </div>
-        </div>
+        <Card className="mt-8 bg-primary/5 border-primary/20">
+          <CardContent className="pt-6">
+            <p className="text-sm font-medium mb-2">
+              💡 试试这些命令
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="font-mono">
+                /python import numpy as np
+              </Badge>
+              <Badge variant="outline" className="font-mono">
+                /calc 2**10
+              </Badge>
+              <Badge variant="outline" className="font-mono">
+                /search Python教程
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

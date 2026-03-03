@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { setProxyWorkerUrl as persistProxyUrl } from '../utils/api';
+import { logSettings } from '../services/console/logger';
 
 interface SettingsState {
   // Python 设置
@@ -26,13 +28,20 @@ interface SettingsState {
   toggleTool: (toolId: string) => void;
   enableAllTools: () => void;
   disableAllTools: () => void;
+
+  // CORS 代理设置
+  proxyWorkerUrl: string;
+  setProxyWorkerUrl: (url: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       initializePython: true,
-      setInitializePython: (value) => set({ initializePython: value }),
+      setInitializePython: (value) => {
+        logSettings('info', `Python 预加载: ${value ? '启用' : '禁用'}`);
+        set({ initializePython: value });
+      },
 
       mcpServers: [],
       addMCPServer: (server) =>
@@ -54,20 +63,42 @@ export const useSettingsStore = create<SettingsState>()(
         })),
 
       theme: 'system',
-      setTheme: (theme) => set({ theme }),
+      setTheme: (theme) => {
+        set({ theme });
+        // Apply theme to document
+        const root = window.document.documentElement;
+        root.classList.remove('light', 'dark');
+        if (theme === 'system') {
+          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          root.classList.add(systemTheme);
+        } else {
+          root.classList.add(theme);
+        }
+      },
 
       enabledTools: ['python', 'calculator', 'web_search', 'read_file', 'write_file', 'list_files', 'create_folder'],
       toggleTool: (toolId) =>
-        set((state) => ({
-          enabledTools: state.enabledTools.includes(toolId)
-            ? state.enabledTools.filter((id) => id !== toolId)
-            : [...state.enabledTools, toolId],
-        })),
+        set((state) => {
+          const isEnabling = !state.enabledTools.includes(toolId);
+          logSettings('info', `工具 ${toolId}: ${isEnabling ? '启用' : '禁用'}`);
+          return {
+            enabledTools: isEnabling
+              ? [...state.enabledTools, toolId]
+              : state.enabledTools.filter((id) => id !== toolId),
+          };
+        }),
       enableAllTools: () => set({ 
         enabledTools: ['python', 'calculator', 'web_search', 'read_file', 'write_file', 
           'list_files', 'create_folder', 'delete_file', 'mcp_tool'] 
       }),
       disableAllTools: () => set({ enabledTools: [] }),
+
+      proxyWorkerUrl: '',
+      setProxyWorkerUrl: (url) => {
+        logSettings('info', `CORS 代理 URL: ${url || '(未设置)'}`);
+        persistProxyUrl(url);
+        set({ proxyWorkerUrl: url });
+      },
     }),
     {
       name: 'webagent-settings',

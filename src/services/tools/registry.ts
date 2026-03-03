@@ -5,6 +5,7 @@ import { ITool, IToolLoader, ToolSource } from './base';
 import { ToolContext, ToolExecuteResult } from '../../types';
 import { pythonExecutor } from '../python/executor';
 import { mcpClient } from '../mcp/client';
+import { logTool, logSystem } from '../console/logger';
 import {
   BuiltinToolLoader,
   FileToolLoader,
@@ -59,9 +60,9 @@ export class ToolRegistry {
       // 保存源配置
       this.sources.set(source.id, { ...source, enabled: true });
 
-      console.log(`Loaded ${tools.length} tools from source: ${source.name}`);
+      logSystem('success', `加载 ${tools.length} 个工具 (${source.name})`, tools.map(t => t.metadata.id));
     } catch (error) {
-      console.error(`Failed to load source ${source.name}:`, error);
+      logSystem('error', `加载工具源失败: ${source.name}`, error instanceof Error ? error.message : error);
       throw error;
     }
   }
@@ -96,7 +97,7 @@ export class ToolRegistry {
     toolsToRemove.forEach(id => this.tools.delete(id));
     this.sources.delete(sourceId);
 
-    console.log(`Unloaded ${toolsToRemove.length} tools from source: ${source.name}`);
+    logSystem('info', `卸载 ${toolsToRemove.length} 个工具 (${source.name})`);
   }
 
   /**
@@ -168,7 +169,10 @@ export class ToolRegistry {
     };
 
     // 执行工具
-    return tool.execute(input, context);
+    logTool('info', `执行工具: ${toolId}`, { input: input.slice(0, 200) });
+    const result = await tool.execute(input, context);
+    logTool('success', `工具 ${toolId} 完成`, { output: result.content.slice(0, 200) });
+    return result;
   }
 
   /**

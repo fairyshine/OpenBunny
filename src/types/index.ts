@@ -4,10 +4,28 @@ export interface Message {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   timestamp: number;
+
+  // 消息类型标记
+  type?: 'thought' | 'response' | 'tool_call' | 'tool_result' | 'normal';
+
+  // 工具相关字段
+  toolName?: string;
+  toolInput?: string;
+  toolOutput?: string;
+  toolCallId?: string; // 关联工具调用和结果
+
+  // 分组字段
+  groupId?: string; // 同一轮对话的消息共享 groupId
+  parentId?: string; // 父消息 ID（用于嵌套关系）
+
+  // 元数据
   metadata?: {
     toolCalls?: ToolCall[];
     toolResults?: ToolResult[];
     plots?: string[];
+    model?: string;
+    tokens?: number;
+    duration?: number;
     [key: string]: unknown;
   };
 }
@@ -85,6 +103,22 @@ export interface LLMConfig {
   model: string;
   temperature?: number;
   maxTokens?: number;
+}
+
+// LLM 消息格式（OpenAI 标准）
+export interface LLMMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }>;
+  tool_call_id?: string;
+  name?: string;
 }
 
 // 会话

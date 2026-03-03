@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Session, Message, LLMConfig } from '../types';
+import { logSettings } from '../services/console/logger';
 
 interface SessionState {
   sessions: Session[];
-  currentSession: Session | null;
+  currentSessionId: string | null;
   llmConfig: LLMConfig;
-  
+
   // Actions
   createSession: (name?: string) => Session;
   deleteSession: (id: string) => void;
@@ -16,6 +17,12 @@ interface SessionState {
   setLLMConfig: (config: Partial<LLMConfig>) => void;
   clearAllSessions: () => void;
 }
+
+// Selector to get current session (derived from sessions + currentSessionId)
+export const selectCurrentSession = (state: SessionState): Session | null => {
+  if (!state.currentSessionId) return null;
+  return state.sessions.find(s => s.id === state.currentSessionId) || null;
+};
 
 export const useSessionStore = create<SessionState>()(
   persist(
@@ -27,7 +34,7 @@ export const useSessionStore = create<SessionState>()(
         apiKey: '',
         model: 'gpt-4',
         temperature: 0.7,
-        maxTokens: 2000,
+        maxTokens: 4096,
       },
 
       createSession: (name = '新会话') => {
@@ -115,6 +122,8 @@ export const useSessionStore = create<SessionState>()(
       },
 
       setLLMConfig: (config: Partial<LLMConfig>) => {
+        const keys = Object.keys(config).join(', ');
+        logSettings('info', `LLM 配置变更: ${keys}`, config);
         set((state) => ({
           llmConfig: { ...state.llmConfig, ...config },
         }));

@@ -62,11 +62,17 @@ export class FileSystem {
     }
   }
 
-  // 创建目录
+  // 创建目录（递归确保所有父目录存在）
   async mkdir(path: string): Promise<void> {
     await this.initialize();
     const normalizedPath = this.normalizePath(path);
-    
+
+    // 递归创建父目录
+    const parentDir = normalizedPath.substring(0, normalizedPath.lastIndexOf('/'));
+    if (parentDir && parentDir !== '/workspace' && !(await this.exists(parentDir))) {
+      await this.mkdir(parentDir);
+    }
+
     const entry: FileSystemEntry = {
       path: normalizedPath,
       name: normalizedPath.split('/').pop() || '',
@@ -83,14 +89,18 @@ export class FileSystem {
   async writeFile(path: string, content: Blob | string): Promise<void> {
     await this.initialize();
     const normalizedPath = this.normalizePath(path);
-    
+
     // 确保父目录存在
     const parentDir = normalizedPath.substring(0, normalizedPath.lastIndexOf('/')) || '/';
     if (parentDir !== '/' && !(await this.exists(parentDir))) {
       await this.mkdir(parentDir);
     }
 
-    const blob = content instanceof Blob ? content : new Blob([content]);
+    // 确保使用 UTF-8 编码创建 Blob
+    const blob = content instanceof Blob
+      ? content
+      : new Blob([content], { type: 'text/plain;charset=utf-8' });
+
     const entry: FileSystemEntry = {
       path: normalizedPath,
       name: normalizedPath.split('/').pop() || '',
@@ -108,6 +118,7 @@ export class FileSystem {
     }
 
     await this.db!.put('files', entry);
+    console.log('[FileSystem] Wrote file:', normalizedPath, 'size:', blob.size);
   }
 
   // 读取文件
@@ -127,7 +138,9 @@ export class FileSystem {
   async readFileText(path: string): Promise<string | null> {
     const blob = await this.readFile(path);
     if (!blob) return null;
-    return blob.text();
+    const text = await blob.text();
+    console.log('[FileSystem] Read file:', path, 'length:', text.length);
+    return text;
   }
 
   // 列出目录内容
@@ -135,13 +148,22 @@ export class FileSystem {
     await this.initialize();
     const normalizedPath = this.normalizePath(path);
     const allFiles = await this.db!.getAll('files');
-    
+
     return allFiles.filter(entry => {
       const entryPath = entry.path;
+      // 排除自身
       if (entryPath === normalizedPath) return false;
-      
-      const parentPath = entryPath.substring(0, entryPath.lastIndexOf('/')) || '/';
-      return parentPath === normalizedPath;
+
+      // 检查是否是直接子项
+      // 例如：normalizedPath = '/workspace', entryPath = '/workspace/test_dir'
+      // 或者：normalizedPath = '/workspace/test_dir', entryPath = '/workspace/test_dir/1.md'
+      if (!entryPath.startsWith(normalizedPath + '/')) return false;
+
+      // 获取相对路径部分
+      const relativePath = entryPath.substring(normalizedPath.length + 1);
+
+      // 如果相对路径中还有 '/'，说明是更深层的子项，不是直接子项
+      return !relativePath.includes('/');
     });
   }
 
