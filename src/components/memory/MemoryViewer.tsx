@@ -7,7 +7,7 @@ import { Button } from '../ui/button';
 import { Calendar } from '../ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
-import { Brain, Search, Calendar as CalendarIcon, BarChart3, Eye, Edit2, BookOpen } from 'lucide-react';
+import { Brain, Search, Calendar as CalendarIcon, BarChart3, Eye, Edit2, BookOpen, Flame } from 'lucide-react';
 import { fileSystem } from '../../services/filesystem';
 import ReactMarkdown from '../ReactMarkdown';
 
@@ -394,7 +394,8 @@ export function MemoryViewer({ isOpen, onClose }: MemoryViewerProps) {
                         </div>
                         <div className="rounded-lg border bg-muted/30 p-2">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                            🔥 {t('tools.memory.streak')}
+                            <Flame className="w-3 h-3" />
+                            {t('tools.memory.streak')}
                           </div>
                           <div className="text-xl font-semibold">
                             {diaryStats.streak} {t('tools.memory.streakDays')}
