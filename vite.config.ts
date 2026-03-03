@@ -46,22 +46,51 @@ export default defineConfig({
     target: 'esnext',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-radix': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-label',
-            '@radix-ui/react-scroll-area',
-            '@radix-ui/react-select',
-            '@radix-ui/react-separator',
-            '@radix-ui/react-slot',
-            '@radix-ui/react-switch',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-tooltip',
-          ],
-          'vendor-ui': ['lucide-react', 'class-variance-authority', 'clsx', 'tailwind-merge'],
-          'vendor-state': ['zustand'],
+        manualChunks: (id) => {
+          // React 核心库 (包含 scheduler)
+          if (id.includes('node_modules/react') ||
+              id.includes('node_modules/react-dom') ||
+              id.includes('node_modules/scheduler')) {
+            return 'vendor-react';
+          }
+
+          // Radix UI 组件
+          if (id.includes('node_modules/@radix-ui')) {
+            return 'vendor-radix';
+          }
+
+          // UI 工具库
+          if (id.includes('node_modules/lucide-react') ||
+              id.includes('node_modules/class-variance-authority') ||
+              id.includes('node_modules/clsx') ||
+              id.includes('node_modules/tailwind-merge')) {
+            return 'vendor-ui';
+          }
+
+          // 状态管理
+          if (id.includes('node_modules/zustand')) {
+            return 'vendor-state';
+          }
+
+          // i18n 国际化
+          if (id.includes('node_modules/i18next') || id.includes('node_modules/react-i18next')) {
+            return 'vendor-i18n';
+          }
+
+          // Pyodide (Python 运行时)
+          if (id.includes('node_modules/pyodide')) {
+            return 'vendor-pyodide';
+          }
+
+          // 日历组件
+          if (id.includes('node_modules/react-day-picker')) {
+            return 'vendor-calendar';
+          }
+
+          // 其他 node_modules (排除已分类的)
+          if (id.includes('node_modules')) {
+            return 'vendor-misc';
+          }
         },
       },
     },
