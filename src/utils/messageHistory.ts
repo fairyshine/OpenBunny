@@ -1,5 +1,6 @@
 // 消息历史管理工具
 import { Message } from '../types';
+import i18n from '../i18n';
 
 /**
  * 消息历史管理器
@@ -228,8 +229,9 @@ export class MessageHistoryManager {
    * 导出消息为 Markdown
    */
   static exportToMarkdown(messages: Message[]): string {
+    const t = i18n.t.bind(i18n);
     const lines: string[] = [];
-    lines.push('# 对话历史\n');
+    lines.push(t('history.title') + '\n');
 
     const turns = this.getConversationTurns(messages);
 
@@ -243,29 +245,29 @@ export class MessageHistoryManager {
         lines.push(firstMsg.content);
         lines.push('```\n');
       } else {
-        lines.push(`## 轮次 ${i + 1}\n`);
+        lines.push(t('history.turn', { index: i + 1 }) + '\n');
 
         for (const msg of turn) {
           if (msg.role === 'user') {
-            lines.push('**用户**:\n');
+            lines.push(t('history.user') + '\n');
             lines.push(msg.content + '\n');
           } else if (msg.type === 'thought') {
-            lines.push('**思考**:\n');
+            lines.push(t('history.thinking') + '\n');
             lines.push('```');
             lines.push(msg.content);
             lines.push('```\n');
           } else if (msg.type === 'tool_call') {
-            lines.push(`**工具调用**: \`${msg.toolName}\`\n`);
+            lines.push(t('history.toolCall', { toolName: msg.toolName }) + '\n');
             lines.push('```');
             lines.push(msg.toolInput || '');
             lines.push('```\n');
           } else if (msg.type === 'tool_result') {
-            lines.push(`**工具结果**: \`${msg.toolName}\`\n`);
+            lines.push(t('history.toolResult', { toolName: msg.toolName }) + '\n');
             lines.push('```');
             lines.push(msg.content);
             lines.push('```\n');
           } else if (msg.type === 'response' || msg.role === 'assistant') {
-            lines.push('**助手**:\n');
+            lines.push(t('history.assistant') + '\n');
             lines.push(msg.content + '\n');
           }
         }
@@ -279,23 +281,24 @@ export class MessageHistoryManager {
    * 导出消息为纯文本
    */
   static exportToText(messages: Message[]): string {
+    const t = i18n.t.bind(i18n);
     const lines: string[] = [];
     const turns = this.getConversationTurns(messages);
 
     for (const turn of turns) {
       for (const msg of turn) {
-        const timestamp = new Date(msg.timestamp).toLocaleString('zh-CN');
+        const timestamp = new Date(msg.timestamp).toLocaleString(i18n.language);
         lines.push(`[${timestamp}] ${msg.role.toUpperCase()}`);
 
         if (msg.type) {
-          lines.push(`  类型: ${msg.type}`);
+          lines.push(t('history.type', { type: msg.type }));
         }
 
         if (msg.toolName) {
-          lines.push(`  工具: ${msg.toolName}`);
+          lines.push(t('history.tool', { toolName: msg.toolName }));
         }
 
-        lines.push(`  内容: ${msg.content}`);
+        lines.push(t('history.content', { content: msg.content }));
         lines.push('');
       }
       lines.push('---\n');

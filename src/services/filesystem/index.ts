@@ -39,10 +39,10 @@ export class FileSystem {
       });
 
       // 创建默认根目录（避免调用this.mkdir因为mkdir也会调用initialize）
-      const rootPath = '/workspace';
+      const rootPath = '/sandbox';
       const rootEntry: FileSystemEntry = {
         path: rootPath,
-        name: 'workspace',
+        name: 'sandbox',
         type: 'directory',
         size: 0,
         createdAt: Date.now(),
@@ -69,7 +69,7 @@ export class FileSystem {
 
     // 递归创建父目录
     const parentDir = normalizedPath.substring(0, normalizedPath.lastIndexOf('/'));
-    if (parentDir && parentDir !== '/workspace' && !(await this.exists(parentDir))) {
+    if (parentDir && parentDir !== '/sandbox' && !(await this.exists(parentDir))) {
       await this.mkdir(parentDir);
     }
 
@@ -155,8 +155,8 @@ export class FileSystem {
       if (entryPath === normalizedPath) return false;
 
       // 检查是否是直接子项
-      // 例如：normalizedPath = '/workspace', entryPath = '/workspace/test_dir'
-      // 或者：normalizedPath = '/workspace/test_dir', entryPath = '/workspace/test_dir/1.md'
+      // 例如：normalizedPath = '/sandbox', entryPath = '/sandbox/test_dir'
+      // 或者：normalizedPath = '/sandbox/test_dir', entryPath = '/sandbox/test_dir/1.md'
       if (!entryPath.startsWith(normalizedPath + '/')) return false;
 
       // 获取相对路径部分
@@ -242,7 +242,7 @@ export class FileSystem {
   async clear(): Promise<void> {
     await this.initialize();
     await this.db!.clear('files');
-    await this.mkdir('/workspace');
+    await this.mkdir('/sandbox');
   }
 
   // 获取存储使用情况
@@ -256,7 +256,7 @@ export class FileSystem {
   private normalizePath(path: string): string {
     let normalized = path.replace(/\/+/g, '/');
     if (!normalized.startsWith('/')) {
-      normalized = '/workspace/' + normalized;
+      normalized = '/sandbox/' + normalized;
     }
     return normalized;
   }

@@ -34,7 +34,10 @@
       "Bash(/tmp/session_summary.md:*)",
       "Bash(ls:*)",
       "Bash(FILE_MANAGER_SUMMARY.md:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "WebFetch(domain:docs.exa.ai)",
+      "WebFetch(domain:exa.ai)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

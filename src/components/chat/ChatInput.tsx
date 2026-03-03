@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, Loader, Code, X } from '../icons';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -13,10 +14,10 @@ interface ChatInputProps {
 }
 
 export default function ChatInput({ onSend, onStop, isLoading, disabled, placeholder }: ChatInputProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 自动调整高度
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -52,7 +53,6 @@ export default function ChatInput({ onSend, onStop, isLoading, disabled, placeho
       <div className="max-w-4xl mx-auto">
         <div className="relative flex items-end gap-2 bg-muted/30 border border-border rounded-xl p-2 shadow-elegant">
           <TooltipProvider>
-            {/* 工具按钮 */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -64,22 +64,20 @@ export default function ChatInput({ onSend, onStop, isLoading, disabled, placeho
                   <Code className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>插入代码块</TooltipContent>
+              <TooltipContent>{t('chat.input.insertCode')}</TooltipContent>
             </Tooltip>
 
-            {/* 输入框 */}
             <Textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={placeholder || (disabled ? '处理中...' : '输入消息 (Enter 发送，Shift+Enter 换行)')}
+              placeholder={placeholder || (disabled ? t('chat.input.processing') : t('chat.input.placeholder'))}
               disabled={disabled}
               className="flex-1 bg-transparent border-none resize-none outline-none min-h-[24px] max-h-[200px] focus-visible:ring-0 text-sm"
               rows={1}
             />
 
-            {/* 发送/停止按钮 */}
             {isLoading && onStop ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -92,7 +90,7 @@ export default function ChatInput({ onSend, onStop, isLoading, disabled, placeho
                     <X className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>停止</TooltipContent>
+                <TooltipContent>{t('chat.input.stop')}</TooltipContent>
               </Tooltip>
             ) : (
               <Button

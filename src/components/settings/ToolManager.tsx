@@ -2,6 +2,7 @@
 // 按工具源类型分类展示，源内按服务器/文件二级分组
 
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useToolStore } from '../../stores/tools';
 import { useSettingsStore } from '../../stores/settings';
 import { toolRegistry } from '../../services/tools/registry';
@@ -18,46 +19,136 @@ import { ScrollArea } from '../ui/scroll-area';
 import { ToolIcon } from '../ToolIcon';
 import { ChevronRight } from 'lucide-react';
 
-const TYPE_LABELS: Record<string, string> = {
-  builtin: '内置工具',
-  code: '自定义代码',
-  http: 'HTTP 远程',
-  mcp: 'MCP 服务器',
-};
-
-const CODE_TEMPLATE = `// 工具示例：导出一个符合 ITool 接口的对象
-export default {
-  metadata: {
-    id: 'my_tool',
-    name: '我的工具',
-    description: '工具描述',
-  },
-  async execute(input, context) {
-    return { content: '执行结果: ' + input, type: 'text' };
-  },
-};
-`;
-
 /** 单个工具行：名称 + 描述 + 开关 */
 function ToolRow({ tool, enabled, onToggle }: {
   tool: ITool;
   enabled: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
+  const {
+    searchProvider,
+    setSearchProvider,
+    exaApiKey,
+    setExaApiKey,
+    braveApiKey,
+    setBraveApiKey,
+    initializePython,
+    setInitializePython,
+  } = useSettingsStore();
+  const [showConfig, setShowConfig] = useState(false);
+
+  const isWebSearch = tool.metadata.id === 'web_search';
+  const isPython = tool.metadata.id === 'python';
+
   return (
-    <div className="flex items-center justify-between py-2 px-3 hover:bg-accent/50 rounded-md transition-colors">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <ToolIcon icon={tool.metadata.icon} className="w-6 h-6 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm">{tool.metadata.name}</p>
-          <p className="text-xs text-muted-foreground line-clamp-1">{tool.metadata.description}</p>
+    <div>
+      <div className="flex items-center justify-between py-2 px-3 hover:bg-accent/50 rounded-md transition-colors">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <ToolIcon icon={tool.metadata.icon} className="w-6 h-6 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm">{tool.metadata.name}</p>
+            <p className="text-xs text-muted-foreground line-clamp-1">{tool.metadata.description}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isWebSearch && (
+            <Button
+              onClick={() => setShowConfig(!showConfig)}
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+            >
+              {showConfig ? t('common.close') : t('settings.searchProvider')}
+            </Button>
+          )}
+          {isPython && (
+            <Button
+              onClick={() => setShowConfig(!showConfig)}
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+            >
+              {showConfig ? t('common.close') : t('settings.preloadPython')}
+            </Button>
+          )}
+          <Switch
+            checked={enabled}
+            onCheckedChange={onToggle}
+            className="flex-shrink-0"
+          />
         </div>
       </div>
-      <Switch
-        checked={enabled}
-        onCheckedChange={onToggle}
-        className="flex-shrink-0 ml-3"
-      />
+
+      {isWebSearch && showConfig && (
+        <div className="px-3 pb-3 pt-1 space-y-3 bg-muted/30 rounded-md mx-3 mb-2">
+          <div className="space-y-2">
+            <Label htmlFor="searchProvider" className="text-xs font-medium">{t('settings.searchProvider')}</Label>
+            <Select
+              value={searchProvider}
+              onValueChange={(value) => setSearchProvider(value as any)}
+            >
+              <SelectTrigger id="searchProvider" className="h-9 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="exa">Exa</SelectItem>
+                <SelectItem value="brave">Brave</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {searchProvider === 'exa' ? (
+            <div className="space-y-2">
+              <Label htmlFor="exaApiKey" className="text-xs font-medium">{t('settings.exaApiKey')}</Label>
+              <Input
+                id="exaApiKey"
+                type="password"
+                value={exaApiKey}
+                onChange={(e) => setExaApiKey(e.target.value)}
+                placeholder="exa-..."
+                className="h-9 text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('settings.exaApiKeyHint')}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="braveApiKey" className="text-xs font-medium">{t('settings.braveApiKey')}</Label>
+              <Input
+                id="braveApiKey"
+                type="password"
+                value={braveApiKey}
+                onChange={(e) => setBraveApiKey(e.target.value)}
+                placeholder="BSA..."
+                className="h-9 text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('settings.braveApiKeyHint')}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isPython && showConfig && (
+        <div className="px-3 pb-3 pt-1 bg-muted/30 rounded-md mx-3 mb-2">
+          <div className="flex items-start justify-between p-3 border rounded-lg bg-background">
+            <div className="space-y-1 flex-1">
+              <Label className="text-xs font-medium">{t('settings.preloadPython')}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t('settings.preloadPythonDesc')}
+              </p>
+            </div>
+            <Switch
+              checked={initializePython}
+              onCheckedChange={setInitializePython}
+              className="flex-shrink-0 ml-3"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -73,6 +164,7 @@ function SourceSection({ source, tools, loading, enabledTools, toggleTool, toggl
   reloadSource: (id: string) => Promise<void>;
   removeSource: (id: string) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const subtitle = source.type === 'mcp' && source.metadata?.url
     ? source.metadata.url as string
     : source.type === 'code'
@@ -85,20 +177,20 @@ function SourceSection({ source, tools, loading, enabledTools, toggleTool, toggl
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <ChevronRight className="w-4 h-4 flex-shrink-0 transition-transform group-open:rotate-90" />
           <span className="text-sm font-medium truncate">{source.name}</span>
-          {!source.enabled && <Badge variant="outline" className="text-xs">已禁用</Badge>}
+          {!source.enabled && <Badge variant="outline" className="text-xs">{t('tools.disabled')}</Badge>}
           <span className="text-xs text-muted-foreground">({tools.length})</span>
         </div>
         <div className="flex items-center gap-1.5 ml-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
           <Button onClick={() => toggleSource(source.id)} disabled={loading} variant="ghost" size="sm" className="h-7 text-xs">
-            {source.enabled ? '禁用' : '启用'}
+            {source.enabled ? t('tools.disable') : t('tools.enable')}
           </Button>
           {source.enabled && (
             <Button onClick={() => reloadSource(source.id)} disabled={loading} variant="ghost" size="sm" className="h-7 text-xs">
-              重载
+              {t('tools.reload')}
             </Button>
           )}
           <Button onClick={() => removeSource(source.id)} disabled={loading} variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive">
-            删除
+            {t('common.delete')}
           </Button>
         </div>
       </summary>
@@ -117,13 +209,14 @@ function SourceSection({ source, tools, loading, enabledTools, toggleTool, toggl
           ))}
         </div>
       ) : source.enabled ? (
-        <p className="px-9 pb-3 text-xs text-muted-foreground">暂无已加载工具</p>
+        <p className="px-9 pb-3 text-xs text-muted-foreground">{t('tools.noTools')}</p>
       ) : null}
     </details>
   );
 }
 
 export function ToolManager() {
+  const { t } = useTranslation();
   const { sources, loading, error, addSource, removeSource, toggleSource, reloadSource } = useToolStore();
   const { enabledTools, toggleTool } = useSettingsStore();
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -135,20 +228,26 @@ export function ToolManager() {
     code?: string;
   }>({ type: 'code', name: '', source: '' });
 
-  // 内置工具源（来自 registry 而非 tool store）
-  const builtinSource: ToolSource = useMemo(() => ({
-    id: 'builtin', type: 'builtin', name: '内置工具', source: '', enabled: true,
-  }), []);
+  const TYPE_LABELS: Record<string, string> = {
+    builtin: t('tools.type.builtin'),
+    code: t('tools.type.code'),
+    http: t('tools.type.http'),
+    mcp: t('tools.type.mcp'),
+  };
 
-  // 所有源：内置 + 用户添加的
+  const CODE_TEMPLATE = t('tools.codeTemplate');
+
+  const builtinSource: ToolSource = useMemo(() => ({
+    id: 'builtin', type: 'builtin', name: t('tools.type.builtin'), source: '', enabled: true,
+  }), [t]);
+
   const allSources = useMemo(() => [builtinSource, ...sources], [builtinSource, sources]);
 
-  // 按类型分组，每个源下挂载其工具
   const groups = useMemo(() => {
     const typeOrder: ToolSource['type'][] = ['builtin', 'code', 'http', 'mcp'];
     const map = new Map<ToolSource['type'], { source: ToolSource; tools: ITool[] }[]>();
 
-    for (const t of typeOrder) map.set(t, []);
+    for (const tp of typeOrder) map.set(tp, []);
 
     for (const src of allSources) {
       const tools = toolRegistry.getToolsBySource(src);
@@ -159,28 +258,28 @@ export function ToolManager() {
     return typeOrder
       .map(type => ({ type, label: TYPE_LABELS[type], entries: map.get(type)! }))
       .filter(g => g.entries.length > 0);
-  }, [allSources]);
+  }, [allSources, TYPE_LABELS]);
 
   const handleAddSource = async () => {
     if (!newSource.name || !newSource.type) {
-      alert('请填写完整信息');
+      alert(t('tools.alert.fillComplete'));
       return;
     }
     try {
       if (newSource.type === 'mcp') {
-        if (!newSource.mcpUrl) { alert('请填写服务器地址'); return; }
+        if (!newSource.mcpUrl) { alert(t('tools.alert.fillServer')); return; }
         await addSource({
           type: 'mcp', name: newSource.name, source: '',
           enabled: true, metadata: { url: newSource.mcpUrl },
         });
       } else if (newSource.type === 'code') {
-        if (!newSource.code?.trim()) { alert('请输入工具代码'); return; }
+        if (!newSource.code?.trim()) { alert(t('tools.alert.fillCode')); return; }
         await addSource({
           type: 'code', name: newSource.name, source: '',
           enabled: true, metadata: { code: newSource.code },
         });
       } else {
-        if (!newSource.source) { alert('请填写完整信息'); return; }
+        if (!newSource.source) { alert(t('tools.alert.fillComplete')); return; }
         await addSource(newSource as Omit<ToolSource, 'id'>);
       }
       setShowAddDialog(false);
@@ -192,7 +291,6 @@ export function ToolManager() {
 
   const resetDialog = () => {
     setShowAddDialog(true);
-    // 如果是 code 类型且没有代码，填入模板
     if (!newSource.code) {
       setNewSource(s => ({ ...s, code: CODE_TEMPLATE }));
     }
@@ -200,10 +298,9 @@ export function ToolManager() {
 
   return (
     <div className="flex flex-col h-full bg-muted/30">
-      {/* 头部 */}
       <div className="flex items-center justify-between p-4 bg-background border-b">
-        <h2 className="text-lg font-semibold">工具管理</h2>
-        <Button onClick={resetDialog}>添加工具源</Button>
+        <h2 className="text-lg font-semibold">{t('tools.management')}</h2>
+        <Button onClick={resetDialog}>{t('tools.addSource')}</Button>
       </div>
 
       {error && (
@@ -212,16 +309,14 @@ export function ToolManager() {
         </div>
       )}
 
-      {/* 分类列表 */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
           {groups.map(group => (
             <div key={group.type}>
-              {/* 一级分类标题 */}
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 {group.label}
                 <span className="text-xs font-normal text-muted-foreground">
-                  ({group.entries.reduce((n, e) => n + e.tools.length, 0)} 个工具)
+                  {t('tools.toolCount', { count: group.entries.reduce((n, e) => n + e.tools.length, 0) })}
                 </span>
               </h3>
 
@@ -260,16 +355,15 @@ export function ToolManager() {
         </div>
       </ScrollArea>
 
-      {/* 添加工具源对话框 */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className={newSource.type === 'code' ? 'max-w-2xl' : 'max-w-md'}>
           <DialogHeader>
-            <DialogTitle>添加工具源</DialogTitle>
+            <DialogTitle>{t('tools.dialog.title')}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="type">类型</Label>
+              <Label htmlFor="type">{t('tools.dialog.type')}</Label>
               <Select
                 value={newSource.type}
                 onValueChange={(value) => {
@@ -283,25 +377,25 @@ export function ToolManager() {
               >
                 <SelectTrigger id="type"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="code">自定义代码</SelectItem>
-                  <SelectItem value="http">HTTP URL</SelectItem>
-                  <SelectItem value="mcp">MCP 服务器</SelectItem>
+                  <SelectItem value="code">{t('tools.dialog.customCode')}</SelectItem>
+                  <SelectItem value="http">{t('tools.dialog.httpUrl')}</SelectItem>
+                  <SelectItem value="mcp">{t('tools.dialog.mcpServer')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">名称</Label>
+              <Label htmlFor="name">{t('tools.dialog.name')}</Label>
               <Input
                 id="name" type="text" value={newSource.name}
                 onChange={e => setNewSource({ ...newSource, name: e.target.value })}
-                placeholder="例如: 我的自定义工具"
+                placeholder={t('tools.dialog.namePlaceholder')}
               />
             </div>
 
             {newSource.type === 'code' && (
               <div className="space-y-2">
-                <Label htmlFor="code">工具代码</Label>
+                <Label htmlFor="code">{t('tools.dialog.code')}</Label>
                 <textarea
                   id="code"
                   value={newSource.code || ''}
@@ -311,39 +405,39 @@ export function ToolManager() {
                   placeholder={CODE_TEMPLATE}
                 />
                 <p className="text-xs text-muted-foreground">
-                  编写 JavaScript 模块，通过 export default 导出符合 ITool 接口的对象
+                  {t('tools.dialog.codeHint')}
                 </p>
               </div>
             )}
 
             {newSource.type === 'mcp' && (
               <div className="space-y-2">
-                <Label htmlFor="source">服务器地址</Label>
+                <Label htmlFor="source">{t('tools.dialog.serverAddress')}</Label>
                 <Input
                   id="source" type="text" value={newSource.mcpUrl || ''}
                   onChange={e => setNewSource({ ...newSource, mcpUrl: e.target.value })}
-                  placeholder="ws://localhost:3000 或 https://example.com/sse"
+                  placeholder={t('tools.dialog.serverPlaceholder')}
                 />
-                <p className="text-xs text-muted-foreground">支持 WebSocket (ws://) 和 SSE (http/https) 协议</p>
+                <p className="text-xs text-muted-foreground">{t('tools.dialog.serverHint')}</p>
               </div>
             )}
 
             {newSource.type === 'http' && (
               <div className="space-y-2">
-                <Label htmlFor="source">URL</Label>
+                <Label htmlFor="source">{t('tools.dialog.url')}</Label>
                 <Input
                   id="source" type="text" value={newSource.source}
                   onChange={e => setNewSource({ ...newSource, source: e.target.value })}
                   placeholder="https://example.com/tool.js"
                 />
-                <p className="text-xs text-muted-foreground">工具定义的 HTTP URL</p>
+                <p className="text-xs text-muted-foreground">{t('tools.dialog.urlHint')}</p>
               </div>
             )}
           </div>
 
           <div className="flex justify-end gap-2 mt-6">
-            <Button onClick={() => setShowAddDialog(false)} variant="outline">取消</Button>
-            <Button onClick={handleAddSource} disabled={loading}>添加</Button>
+            <Button onClick={() => setShowAddDialog(false)} variant="outline">{t('common.cancel')}</Button>
+            <Button onClick={handleAddSource} disabled={loading}>{t('common.add')}</Button>
           </div>
         </DialogContent>
       </Dialog>

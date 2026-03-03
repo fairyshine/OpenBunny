@@ -8,9 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Switch } from '../ui/switch';
 import { Separator } from '../ui/separator';
 import { ChevronRight, Settings } from 'lucide-react';
+import { Lightbulb } from '../icons';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -21,8 +21,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { t } = useTranslation();
   const { llmConfig, setLLMConfig } = useSessionStore();
   const {
-    initializePython,
-    setInitializePython,
     proxyWorkerUrl,
     setProxyWorkerUrl,
     language,
@@ -141,6 +139,24 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
               <Separator />
 
+              <div className="space-y-2">
+                <Label htmlFor="proxyUrl" className="text-sm font-medium">{t('settings.proxyUrl')}</Label>
+                <Input
+                  id="proxyUrl"
+                  type="text"
+                  value={proxyWorkerUrl}
+                  onChange={(e) => setProxyWorkerUrl(e.target.value)}
+                  placeholder="https://cyberbunny-proxy.your-account.workers.dev"
+                  className="h-10"
+                />
+                <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                  <Lightbulb className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                  <span>{t('settings.proxyHint')}</span>
+                </p>
+              </div>
+
+              <Separator />
+
               <details className="group" onToggle={(e) => {
                 if ((e.target as HTMLDetailsElement).open) {
                   requestAnimationFrame(() => {
@@ -183,39 +199,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <SelectItem value="en-US">{t('settings.language.enUS')}</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="proxyUrl" className="text-sm font-medium">{t('settings.proxyUrl')}</Label>
-                <Input
-                  id="proxyUrl"
-                  type="text"
-                  value={proxyWorkerUrl}
-                  onChange={(e) => setProxyWorkerUrl(e.target.value)}
-                  placeholder="https://cyberbunny-proxy.your-account.workers.dev"
-                  className="h-10"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t('settings.proxyHint')}
-                </p>
-              </div>
-
-              <Separator />
-
-              <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                <div className="space-y-1 flex-1">
-                  <Label className="text-sm font-medium">{t('settings.preloadPython')}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {t('settings.preloadPythonDesc')}
-                  </p>
-                </div>
-                <Switch
-                  checked={initializePython}
-                  onCheckedChange={setInitializePython}
-                  className="flex-shrink-0 ml-4"
-                />
               </div>
 
               <Separator />

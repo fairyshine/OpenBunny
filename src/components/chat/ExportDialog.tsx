@@ -1,5 +1,6 @@
 // 消息导出功能组件
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Message } from '../../types';
 import { MessageHistoryManager } from '../../utils/messageHistory';
 import { Button } from '../ui/button';
@@ -14,6 +15,7 @@ interface ExportDialogProps {
 }
 
 export default function ExportDialog({ messages, isOpen, onClose }: ExportDialogProps) {
+  const { t } = useTranslation();
   const [format, setFormat] = useState<'json' | 'markdown' | 'text'>('markdown');
 
   const handleExport = () => {
@@ -39,7 +41,6 @@ export default function ExportDialog({ messages, isOpen, onClose }: ExportDialog
         break;
     }
 
-    // 创建下载
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -68,43 +69,41 @@ export default function ExportDialog({ messages, isOpen, onClose }: ExportDialog
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle>导出对话历史</DialogTitle>
+          <DialogTitle>{t('export.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* 统计信息 */}
           <div className="grid grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
             <div>
-              <div className="text-sm text-muted-foreground">总消息数</div>
+              <div className="text-sm text-muted-foreground">{t('export.totalMessages')}</div>
               <div className="text-2xl font-bold">{stats.total}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">工具调用</div>
+              <div className="text-sm text-muted-foreground">{t('export.toolCalls')}</div>
               <div className="text-2xl font-bold">{stats.toolCalls}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">估算 Tokens</div>
+              <div className="text-sm text-muted-foreground">{t('export.estimatedTokens')}</div>
               <div className="text-2xl font-bold">{stats.tokens}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">对话轮次</div>
+              <div className="text-sm text-muted-foreground">{t('export.turns')}</div>
               <div className="text-2xl font-bold">
                 {MessageHistoryManager.getConversationTurns(messages).length}
               </div>
             </div>
           </div>
 
-          {/* 格式选择 */}
           <Tabs value={format} onValueChange={(v) => setFormat(v as any)}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="markdown">Markdown</TabsTrigger>
               <TabsTrigger value="json">JSON</TabsTrigger>
-              <TabsTrigger value="text">纯文本</TabsTrigger>
+              <TabsTrigger value="text">{t('export.plainText')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="markdown" className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                导出为 Markdown 格式，适合阅读和分享
+                {t('export.markdownDesc')}
               </p>
               <pre className="p-4 bg-muted rounded-lg text-xs overflow-auto max-h-64">
                 {getPreview()}...
@@ -113,7 +112,7 @@ export default function ExportDialog({ messages, isOpen, onClose }: ExportDialog
 
             <TabsContent value="json" className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                导出为 JSON 格式，包含完整的消息数据
+                {t('export.jsonDesc')}
               </p>
               <pre className="p-4 bg-muted rounded-lg text-xs overflow-auto max-h-64">
                 {getPreview()}...
@@ -122,7 +121,7 @@ export default function ExportDialog({ messages, isOpen, onClose }: ExportDialog
 
             <TabsContent value="text" className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                导出为纯文本格式，简单易读
+                {t('export.textDesc')}
               </p>
               <pre className="p-4 bg-muted rounded-lg text-xs overflow-auto max-h-64">
                 {getPreview()}...
@@ -130,14 +129,13 @@ export default function ExportDialog({ messages, isOpen, onClose }: ExportDialog
             </TabsContent>
           </Tabs>
 
-          {/* 操作按钮 */}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleExport}>
               <Download className="w-4 h-4 mr-2" />
-              下载
+              {t('common.download')}
             </Button>
           </div>
         </div>

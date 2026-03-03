@@ -35,6 +35,14 @@ interface SettingsState {
   // CORS proxy settings
   proxyWorkerUrl: string;
   setProxyWorkerUrl: (url: string) => void;
+
+  // Web search settings
+  searchProvider: 'exa' | 'brave';
+  setSearchProvider: (provider: 'exa' | 'brave') => void;
+  exaApiKey: string;
+  setExaApiKey: (key: string) => void;
+  braveApiKey: string;
+  setBraveApiKey: (key: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -71,7 +79,7 @@ export const useSettingsStore = create<SettingsState>()(
         }),
       enableAllTools: () => set({
         enabledTools: ['python', 'calculator', 'web_search', 'read_file', 'write_file',
-          'list_files', 'create_folder', 'delete_file', 'mcp_tool']
+          'list_files', 'create_folder', 'delete_file']
       }),
       disableAllTools: () => set({ enabledTools: [] }),
 
@@ -80,6 +88,24 @@ export const useSettingsStore = create<SettingsState>()(
         logSettings('info', `CORS proxy URL: ${url || '(not set)'}`);
         persistProxyUrl(url);
         set({ proxyWorkerUrl: url });
+      },
+
+      exaApiKey: '',
+      setExaApiKey: (key) => {
+        logSettings('info', `Exa API Key: ${key ? 'configured' : '(not set)'}`);
+        set({ exaApiKey: key });
+      },
+
+      braveApiKey: '',
+      setBraveApiKey: (key) => {
+        logSettings('info', `Brave API Key: ${key ? 'configured' : '(not set)'}`);
+        set({ braveApiKey: key });
+      },
+
+      searchProvider: 'exa',
+      setSearchProvider: (provider) => {
+        logSettings('info', `Search provider: ${provider}`);
+        set({ searchProvider: provider });
       },
     }),
     {

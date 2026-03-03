@@ -1,6 +1,8 @@
 // 快捷键帮助对话框
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Badge } from './ui/badge';
+import { Keyboard, Lightbulb } from './icons';
 import { KeyboardShortcuts, getShortcutCategories } from '../utils/keyboardShortcuts';
 
 interface ShortcutsHelpProps {
@@ -9,19 +11,23 @@ interface ShortcutsHelpProps {
 }
 
 export default function ShortcutsHelp({ isOpen, onClose }: ShortcutsHelpProps) {
+  const { t } = useTranslation();
   const categories = getShortcutCategories();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle>⌨️ 键盘快捷键</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Keyboard className="w-5 h-5" />
+            {t('shortcuts.title')}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           {categories.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              暂无快捷键
+              {t('shortcuts.noShortcuts')}
             </div>
           ) : (
             categories.map(({ category, shortcuts }) => (
@@ -49,7 +55,10 @@ export default function ShortcutsHelp({ isOpen, onClose }: ShortcutsHelpProps) {
           )}
 
           <div className="pt-4 border-t text-xs text-muted-foreground">
-            <p>💡 提示: 在输入框中按 Escape 可以取消输入</p>
+            <p className="flex items-center gap-1.5">
+              <Lightbulb className="w-3.5 h-3.5" />
+              {t('shortcuts.hint')}
+            </p>
           </div>
         </div>
       </DialogContent>

@@ -1,8 +1,10 @@
 // 消息搜索组件
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Message } from '../types';
 import { MessageHistoryManager } from '../utils/messageHistory';
 import { Search, X } from './icons';
+import { Brain, Wrench, CircleCheck, MessageCircle } from './icons';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -22,6 +24,7 @@ export default function MessageSearch({
   onClose,
   onSelectMessage,
 }: MessageSearchProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [searchInToolOutput, setSearchInToolOutput] = useState(true);
@@ -60,7 +63,7 @@ export default function MessageSearch({
   };
 
   const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString('zh-CN', {
+    return new Date(timestamp).toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -72,10 +75,9 @@ export default function MessageSearch({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>搜索消息</DialogTitle>
+          <DialogTitle>{t('search.title')}</DialogTitle>
         </DialogHeader>
 
-        {/* 搜索框 */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -83,7 +85,7 @@ export default function MessageSearch({
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="搜索消息内容..."
+                placeholder={t('search.placeholder')}
                 className="pl-10"
                 autoFocus
               />
@@ -100,7 +102,6 @@ export default function MessageSearch({
             </div>
           </div>
 
-          {/* 选项 */}
           <div className="flex items-center gap-4 text-sm">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -109,7 +110,7 @@ export default function MessageSearch({
                 onChange={(e) => setCaseSensitive(e.target.checked)}
                 className="rounded"
               />
-              <span>区分大小写</span>
+              <span>{t('search.caseSensitive')}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -118,28 +119,26 @@ export default function MessageSearch({
                 onChange={(e) => setSearchInToolOutput(e.target.checked)}
                 className="rounded"
               />
-              <span>搜索工具输出</span>
+              <span>{t('search.searchToolOutput')}</span>
             </label>
           </div>
 
-          {/* 结果统计 */}
           {query && (
             <div className="text-sm text-muted-foreground">
-              找到 {results.length} 条消息
+              {t('search.resultCount', { count: results.length })}
             </div>
           )}
         </div>
 
-        {/* 搜索结果 */}
         <ScrollArea className="flex-1 -mx-6 px-6">
           {!query ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Search className="w-12 h-12 mb-4 opacity-50" />
-              <p>输入关键词搜索消息</p>
+              <p>{t('search.hint')}</p>
             </div>
           ) : results.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <p>未找到匹配的消息</p>
+              <p>{t('search.noResults')}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -149,17 +148,16 @@ export default function MessageSearch({
                   onClick={() => handleSelectMessage(msg.id)}
                   className="p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
                 >
-                  {/* 消息头部 */}
                   <div className="flex items-center gap-2 mb-2">
                     <Badge variant={msg.role === 'user' ? 'default' : 'secondary'}>
-                      {msg.role === 'user' ? '用户' : 'AI'}
+                      {msg.role === 'user' ? t('search.user') : t('search.ai')}
                     </Badge>
                     {msg.type && (
-                      <Badge variant="outline" className="text-xs">
-                        {msg.type === 'thought' && '💭 思考'}
-                        {msg.type === 'tool_call' && '🔧 工具调用'}
-                        {msg.type === 'tool_result' && '✅ 结果'}
-                        {msg.type === 'response' && '💬 响应'}
+                      <Badge variant="outline" className="text-xs flex items-center gap-1">
+                        {msg.type === 'thought' && <><Brain className="w-3 h-3" />{t('search.thought')}</>}
+                        {msg.type === 'tool_call' && <><Wrench className="w-3 h-3" />{t('search.toolCallBadge')}</>}
+                        {msg.type === 'tool_result' && <><CircleCheck className="w-3 h-3" />{t('search.resultBadge')}</>}
+                        {msg.type === 'response' && <><MessageCircle className="w-3 h-3" />{t('search.responseBadge')}</>}
                       </Badge>
                     )}
                     {msg.toolName && (
@@ -172,15 +170,13 @@ export default function MessageSearch({
                     </span>
                   </div>
 
-                  {/* 消息内容 */}
                   <div className="text-sm line-clamp-3">
                     {highlightText(msg.content, query)}
                   </div>
 
-                  {/* 工具输出 */}
                   {msg.toolOutput && searchInToolOutput && (
                     <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
-                      <span className="font-medium">工具输出: </span>
+                      <span className="font-medium">{t('search.toolOutput')}</span>
                       <span className="line-clamp-2">
                         {highlightText(msg.toolOutput, query)}
                       </span>

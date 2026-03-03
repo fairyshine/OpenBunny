@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { consoleLogger, LogEntry, LogCategory, LogLevel } from '../../services/console/logger';
 import { X } from '../icons';
 import { Badge } from '../ui/badge';
@@ -33,6 +34,7 @@ const CATEGORY_STYLES: Record<LogCategory, { label: string }> = {
 const ALL_CATEGORIES: LogCategory[] = ['llm', 'tool', 'file', 'settings', 'mcp', 'python', 'system'];
 
 export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
+  const { t } = useTranslation();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filter, setFilter] = useState<LogCategory | 'all'>('all');
   const [search, setSearch] = useState('');
@@ -88,7 +90,7 @@ export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
   };
 
   const formatTime = (ts: number) =>
-    new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 } as any);
+    new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 } as any);
 
   const formatDetails = (details: any): string => {
     if (details === undefined || details === null) return '';
@@ -104,18 +106,16 @@ export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
 
   return (
     <div className="flex flex-col border-t border-border bg-card h-48 md:h-[280px]">
-      {/* 工具栏 */}
       <div className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 border-b border-border bg-muted/50 text-xs shrink-0">
-        <span className="font-semibold mr-1 hidden sm:inline">控制台</span>
+        <span className="font-semibold mr-1 hidden sm:inline">{t('console.title')}</span>
 
-        {/* 分类过滤 */}
         <Button
           variant={filter === 'all' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setFilter('all')}
           className="h-6 px-2 text-xs"
         >
-          全部
+          {t('console.all')}
         </Button>
         {ALL_CATEGORIES.map(cat => (
           <Button
@@ -133,48 +133,43 @@ export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
 
         <div className="flex-1" />
 
-        {/* 搜索 */}
         <Input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="搜索..."
+          placeholder={t('console.search')}
           className="w-20 md:w-32 h-6 text-xs"
         />
 
-        {/* 自动滚动 */}
         <div className="flex items-center gap-1">
           <Switch
             checked={autoScroll}
             onCheckedChange={setAutoScroll}
             className="scale-75"
           />
-          <span className="text-xs text-muted-foreground">自动滚动</span>
+          <span className="text-xs text-muted-foreground">{t('console.autoScroll')}</span>
         </div>
 
-        {/* 导出 */}
         <Button
           variant="ghost"
           size="sm"
           onClick={handleExport}
           className="h-6 px-2"
-          title="导出日志"
+          title={t('console.exportLog')}
         >
           ↗
         </Button>
 
-        {/* 清空 */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => consoleLogger.clear()}
           className="h-6 px-2"
-          title="清空日志"
+          title={t('console.clearLog')}
         >
           ⊘
         </Button>
 
-        {/* 关闭 */}
         <Button
           variant="ghost"
           size="sm"
@@ -185,12 +180,11 @@ export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
         </Button>
       </div>
 
-      {/* 日志列表 */}
       <ScrollArea className="flex-1">
         <div className="font-mono text-xs leading-5 px-1">
           {filteredLogs.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground py-8">
-              暂无日志
+              {t('console.noLogs')}
             </div>
           ) : (
             filteredLogs.map(log => {
@@ -206,22 +200,18 @@ export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
                     log.level === 'error' ? 'bg-destructive/5' : ''
                   }`}
                 >
-                  {/* 时间 */}
                   <span className="text-muted-foreground shrink-0 select-none">
                     {formatTime(log.timestamp)}
                   </span>
 
-                  {/* 级别 */}
                   <Badge variant={levelStyle.variant} className="shrink-0 text-[10px] px-1 py-0">
                     {levelStyle.label}
                   </Badge>
 
-                  {/* 分类 */}
                   <Badge variant="outline" className="shrink-0 text-[10px] px-1 py-0">
                     {catStyle.label}
                   </Badge>
 
-                  {/* 消息 */}
                   <span className="flex-1 min-w-0">
                     <span
                       className={`${hasDetails ? 'cursor-pointer hover:underline' : ''}`}
@@ -233,7 +223,6 @@ export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
                       )}
                     </span>
 
-                    {/* 展开的详情 */}
                     {hasDetails && isExpanded && (
                       <pre className="mt-1 p-2 rounded bg-muted text-muted-foreground overflow-x-auto whitespace-pre-wrap break-all">
                         {formatDetails(log.details)}
@@ -248,11 +237,10 @@ export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
         </div>
       </ScrollArea>
 
-      {/* 状态栏 */}
       <div className="flex items-center gap-3 px-3 py-1 border-t border-border bg-muted/50 text-[10px] text-muted-foreground shrink-0">
-        <span>{filteredLogs.length} 条日志</span>
-        <span>{logs.filter(l => l.level === 'error').length} 错误</span>
-        <span>{logs.filter(l => l.level === 'warning').length} 警告</span>
+        <span>{t('console.logCount', { count: filteredLogs.length })}</span>
+        <span>{t('console.errorCount', { count: logs.filter(l => l.level === 'error').length })}</span>
+        <span>{t('console.warningCount', { count: logs.filter(l => l.level === 'warning').length })}</span>
       </div>
     </div>
   );

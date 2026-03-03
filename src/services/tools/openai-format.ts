@@ -5,6 +5,7 @@
 
 import { ToolMetadata, ToolParameter } from './base';
 import { toolRegistry } from './registry';
+import i18n from '../../i18n';
 
 /**
  * OpenAI Tool 定义格式
@@ -164,33 +165,24 @@ export function convertArgumentsToInput(args: Record<string, any>): string {
  * 生成 OpenAI 格式的 System Prompt
  */
 export function generateOpenAISystemPrompt(enabledToolIds: string[]): string {
+  const t = i18n.t.bind(i18n);
   const tools = getOpenAITools(enabledToolIds);
 
   if (tools.length === 0) {
-    return '你是一个智能助手。';
+    return t('systemPrompt.assistant');
   }
 
   const toolDescriptions = tools.map(tool => {
     const func = tool.function;
     const params = Object.entries(func.parameters.properties)
       .map(([name, schema]: [string, any]) => {
-        const required = func.parameters.required.includes(name) ? '(必需)' : '(可选)';
+        const required = func.parameters.required.includes(name) ? t('systemPrompt.required') : t('systemPrompt.optional');
         return `  - ${name} (${schema.type}) ${required}: ${schema.description}`;
       })
       .join('\n');
 
-    return `### ${func.name}\n${func.description}\n\n参数:\n${params}`;
+    return `### ${func.name}\n${func.description}\n\n${t('systemPrompt.params')}\n${params}`;
   }).join('\n\n');
 
-  return `你是一个智能助手，可以调用工具来完成任务。
-
-## 可用工具
-
-${toolDescriptions}
-
-## 工具使用规则
-
-**仅在用户明确要求时才调用工具。**
-
-如果用户只是在聊天、提问或讨论，直接用你的知识回答，不要调用工具。`;
+  return t('systemPrompt.withTools', { toolDescriptions });
 }

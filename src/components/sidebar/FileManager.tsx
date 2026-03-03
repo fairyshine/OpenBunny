@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fileSystem, FileSystemEntry } from '../../services/filesystem';
 import { Folder, File as FileIcon, FileText, Trash2, Upload, Download, RefreshCw, X, Check } from '../icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -12,8 +13,9 @@ interface FileManagerProps {
 }
 
 export default function FileManager({ isOpen, onClose }: FileManagerProps) {
+  const { t } = useTranslation();
   const [files, setFiles] = useState<FileSystemEntry[]>([]);
-  const [currentPath, setCurrentPath] = useState('/workspace');
+  const [currentPath, setCurrentPath] = useState('/sandbox');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileSystemEntry | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -29,10 +31,8 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
       await fileSystem.initialize();
       const entries = await fileSystem.readdir(currentPath);
       setFiles(entries.sort((a, b) => {
-        // 文件夹排在前面
         if (a.type === 'directory' && b.type !== 'directory') return -1;
         if (a.type !== 'directory' && b.type === 'directory') return 1;
-        // 然后按名称排序
         return a.name.localeCompare(b.name);
       }));
     } catch (error) {
@@ -56,7 +56,7 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
       await loadFiles();
     } catch (error) {
       console.error('Failed to upload file:', error);
-      alert('上传失败: ' + (error instanceof Error ? error.message : String(error)));
+      alert(t('fileManager.uploadFailed', { error: error instanceof Error ? error.message : String(error) }));
     }
   };
 
@@ -78,13 +78,13 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
   };
 
   const handleDelete = async (entry: FileSystemEntry) => {
-    if (!confirm(`确定要删除 ${entry.name} 吗？`)) return;
+    if (!confirm(t('fileManager.confirmDelete', { name: entry.name }))) return;
     try {
       await fileSystem.rm(entry.path, entry.type === 'directory');
       await loadFiles();
       if (selectedFile?.path === entry.path) setSelectedFile(null);
     } catch (error) {
-      alert('删除失败: ' + (error instanceof Error ? error.message : String(error)));
+      alert(t('fileManager.deleteFailed', { error: error instanceof Error ? error.message : String(error) }));
     }
   };
 
@@ -120,7 +120,7 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
       setIsCreating(false);
       return;
     }
-    
+
     try {
       const fullPath = `${currentPath}/${name}`;
       if (createType === 'folder') {
@@ -133,7 +133,7 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
       await loadFiles();
     } catch (error) {
       console.error('Failed to create:', error);
-      alert('创建失败: ' + (error instanceof Error ? error.message : String(error)));
+      alert(t('fileManager.createFailed', { error: error instanceof Error ? error.message : String(error) }));
     }
   };
 
@@ -151,8 +151,8 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
   };
 
   const navigateUp = () => {
-    if (currentPath === '/workspace') return;
-    const parent = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/workspace';
+    if (currentPath === '/sandbox') return;
+    const parent = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/sandbox';
     setCurrentPath(parent);
   };
 
@@ -169,8 +169,11 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
       <DialogContent className="max-w-4xl h-[600px] flex flex-col p-0">
         <DialogHeader className="p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <DialogTitle>📁 文件沙盒</DialogTitle>
-            <button onClick={navigateUp} disabled={currentPath === '/workspace'} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50">
+            <DialogTitle className="flex items-center gap-2">
+              <Folder className="w-5 h-5" />
+              {t('fileManager.title')}
+            </DialogTitle>
+            <button onClick={navigateUp} disabled={currentPath === '/sandbox'} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50">
               {currentPath}
             </button>
           </div>
@@ -179,14 +182,14 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
         <div className="flex items-center justify-between p-3 border-b border-border bg-muted/50">
           <div className="flex items-center gap-2">
             <Button onClick={() => fileInputRef.current?.click()} size="sm">
-              <Upload className="w-4 h-4 mr-1.5" />上传
+              <Upload className="w-4 h-4 mr-1.5" />{t('common.upload')}
             </Button>
             <input ref={fileInputRef} type="file" onChange={handleFileSelect} className="hidden" />
             <Button onClick={handleCreateFolder} variant="outline" size="sm">
-              <Folder className="w-4 h-4 mr-1.5" />新建文件夹
+              <Folder className="w-4 h-4 mr-1.5" />{t('fileManager.newFolder')}
             </Button>
             <Button onClick={handleCreateFile} variant="outline" size="sm">
-              <FileText className="w-4 h-4 mr-1.5" />新建文件
+              <FileText className="w-4 h-4 mr-1.5" />{t('fileManager.newFile')}
             </Button>
           </div>
           <Button onClick={loadFiles} disabled={isLoading} variant="ghost" size="icon" className="h-8 w-8">
@@ -199,7 +202,7 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop as any}>
           {isLoading ? (
-            <div className="flex items-center justify-center h-full text-muted-foreground">加载中...</div>
+            <div className="flex items-center justify-center h-full text-muted-foreground">{t('common.loading')}</div>
           ) : (
             <div className="space-y-1">
               {isCreating && (
@@ -215,7 +218,7 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
                         if (e.key === 'Enter') submitCreate();
                         if (e.key === 'Escape') cancelCreate();
                       }}
-                      placeholder={createType === 'folder' ? '文件夹名称' : '文件名'}
+                      placeholder={createType === 'folder' ? t('fileManager.folderName') : t('fileManager.fileName')}
                       className="h-8"
                     />
                   </div>
@@ -233,7 +236,7 @@ export default function FileManager({ isOpen, onClose }: FileManagerProps) {
               {files.length === 0 && !isCreating ? (
                 <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
                   <Folder className="w-16 h-16 mb-4 opacity-50" />
-                  <p>文件夹为空，拖拽文件到此处上传</p>
+                  <p>{t('fileManager.emptyFolder')}</p>
                 </div>
               ) : (
                 files.map((entry) => (

@@ -145,7 +145,7 @@ class ConsoleLogger {
    */
   exportText(): string {
     return this.logs.map(log => {
-      const time = new Date(log.timestamp).toLocaleString('zh-CN');
+      const time = new Date(log.timestamp).toLocaleString();
       const level = log.level.toUpperCase().padEnd(7);
       const category = log.category.toUpperCase().padEnd(8);
       let text = `[${time}] [${level}] [${category}] ${log.message}`;

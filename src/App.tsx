@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ChatContainer from './components/chat/ChatContainer';
 import Sidebar from './components/sidebar/Sidebar';
@@ -43,8 +43,12 @@ function App() {
   }, [theme]);
 
   // 启动日志（只执行一次）
+  const startupLogged = useRef(false);
   useEffect(() => {
-    logSystem('info', t('logger.startup'));
+    if (!startupLogged.current) {
+      startupLogged.current = true;
+      logSystem('info', t('logger.startup'));
+    }
   }, []);
 
   // 初始化

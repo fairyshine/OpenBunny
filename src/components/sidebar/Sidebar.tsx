@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSessionStore, selectCurrentSession } from '../../stores/session';
 import { Trash, ChevronLeft, ChevronRight, MessageSquare, Folder, Edit2 } from '../icons';
 import FileTree from './FileTree';
@@ -16,6 +17,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClose }: SidebarProps) {
+  const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('sessions');
   const { sessions, setCurrentSession, deleteSession, renameSession } = useSessionStore();
@@ -49,9 +51,9 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
     const diff = now.getTime() - date.getTime();
 
     if (diff < 24 * 60 * 60 * 1000) {
-      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
     }
-    return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
   if (isCollapsed) {
@@ -62,7 +64,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
             onClick={() => setIsCollapsed(false)}
             variant="ghost"
             size="icon"
-            title="展开"
+            title={t('sidebar.expand')}
           >
             <ChevronRight className="w-4 h-4" />
           </Button>
@@ -75,7 +77,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
             }}
             variant={activeTab === 'sessions' ? 'default' : 'ghost'}
             size="icon"
-            title="会话"
+            title={t('sidebar.sessions')}
             className="h-9 w-9"
           >
             <MessageSquare className="w-4 h-4" />
@@ -87,7 +89,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
             }}
             variant={activeTab === 'files' ? 'default' : 'ghost'}
             size="icon"
-            title="文件"
+            title={t('sidebar.files')}
             className="h-9 w-9"
           >
             <Folder className="w-4 h-4" />
@@ -105,7 +107,6 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
 
   return (
     <>
-      {/* 手机端遮罩 */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 md:hidden"
@@ -113,7 +114,6 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
         />
       )}
 
-      {/* 侧边栏 */}
       <aside className={`
         w-72 bg-background border-r border-border flex flex-col shadow-elegant
         md:relative md:translate-x-0
@@ -122,10 +122,9 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
         hidden md:flex
         ${isOpen ? '!flex' : ''}
       `}>
-        {/* 顶部标题 */}
         <div className="h-14 border-b border-border flex items-center justify-between px-4">
           <span className="text-sm font-semibold tracking-tight">
-            {activeTab === 'sessions' ? '会话' : '文件'}
+            {activeTab === 'sessions' ? t('sidebar.sessions') : t('sidebar.files')}
           </span>
           <Button
             onClick={() => {
@@ -135,22 +134,21 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            title="收起"
+            title={t('sidebar.collapse')}
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* 标签页 */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)} className="flex-1 flex flex-col">
           <TabsList className="grid w-full grid-cols-2 m-2 bg-muted/50">
             <TabsTrigger value="sessions" className="flex items-center gap-2 text-xs">
               <MessageSquare className="w-3.5 h-3.5" />
-              会话
+              {t('sidebar.sessions')}
             </TabsTrigger>
             <TabsTrigger value="files" className="flex items-center gap-2 text-xs">
               <Folder className="w-3.5 h-3.5" />
-              文件
+              {t('sidebar.files')}
             </TabsTrigger>
           </TabsList>
 
@@ -159,7 +157,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
               <div className="p-2 space-y-1">
                 {sessions.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground text-xs">
-                    暂无会话
+                    {t('sidebar.noSessions')}
                   </div>
                 ) : (
                   sessions.map((session) => (
@@ -209,7 +207,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          title="重命名"
+                          title={t('common.rename')}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </Button>
@@ -221,7 +219,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          title="删除"
+                          title={t('common.delete')}
                         >
                           <Trash className="w-3.5 h-3.5" />
                         </Button>

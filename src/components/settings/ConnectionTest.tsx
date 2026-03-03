@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSessionStore } from '../../stores/session';
 import { buildChatCompletionsUrl } from '../../utils/api';
 import { Button } from '../ui/button';
@@ -6,6 +7,7 @@ import { Card, CardContent } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 
 export default function ConnectionTest() {
+  const { t } = useTranslation();
   const [result, setResult] = useState<string>('');
   const [testing, setTesting] = useState(false);
   const { llmConfig } = useSessionStore();
@@ -30,25 +32,24 @@ export default function ConnectionTest() {
     };
 
     try {
-      log('=== 配置信息 ===');
+      log(t('connTest.configInfo'));
       log(`Provider: ${llmConfig.provider}`);
-      log(`Base URL: ${llmConfig.baseUrl || '(默认)'}`);
+      log(`Base URL: ${llmConfig.baseUrl || t('connTest.baseUrlDefault')}`);
       log(`Model: ${llmConfig.model}`);
-      log(`API Key: ${llmConfig.apiKey ? '已配置 (' + llmConfig.apiKey.substring(0, 10) + '...)' : '未配置'}`);
+      log(`API Key: ${llmConfig.apiKey ? t('connTest.apiKeyConfigured', { prefix: llmConfig.apiKey.substring(0, 10) }) : t('connTest.apiKeyNotConfigured')}`);
       log('');
 
       if (!llmConfig.apiKey) {
-        log('❌ 错误: 未配置 API Key');
+        log(t('connTest.noApiKey'));
         return;
       }
 
-      // 构建 URL
       const { url: apiUrl, targetUrl } = buildChatCompletionsUrl(llmConfig);
 
-      log('=== 测试连接 ===');
-      log(`请求 URL: ${apiUrl}`);
+      log(t('connTest.testing'));
+      log(t('connTest.requestUrl', { url: apiUrl }));
       if (targetUrl) {
-        log(`目标 URL (代理): ${targetUrl}`);
+        log(t('connTest.targetUrl', { url: targetUrl }));
       }
       log('');
 
@@ -72,50 +73,50 @@ export default function ConnectionTest() {
         }),
       });
 
-      log(`响应状态: ${response.status} ${response.statusText}`);
+      log(t('connTest.responseStatus', { status: response.status, statusText: response.statusText }));
 
       if (!response.ok) {
         const errorText = await response.text();
         log('');
-        log('❌ 请求失败:');
+        log(t('connTest.requestFailed'));
         log(errorText.substring(0, 500));
         log('');
-        log('可能的原因:');
+        log(t('connTest.possibleReasons'));
         if (llmConfig.baseUrl) {
-          log('1. vLLM 服务器未运行');
-          log('2. vLLM 未配置 CORS (需要 --allowed-origins "*")');
-          log('3. Base URL 配置错误');
-          log('4. 模型名称不正确');
+          log(t('connTest.vllmNotRunning'));
+          log(t('connTest.vllmNoCors'));
+          log(t('connTest.baseUrlError'));
+          log(t('connTest.modelNameError'));
         } else {
-          log('1. API Key 无效');
-          log('2. 网络连接问题');
+          log(t('connTest.apiKeyInvalid'));
+          log(t('connTest.networkErrorNum'));
         }
         return;
       }
 
       const data = await response.json();
       log('');
-      log('✅ 连接成功!');
+      log(t('connTest.success'));
       log('');
-      log('响应数据:');
+      log(t('connTest.responseData'));
       log(JSON.stringify(data, null, 2));
 
     } catch (error) {
       log('');
-      log('❌ 连接失败:');
+      log(t('connTest.failed'));
       log(error instanceof Error ? error.message : String(error));
       log('');
-      log('可能的原因:');
+      log(t('connTest.possibleReasons'));
       if (llmConfig.baseUrl) {
-        log('1. vLLM 服务器未运行');
-        log('2. vLLM 未配置 CORS');
-        log('   启动命令: python -m vllm.entrypoints.openai.api_server \\');
+        log(t('connTest.vllmNotRunning'));
+        log(t('connTest.vllmNoCorsShort'));
+        log('   python -m vllm.entrypoints.openai.api_server \\');
         log('              --model your-model \\');
         log('              --allowed-origins "*"');
-        log('3. Base URL 配置错误');
+        log(t('connTest.baseUrlError'));
       } else {
-        log('1. 网络连接问题');
-        log('2. 防火墙阻止');
+        log('1. ' + t('connTest.networkError'));
+        log(t('connTest.firewallBlock'));
       }
     } finally {
       setTesting(false);
@@ -128,7 +129,7 @@ export default function ConnectionTest() {
         onClick={testConnection}
         disabled={testing}
       >
-        {testing ? '测试中...' : '测试连接'}
+        {testing ? t('connTest.buttonTesting') : t('connTest.buttonTest')}
       </Button>
 
       {result && (

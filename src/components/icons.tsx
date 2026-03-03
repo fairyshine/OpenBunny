@@ -11,6 +11,13 @@ export {
   FileCode,
   Globe,
   FolderOpen,
+  Keyboard,
+  Lightbulb,
+  CirclePause,
+  CircleX,
+  CircleAlert,
+  MessageCircle,
+  CircleCheck,
 } from 'lucide-react';
 
 export function Plus({ className }: { className?: string }) {

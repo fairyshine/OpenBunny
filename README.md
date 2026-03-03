@@ -1,4 +1,4 @@
-# CyberBunny
+# 🐰CyberBunny - Personal AI Assistant
 
 <div align="center">
 
@@ -267,5 +267,6 @@ MIT License - 查看 [LICENSE](./LICENSE) 文件
 ---
 
 <div align="center">
-Made with ❤️ by CyberBunny Team
+Made with ❤️ by RadiCato
 </div>
+

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settings';
 import { toolRegistry } from '../../services/tools/registry';
 import { ITool } from '../../services/tools/base';
@@ -5,12 +6,13 @@ import { Badge } from '../ui/badge';
 import { ToolIcon } from '../ToolIcon';
 
 export default function ToolBar() {
+  const { t } = useTranslation();
   const { enabledTools, toggleTool } = useSettingsStore();
   const allTools = toolRegistry.getAll();
 
   return (
     <div className="flex items-center gap-1 px-2 md:px-4 py-2 border-b border-border bg-muted/50 overflow-x-auto">
-      <span className="text-xs text-muted-foreground mr-2 font-medium hidden sm:inline">工具:</span>
+      <span className="text-xs text-muted-foreground mr-2 font-medium hidden sm:inline">{t('tools.label')}</span>
       <div className="flex items-center gap-1 flex-nowrap">
         {allTools.map((tool: ITool) => (
           <Badge

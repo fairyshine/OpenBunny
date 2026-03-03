@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fileSystem, FileSystemEntry } from '../../services/filesystem';
 import { Folder, File as FileIcon, ChevronRight, ChevronDown, Search, Plus, Upload, Download, Edit2, X } from '../icons';
 import { Button } from '../ui/button';
@@ -18,22 +19,20 @@ interface TreeNode extends FileSystemEntry {
 }
 
 export default function FileTree({ onSelectFile, selectedPath, onItemClick }: FileTreeProps) {
+  const { t } = useTranslation();
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['/workspace']));
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['/sandbox']));
   const [searchQuery, setSearchQuery] = useState('');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; entry: FileSystemEntry } | null>(null);
-  
-  // 新建状态
+
   const [creating, setCreating] = useState<{ path: string; type: 'folder' | 'file' } | null>(null);
   const [createName, setCreateName] = useState('');
   const createInputRef = useRef<HTMLInputElement>(null);
-  
-  // 重命名状态
+
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
-  
-  // 拖拽状态
+
   const [draggedPath, setDraggedPath] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
@@ -58,7 +57,7 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
   const loadTree = useCallback(async () => {
     setIsLoading(true);
     await fileSystem.initialize();
-    
+
     const buildTree = async (path: string): Promise<TreeNode[]> => {
       const entries = await loadDirectory(path);
       for (const entry of entries) {
@@ -68,19 +67,19 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
       }
       return entries;
     };
-    
-    setTree(await buildTree('/workspace'));
+
+    setTree(await buildTree('/sandbox'));
     setIsLoading(false);
   }, [loadDirectory, expandedPaths]);
 
   useEffect(() => { loadTree(); }, [loadTree]);
-  
+
   useEffect(() => {
     if (creating && createInputRef.current) {
       createInputRef.current.focus();
     }
   }, [creating]);
-  
+
   useEffect(() => {
     if (renaming && renameInputRef.current) {
       renameInputRef.current.focus();
@@ -102,7 +101,6 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
     await loadTree();
   };
 
-  // 新建文件/文件夹
   const startCreate = (parentPath: string, type: 'folder' | 'file') => {
     setCreating({ path: parentPath, type });
     setCreateName('');
@@ -113,7 +111,7 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
       setCreating(null);
       return;
     }
-    
+
     try {
       const newPath = `${creating.path}/${createName.trim()}`;
       if (creating.type === 'folder') {
@@ -121,20 +119,19 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
       } else {
         await fileSystem.writeFile(newPath, '');
       }
-      
+
       const newExpanded = new Set(expandedPaths);
       newExpanded.add(creating.path);
       setExpandedPaths(newExpanded);
       await loadTree();
     } catch (error) {
-      alert('创建失败: ' + (error instanceof Error ? error.message : String(error)));
+      alert(t('fileManager.createFailed', { error: error instanceof Error ? error.message : String(error) }));
     }
-    
+
     setCreating(null);
     setCreateName('');
   };
 
-  // 重命名
   const startRename = (entry: FileSystemEntry) => {
     setRenaming({ path: entry.path, name: entry.name });
   };
@@ -144,34 +141,32 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
       setRenaming(null);
       return;
     }
-    
+
     try {
-      const parentPath = renaming.path.substring(0, renaming.path.lastIndexOf('/')) || '/workspace';
+      const parentPath = renaming.path.substring(0, renaming.path.lastIndexOf('/')) || '/sandbox';
       const newPath = `${parentPath}/${renaming.name.trim()}`;
-      
+
       if (newPath !== renaming.path) {
         await fileSystem.rename(renaming.path, newPath);
         await loadTree();
       }
     } catch (error) {
-      alert('重命名失败: ' + (error instanceof Error ? error.message : String(error)));
+      alert(t('fileManager.renameFailed', { error: error instanceof Error ? error.message : String(error) }));
     }
-    
+
     setRenaming(null);
   };
 
-  // 删除
   const handleDelete = async (entry: FileSystemEntry) => {
-    if (!confirm(`确定要删除 "${entry.name}" 吗？`)) return;
+    if (!confirm(t('fileManager.confirmDelete', { name: entry.name }))) return;
     try {
       await fileSystem.rm(entry.path, entry.type === 'directory');
       await loadTree();
     } catch (error) {
-      alert('删除失败: ' + (error instanceof Error ? error.message : String(error)));
+      alert(t('fileManager.deleteFailed', { error: error instanceof Error ? error.message : String(error) }));
     }
   };
 
-  // 下载
   const handleDownload = async (entry: FileSystemEntry) => {
     if (entry.type !== 'file') return;
     try {
@@ -184,11 +179,10 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      alert('下载失败: ' + (error instanceof Error ? error.message : String(error)));
+      alert(t('fileManager.downloadFailed', { error: error instanceof Error ? error.message : String(error) }));
     }
   };
 
-  // 拖拽处理
   const handleDragStart = (e: React.DragEvent, path: string) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', path);
@@ -210,22 +204,17 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
   const handleDrop = async (e: React.DragEvent, targetPath: string, isDirectory: boolean) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const dragged = e.dataTransfer.getData('text/plain') || draggedPath;
     if (!dragged || dragged === targetPath) {
       handleDragEnd();
       return;
     }
 
-    // 外部文件上传
     if (e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files);
       for (const file of files) {
-        try {
-          await fileSystem.writeFile(`${targetPath}/${file.name}`, file);
-        } catch (err) {
-          console.error('Upload failed:', err);
-        }
+        try { await fileSystem.writeFile(`${targetPath}/${file.name}`, file); } catch (err) { console.error(err); }
       }
       const newExpanded = new Set(expandedPaths);
       newExpanded.add(targetPath);
@@ -235,32 +224,30 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
       return;
     }
 
-    // 内部移动
     try {
       const draggedName = dragged.split('/').pop()!;
-      const newPath = isDirectory 
-        ? `${targetPath}/${draggedName}` 
-        : `${targetPath.substring(0, targetPath.lastIndexOf('/')) || '/workspace'}/${draggedName}`;
+      const newPath = isDirectory
+        ? `${targetPath}/${draggedName}`
+        : `${targetPath.substring(0, targetPath.lastIndexOf('/')) || '/sandbox'}/${draggedName}`;
 
       if (newPath !== dragged) {
         await fileSystem.rename(dragged, newPath);
         await loadTree();
       }
     } catch (error) {
-      alert('移动失败: ' + (error instanceof Error ? error.message : String(error)));
+      alert(t('fileManager.moveFailed', { error: error instanceof Error ? error.message : String(error) }));
     }
-    
+
     handleDragEnd();
   };
 
-  // 树项组件
   const TreeItem = ({ entry, depth = 0 }: { entry: TreeNode; depth?: number }) => {
     const isExpanded = expandedPaths.has(entry.path);
     const isSelected = selectedPath === entry.path;
     const isDragOver = dropTarget === entry.path;
     const isRenamingHere = renaming?.path === entry.path;
     const isCreatingHere = creating?.path === entry.path;
-    
+
     return (
       <div>
         <div
@@ -288,13 +275,13 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
               {isExpanded ? <ChevronDown className={`w-3 h-3 ${isSelected ? 'text-white' : ''}`} /> : <ChevronRight className={`w-3 h-3 ${isSelected ? 'text-white' : ''}`} />}
             </span>
           ) : <span className="w-4" />}
-          
+
           {entry.type === 'directory' ? (
             <Folder className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-yellow-500'}`} />
           ) : (
             <FileIcon className={`w-4 h-4 ${isSelected ? 'text-primary-foreground' : 'text-primary'}`} />
           )}
-          
+
           {isRenamingHere ? (
             <input
               ref={renameInputRef}
@@ -310,7 +297,7 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
             <span className={`text-sm truncate flex-1 ${isSelected ? 'text-white' : ''}`}>{entry.name}</span>
           )}
         </div>
-        
+
         {isCreatingHere && (
           <div className="flex items-center gap-1 px-2 py-1 bg-primary/5" style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}>
             {creating.type === 'folder' ? <Folder className="w-4 h-4 text-yellow-500" /> : <FileIcon className="w-4 h-4 text-primary" />}
@@ -320,13 +307,13 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
               value={createName}
               onChange={(e) => setCreateName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') submitCreate(); if (e.key === 'Escape') setCreating(null); }}
-              placeholder={creating.type === 'folder' ? '文件夹名称' : '文件名称'}
+              placeholder={creating.type === 'folder' ? t('fileManager.folderName') : t('fileManager.fileName')}
               className="flex-1 px-1 py-0.5 text-sm bg-background border border-primary rounded"
               onBlur={() => setTimeout(() => setCreating(null), 200)}
             />
           </div>
         )}
-        
+
         {entry.type === 'directory' && isExpanded && entry.children && (
           <div>{entry.children.map(child => <TreeItem key={child.path} entry={child} depth={depth + 1} />)}</div>
         )}
@@ -336,25 +323,24 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
 
   return (
     <div className="flex flex-col h-full">
-      {/* 工具栏 */}
       <TooltipProvider>
         <div className="flex items-center gap-1 px-2 py-2 border-b border-border">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button onClick={() => startCreate('/workspace', 'folder')} variant="ghost" size="icon" className="h-8 w-8">
+              <Button onClick={() => startCreate('/sandbox', 'folder')} variant="ghost" size="icon" className="h-8 w-8">
                 <Folder className="w-4 h-4 text-yellow-500" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>新建文件夹</TooltipContent>
+            <TooltipContent>{t('fileTree.newFolder')}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button onClick={() => startCreate('/workspace', 'file')} variant="ghost" size="icon" className="h-8 w-8">
+              <Button onClick={() => startCreate('/sandbox', 'file')} variant="ghost" size="icon" className="h-8 w-8">
                 <Plus className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>新建文件</TooltipContent>
+            <TooltipContent>{t('fileTree.newFile')}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -367,7 +353,7 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
                   const files = (e.target as HTMLInputElement).files;
                   if (files) {
                     for (const file of files) {
-                      try { await fileSystem.writeFile(`/workspace/${file.name}`, file); } catch (err) { console.error(err); }
+                      try { await fileSystem.writeFile(`/sandbox/${file.name}`, file); } catch (err) { console.error(err); }
                     }
                     await loadTree();
                   }
@@ -377,7 +363,7 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
                 <Upload className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>上传文件</TooltipContent>
+            <TooltipContent>{t('fileTree.upload')}</TooltipContent>
           </Tooltip>
 
           <div className="flex-1" />
@@ -390,12 +376,11 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
                 </svg>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>刷新</TooltipContent>
+            <TooltipContent>{t('fileTree.refresh')}</TooltipContent>
           </Tooltip>
         </div>
       </TooltipProvider>
 
-      {/* 搜索框 */}
       <div className="px-2 py-2">
         <div className="flex items-center gap-2 px-2 py-1.5 bg-muted rounded-lg">
           <Search className="w-3.5 h-3.5 text-muted-foreground" />
@@ -403,7 +388,7 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索文件..."
+            placeholder={t('fileManager.searchFiles')}
             className="flex-1 bg-transparent text-sm border-none h-auto p-0 focus-visible:ring-0"
           />
           {searchQuery && (
@@ -414,8 +399,7 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
         </div>
       </div>
 
-      {/* 根目录创建输入框 */}
-      {creating?.path === '/workspace' && (
+      {creating?.path === '/sandbox' && (
         <div className="flex items-center gap-1 px-2 py-1 bg-primary/5">
           {creating.type === 'folder' ? <Folder className="w-4 h-4 text-yellow-500" /> : <FileIcon className="w-4 h-4 text-blue-500" />}
           <Input
@@ -424,61 +408,59 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
             value={createName}
             onChange={(e) => setCreateName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submitCreate(); if (e.key === 'Escape') setCreating(null); }}
-            placeholder={creating.type === 'folder' ? '文件夹名称' : '文件名称'}
+            placeholder={creating.type === 'folder' ? t('fileManager.folderName') : t('fileManager.fileName')}
             className="flex-1 h-7 text-sm"
             onBlur={() => setTimeout(() => setCreating(null), 200)}
           />
         </div>
       )}
 
-      {/* 文件列表 */}
       <ScrollArea
         className="flex-1"
         onDragOver={(e: any) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }}
-        onDrop={(e: any) => { if (e.dataTransfer.files.length > 0) handleDrop(e, '/workspace', true); }}
+        onDrop={(e: any) => { if (e.dataTransfer.files.length > 0) handleDrop(e, '/sandbox', true); }}
       >
         {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">加载中...</div>
+          <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
         ) : tree.length === 0 && !creating ? (
-          <div className="text-center py-8 text-muted-foreground">文件夹为空</div>
+          <div className="text-center py-8 text-muted-foreground">{t('fileManager.emptyFolderShort')}</div>
         ) : (
           <div className="py-1">{tree.map(entry => <TreeItem key={entry.path} entry={entry} />)}</div>
         )}
       </ScrollArea>
 
-      {/* 右键菜单 */}
       {contextMenu && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
           <div className="fixed z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[160px]" style={{ left: contextMenu.x, top: contextMenu.y }}>
             {contextMenu.entry.type === 'file' && (
               <button onClick={() => { onSelectFile?.(contextMenu.entry.path); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2">
-                <FileIcon className="w-4 h-4" /> 打开
+                <FileIcon className="w-4 h-4" /> {t('common.open')}
               </button>
             )}
             {contextMenu.entry.type === 'directory' && (
               <>
                 <button onClick={() => { startCreate(contextMenu.entry.path, 'folder'); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2">
-                  <Folder className="w-4 h-4 text-yellow-500" /> 新建文件夹
+                  <Folder className="w-4 h-4 text-yellow-500" /> {t('fileTree.newFolder')}
                 </button>
                 <button onClick={() => { startCreate(contextMenu.entry.path, 'file'); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2">
-                  <Plus className="w-4 h-4" /> 新建文件
+                  <Plus className="w-4 h-4" /> {t('fileTree.newFile')}
                 </button>
                 <div className="border-t border-border my-1" />
               </>
             )}
             {contextMenu.entry.type === 'file' && (
               <button onClick={() => { handleDownload(contextMenu.entry); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2">
-                <Download className="w-4 h-4" /> 下载
+                <Download className="w-4 h-4" /> {t('common.download')}
               </button>
             )}
             <button onClick={() => { startRename(contextMenu.entry); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2">
-              <Edit2 className="w-4 h-4" /> 重命名
+              <Edit2 className="w-4 h-4" /> {t('common.rename')}
             </button>
             <div className="border-t border-border my-1" />
             <button onClick={() => { handleDelete(contextMenu.entry); setContextMenu(null); }} className="w-full px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10 flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              删除
+              {t('common.delete')}
             </button>
           </div>
         </>

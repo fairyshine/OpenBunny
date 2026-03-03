@@ -5,6 +5,7 @@ import {
   FolderOpen,
   Plug,
   Wrench,
+  Brain,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -14,6 +15,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   calculator: Calculator,
   folder: FolderOpen,
   plug: Plug,
+  brain: Brain,
 };
 
 interface ToolIconProps {
