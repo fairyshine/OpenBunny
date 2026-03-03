@@ -7,32 +7,17 @@
  */
 
 import { LLMConfig } from '../types';
+import { useSettingsStore } from '../stores/settings';
 
-const PROXY_WORKER_URL_KEY = 'cyberbunny-proxy-worker-url';
-
-/** Get the configured proxy worker URL (localStorage > env var) */
+/** Get the configured proxy worker URL from settings store or env var */
 export function getProxyWorkerUrl(): string | undefined {
-  try {
-    const stored = localStorage.getItem(PROXY_WORKER_URL_KEY);
-    if (stored) return stored;
-  } catch {
-    // localStorage unavailable
-  }
+  const proxyUrl = useSettingsStore.getState().proxyWorkerUrl;
+
+  if (proxyUrl) return proxyUrl;
+
+  // Fallback to env var
   const envUrl = import.meta.env.VITE_PROXY_WORKER_URL;
   return envUrl || undefined;
-}
-
-/** Persist proxy worker URL to localStorage */
-export function setProxyWorkerUrl(url: string): void {
-  try {
-    if (url) {
-      localStorage.setItem(PROXY_WORKER_URL_KEY, url);
-    } else {
-      localStorage.removeItem(PROXY_WORKER_URL_KEY);
-    }
-  } catch {
-    // localStorage unavailable
-  }
 }
 
 interface BuildResult {

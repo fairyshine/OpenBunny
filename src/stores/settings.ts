@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { setProxyWorkerUrl as persistProxyUrl } from '../utils/api';
 import { logSettings } from '../services/console/logger';
 import { applyTheme, type Theme } from '../utils/theme';
 import i18n from '../i18n';
@@ -86,7 +85,6 @@ export const useSettingsStore = create<SettingsState>()(
       proxyWorkerUrl: '',
       setProxyWorkerUrl: (url) => {
         logSettings('info', `CORS proxy URL: ${url || '(not set)'}`);
-        persistProxyUrl(url);
         set({ proxyWorkerUrl: url });
       },
 

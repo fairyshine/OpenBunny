@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings, Menu, Brain, Languages, CheckIcon } from '../icons';
+import { Settings, Menu, Brain, Languages, CheckIcon, Keyboard } from '../icons';
 import { useSettingsStore } from '../../stores/settings';
 import type { Language } from '../../stores/settings';
-import SettingsModal from '../settings/SettingsModal';
 import { MemoryViewer } from '../memory/MemoryViewer';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+
+const SettingsModal = lazy(() => import('../settings/SettingsModal'));
+const ShortcutsHelp = lazy(() => import('../ShortcutsHelp'));
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +26,7 @@ export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps
   const { t } = useTranslation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const { enabledTools, language, setLanguage } = useSettingsStore();
   const isMemoryEnabled = enabledTools.includes('memory');
 
@@ -122,6 +125,19 @@ export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
+                  onClick={() => setIsShortcutsOpen(true)}
+                  variant="ghost"
+                  size="icon"
+                >
+                  <Keyboard className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('shortcuts.title')}</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
                   onClick={() => setIsSettingsOpen(true)}
                   variant="ghost"
                   size="icon"
@@ -135,7 +151,12 @@ export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps
         </TooltipProvider>
       </header>
 
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <Suspense fallback={null}>
+        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ShortcutsHelp isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
+      </Suspense>
       <MemoryViewer isOpen={isMemoryOpen} onClose={() => setIsMemoryOpen(false)} />
     </>
   );

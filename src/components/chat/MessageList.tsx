@@ -1,5 +1,6 @@
 import { useState, memo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Virtuoso } from 'react-virtuoso';
 import { Message } from '../../types';
 import ReactMarkdown from '../ReactMarkdown';
 import { Card } from '../ui/card';
@@ -10,16 +11,40 @@ interface MessageListProps {
   messages: Message[];
 }
 
+const VIRTUALIZATION_THRESHOLD = 50;
+
 export default function MessageList({ messages }: MessageListProps) {
+  const shouldVirtualize = messages.length > VIRTUALIZATION_THRESHOLD;
+
+  if (messages.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto py-6 md:py-8 px-4 md:px-6">
+        <EmptyState />
+      </div>
+    );
+  }
+
+  if (shouldVirtualize) {
+    return (
+      <Virtuoso
+        data={messages}
+        itemContent={(_index, message) => (
+          <div className="max-w-4xl mx-auto px-4 md:px-6 py-2 md:py-3">
+            <MessageItem message={message} />
+          </div>
+        )}
+        className="h-full"
+        initialTopMostItemIndex={messages.length - 1}
+        followOutput="smooth"
+      />
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto py-6 md:py-8 px-4 md:px-6 space-y-4 md:space-y-6">
-      {messages.length === 0 ? (
-        <EmptyState />
-      ) : (
-        messages.map((message) => (
-          <MessageItem key={message.id} message={message} />
-        ))
-      )}
+      {messages.map((message) => (
+        <MessageItem key={message.id} message={message} />
+      ))}
     </div>
   );
 }

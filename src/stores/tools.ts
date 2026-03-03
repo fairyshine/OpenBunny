@@ -6,18 +6,19 @@ import { persist } from 'zustand/middleware';
 import { ToolSource } from '../services/tools/base';
 import { toolRegistry } from '../services/tools/registry';
 import { mcpClient } from '../services/mcp/client';
+import { useEffect } from 'react';
 
 interface ToolState {
   sources: ToolSource[];
   loading: boolean;
   error: string | null;
+  _version: number; // 用于触发重新渲染
 
   // 操作
   addSource: (source: Omit<ToolSource, 'id'>) => Promise<void>;
   removeSource: (sourceId: string) => Promise<void>;
   toggleSource: (sourceId: string) => Promise<void>;
   reloadSource: (sourceId: string) => Promise<void>;
-  refreshTools: () => void;
   initSources: () => Promise<void>;
 }
 
@@ -27,6 +28,7 @@ export const useToolStore = create<ToolState>()(
       sources: [],
       loading: false,
       error: null,
+      _version: 0,
 
       addSource: async (sourceData) => {
         set({ loading: true, error: null });
@@ -126,11 +128,6 @@ export const useToolStore = create<ToolState>()(
         }
       },
 
-      refreshTools: () => {
-        // 触发重新渲染
-        set(state => ({ ...state }));
-      },
-
       initSources: async () => {
         const { sources } = get();
         for (const source of sources) {
@@ -161,3 +158,18 @@ export const useToolStore = create<ToolState>()(
     }
   )
 );
+
+// 订阅 toolRegistry 变更，自动更新 store
+toolRegistry.subscribe(() => {
+  useToolStore.setState(state => ({
+    _version: state._version + 1,
+  }));
+});
+
+// Hook: 订阅工具变更
+export function useToolRegistrySync() {
+  const version = useToolStore(state => state._version);
+  useEffect(() => {
+    // version 变化时，组件会重新渲染
+  }, [version]);
+}

@@ -11,6 +11,7 @@ import { pythonExecutor } from './services/python/executor';
 import { fileSystem } from './services/filesystem';
 import { logSystem } from './services/console/logger';
 import { applyTheme, setupSystemThemeListener } from './utils/theme';
+import { initGlobalShortcuts } from './utils/keyboardShortcuts';
 
 // Lazy load non-critical components
 const FileEditor = lazy(() => import('./components/sidebar/FileEditor'));
@@ -68,6 +69,12 @@ function App() {
     // 初始化工具源（重新加载持久化的源）
     initSources().catch(console.error);
   }, [currentSession, initializePython, initSources]);
+
+  // 初始化全局快捷键系统
+  useEffect(() => {
+    const cleanup = initGlobalShortcuts();
+    return cleanup;
+  }, []);
 
   // 键盘快捷键: Ctrl+` 切换控制台
   useEffect(() => {

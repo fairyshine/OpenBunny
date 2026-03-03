@@ -14,6 +14,8 @@ import {
   CodeToolLoader,
 } from './loaders';
 
+type ChangeListener = () => void;
+
 /**
  * 工具注册表
  * 管理所有工具的加载、卸载和执行
@@ -22,6 +24,7 @@ export class ToolRegistry {
   private tools: Map<string, ITool> = new Map();
   private sources: Map<string, ToolSource> = new Map();
   private loaders: Map<string, IToolLoader> = new Map();
+  private listeners: Set<ChangeListener> = new Set();
 
   constructor() {
     // 注册内置加载器
@@ -33,6 +36,23 @@ export class ToolRegistry {
 
     // 自动加载内置工具
     this.loadBuiltinTools();
+  }
+
+  /**
+   * 订阅工具变更
+   */
+  subscribe(listener: ChangeListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  /**
+   * 通知所有监听器
+   */
+  private notify(): void {
+    this.listeners.forEach(listener => listener());
   }
 
   /**
@@ -67,6 +87,9 @@ export class ToolRegistry {
       this.sources.set(source.id, { ...source, enabled: true });
 
       logSystem('success', `加载 ${tools.length} 个工具 (${source.name})`, tools.map(t => t.metadata.id));
+
+      // 通知监听器
+      this.notify();
     } catch (error) {
       logSystem('error', `加载工具源失败: ${source.name}`, error instanceof Error ? error.message : error);
       throw error;
@@ -104,6 +127,9 @@ export class ToolRegistry {
     this.sources.delete(sourceId);
 
     logSystem('info', `卸载 ${toolsToRemove.length} 个工具 (${source.name})`);
+
+    // 通知监听器
+    this.notify();
   }
 
   /**
@@ -111,6 +137,7 @@ export class ToolRegistry {
    */
   register(tool: ITool): void {
     this.tools.set(tool.metadata.id, tool);
+    this.notify();
   }
 
   /**
@@ -121,6 +148,7 @@ export class ToolRegistry {
     if (tool) {
       await tool.onUnload?.();
       this.tools.delete(toolId);
+      this.notify();
     }
   }
 
