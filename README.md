@@ -38,6 +38,12 @@
 - **工具注册** - 简单的工具开发和注册机制
 - **参数验证** - 自动验证工具输入参数
 
+### ⚡ Skills 系统
+- **高级能力** - 编排多个工具完成复杂任务
+- **内置 Skills** - 数据分析、网页研究等
+- **多步执行** - 支持有状态的多步骤工作流
+- **动态扩展** - 支持从文件、HTTP、代码加载自定义 Skills
+
 ### 🔌 MCP 集成
 - **Model Context Protocol** - 连接外部工具服务器
 - **WebSocket/SSE** - 双协议支持
@@ -121,6 +127,26 @@ Agent: 我来创建这个文件。
 已成功创建 hello.txt 文件，内容为 "Hello, World!"
 ```
 
+### Skills 使用
+```
+用户: 分析这个 CSV 文件的数据分布
+
+Agent: 我将使用数据分析 Skill 来处理这个任务。
+
+[调用 Skill: data-analysis]
+步骤 1: 读取文件 data.csv
+步骤 2: 使用 Pandas 分析数据
+步骤 3: 生成可视化图表
+
+[生成图表] distribution.png
+✅ 分析完成
+
+数据分析结果：
+- 总行数: 1000
+- 数值列均值: 45.2
+- 已生成分布图表
+```
+
 ## 🏗️ 项目结构
 
 ```
@@ -137,12 +163,14 @@ cyberbunny/
 │   │   ├── python/         # Python 执行器 (Pyodide)
 │   │   ├── mcp/           # MCP 客户端
 │   │   ├── tools/         # 工具注册与加载
+│   │   ├── skills/        # Skills 系统
 │   │   ├── llm/           # LLM 对话管理
 │   │   └── console/       # 日志系统
 │   ├── stores/            # Zustand 状态管理
 │   │   ├── session.ts     # 会话状态
 │   │   ├── settings.ts    # 应用设置
-│   │   └── tools.ts       # 工具状态
+│   │   ├── tools.ts       # 工具状态
+│   │   └── skills.ts      # Skills 状态
 │   ├── hooks/             # React Hooks
 │   ├── utils/             # 工具函数
 │   ├── lib/               # 库函数
