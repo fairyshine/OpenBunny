@@ -57,6 +57,7 @@ const zhCN = {
   'settings.connectionTest': '连接测试',
   'settings.proxyUrl': 'CORS 代理 Worker URL',
   'settings.proxyHint': '部署 Cloudflare Worker 后填入 URL，解决生产环境 CORS 问题。留空则使用开发代理。',
+  'settings.proxyDeploy': '一键部署 Worker',
   'settings.exaApiKey': 'Exa Search API Key',
   'settings.exaApiKeyHint': '用于网页搜索功能，可在 dashboard.exa.ai 免费获取。',
   'settings.braveApiKey': 'Brave Search API Key',

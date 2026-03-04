@@ -57,6 +57,7 @@ const enUS = {
   'settings.connectionTest': 'Connection Test',
   'settings.proxyUrl': 'CORS Proxy Worker URL',
   'settings.proxyHint': 'Deploy a Cloudflare Worker and enter the URL to resolve CORS issues in production. Leave empty to use the dev proxy.',
+  'settings.proxyDeploy': 'Deploy Worker',
   'settings.exaApiKey': 'Exa Search API Key',
   'settings.exaApiKeyHint': 'Required for web search. Get a free key at dashboard.exa.ai.',
   'settings.braveApiKey': 'Brave Search API Key',

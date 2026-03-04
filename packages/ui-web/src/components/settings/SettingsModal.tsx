@@ -12,7 +12,7 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
-import { ChevronRight, Settings } from 'lucide-react';
+import { ChevronRight, Settings, ExternalLink } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -218,14 +218,25 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="proxyUrl" className="text-sm font-medium">{t('settings.proxyUrl')}</Label>
-                <Input
-                  id="proxyUrl"
-                  type="text"
-                  value={proxyUrl}
-                  onChange={(e) => setProxyUrl(e.target.value)}
-                  placeholder="https://your-worker.workers.dev"
-                  className="h-10"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="proxyUrl"
+                    type="text"
+                    value={proxyUrl}
+                    onChange={(e) => setProxyUrl(e.target.value)}
+                    placeholder="https://your-worker.workers.dev"
+                    className="h-10"
+                  />
+                  <a
+                    href="https://deploy.workers.cloudflare.com/?url=https://github.com/fairyshine/CyberBunny/tree/main/worker"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 h-10 text-xs font-medium rounded-md border bg-background hover:bg-accent hover:text-accent-foreground transition-colors whitespace-nowrap"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    {t('settings.proxyDeploy')}
+                  </a>
+                </div>
                 <p className="text-xs text-muted-foreground">{t('settings.proxyHint')}</p>
               </div>
 

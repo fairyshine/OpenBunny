@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { List, SegmentedButtons, Text, Divider, TextInput } from 'react-native-paper';
+import { List, SegmentedButtons, Text, Divider, TextInput, Button } from 'react-native-paper';
 import { useSettingsStore } from '@shared/stores/settings';
 import type { Theme, Language } from '@shared/stores/settings';
 
@@ -55,9 +55,19 @@ export default function GeneralSettingsScreen() {
             placeholder="https://your-worker.workers.dev"
             dense
           />
-          <Text variant="bodySmall" style={styles.hint}>
-            {t('settings.proxyHint')}
-          </Text>
+          <View style={styles.proxyRow}>
+            <Text variant="bodySmall" style={[styles.hint, styles.proxyHint]}>
+              {t('settings.proxyHint')}
+            </Text>
+            <Button
+              mode="outlined"
+              compact
+              icon="open-in-new"
+              onPress={() => Linking.openURL('https://deploy.workers.cloudflare.com/?url=https://github.com/fairyshine/CyberBunny/tree/main/worker')}
+            >
+              {t('settings.proxyDeploy')}
+            </Button>
+          </View>
         </View>
       </List.Section>
 
@@ -83,5 +93,16 @@ const styles = StyleSheet.create({
   hint: {
     marginTop: 4,
     opacity: 0.6,
+  },
+  proxyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    gap: 8,
+  },
+  proxyHint: {
+    flex: 1,
+    marginTop: 0,
   },
 });
