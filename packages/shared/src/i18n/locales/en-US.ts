@@ -55,7 +55,7 @@ const enUS = {
   'settings.temperature.creative': 'Creative (2)',
   'settings.maxTokens': 'Max Tokens',
   'settings.connectionTest': 'Connection Test',
-  'settings.proxyUrl': 'CORS Proxy Worker URL',
+  'settings.proxyUrl': 'CORS Proxy Worker URL (starts with https://)',
   'settings.proxyHint': 'Deploy a Cloudflare Worker and enter the URL to resolve CORS issues in production. Leave empty to use the dev proxy.',
   'settings.proxyDeploy': 'Deploy Worker',
   'settings.exaApiKey': 'Exa Search API Key',

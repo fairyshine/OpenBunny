@@ -55,7 +55,7 @@ const zhCN = {
   'settings.temperature.creative': '创造 (2)',
   'settings.maxTokens': '最大 Token',
   'settings.connectionTest': '连接测试',
-  'settings.proxyUrl': 'CORS 代理 Worker URL',
+  'settings.proxyUrl': 'CORS 代理 Worker URL(以https://开头)',
   'settings.proxyHint': '部署 Cloudflare Worker 后填入 URL，解决生产环境 CORS 问题。留空则使用开发代理。',
   'settings.proxyDeploy': '一键部署 Worker',
   'settings.exaApiKey': 'Exa Search API Key',

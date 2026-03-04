@@ -1,263 +1,127 @@
 # 🐰 CyberBunny — Cross-platform OpenClaw
 
-一个跨平台的个人AI Assistant，支持多平台运行（浏览器、桌面、移动端、命令行、终端 UI）。
+A cross-platform personal AI assistant that runs on multiple platforms (browser, desktop, mobile, CLI, terminal UI).
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-访问 [https://fairyshine.github.io/CyberBunny/](https://fairyshine.github.io/CyberBunny/)
+1. Visit [https://fairyshine.github.io/CyberBunny/](https://fairyshine.github.io/CyberBunny/)
+2. Enter your LLM API Key in Settings > LLM
+3. Deploy a CORS proxy Worker in Settings > General and fill in the proxy URL
+4. Enjoy!
 
-## ✨ 特性
+## ✨ Features
 
-- 🌐 **多平台支持** - Browser / Electron / React Native / CLI / TUI
-- 🔧 **工具系统** - 内置 Python 执行、文件管理、Web 搜索等工具
-- 🎯 **技能系统** - 基于 AgentSkills.io 格式的可扩展技能
-- 🔌 **MCP 支持** - Model Context Protocol 集成
-- 🌍 **国际化** - 中文/英文双语支持
-- 💾 **本地存储** - 数据完全保存在本地，隐私安全
-- 🎨 **现代 UI** - 基于 React 19 + Tailwind CSS + shadcn/ui
+- 🌐 **Multi-platform** - Browser / Electron / React Native / CLI / TUI
+- 🔧 **Tool System** - Built-in Python execution, file management, web search, and more
+- 🎯 **Skill System** - Extensible skills based on the AgentSkills.io format
+- 🔌 **MCP Support** - Model Context Protocol integration
+- 🌍 **i18n** - Chinese / English bilingual support
+- 💾 **Local Storage** - All data stored locally for privacy
+- 🎨 **Modern UI** - Built with React 19 + Tailwind CSS + shadcn/ui
 
-## 📦 Monorepo 结构
+## 📦 Monorepo Structure
 
 ```
 cyberbunny/
 ├── packages/
-│   ├── shared/          # 平台无关的核心逻辑
-│   ├── web/             # 浏览器端 (Vite + React)
-│   ├── desktop/         # 桌面端 (Electron)
-│   ├── mobile/          # 移动端 (React Native - 预留)
-│   ├── cli/             # 命令行工具 (Commander.js)
-│   └── tui/             # 终端 UI (Ink - React for CLI)
-└── worker/              # Cloudflare Worker (CORS 代理)
+│   ├── shared/          # Platform-agnostic core logic
+│   ├── web/             # Browser (Vite + React)
+│   ├── desktop/         # Desktop (Electron)
+│   ├── mobile/          # Mobile (React Native)
+│   ├── cli/             # CLI tool (Commander.js)
+│   └── tui/             # Terminal UI (Ink - React for CLI)
+└── worker/              # Cloudflare Worker (CORS proxy)
 ```
 
-## 🎯 使用方式
+## 📚 Documentation
 
-### 1. 浏览器端 (Web)
+- [CLI Guide](./packages/cli/README.md)
+- [Skill System Design](./docs/SKILLS_DESIGN.md)
+- [Platform Abstraction Layer](./packages/shared/src/platform/)
 
-访问 [https://fairyshine.github.io/CyberBunny/](https://fairyshine.github.io/CyberBunny/) 或本地运行：
+## 🧪 Development
 
-```bash
-pnpm dev
-# 访问 http://localhost:5173
-```
+### Dependency Management (pnpm Strict Mode)
 
-**特性：**
-- 完整的 UI 界面
-- 文件管理系统
-- 工具和技能管理
-- 会话历史
-- 设置面板
+This project uses pnpm workspace in **strict mode**: each package can only access dependencies explicitly declared in its own `package.json`.
 
-### 2. 桌面端 (Electron)
+Since workspace packages like `shared` and `ui-web` are consumed as **source code** (`"main": "./src/index.ts"`, not compiled artifacts), Vite processes their source directly during builds. This means their `import` statements are resolved from the consumer's (e.g., `web`, `desktop`) `node_modules`.
 
-```bash
-pnpm dev:desktop
-# 或构建后安装
-pnpm build:desktop
-pnpm package:desktop
-```
-
-**特性：**
-- 原生桌面应用
-- 系统集成
-- 离线使用
-- 本地文件系统访问
-
-### 3. 命令行 (CLI)
-
-```bash
-# 一次性问答
-cyberbunny ask "什么是 TypeScript?"
-
-# 交互式对话
-cyberbunny chat -k YOUR_API_KEY
-
-# 配置管理
-cyberbunny config set apiKey sk-xxx
-```
-
-**特性：**
-- 快速问答
-- 脚本集成
-- 配置管理
-- 流式输出
-
-### 4. 终端 UI (TUI)
-
-```bash
-cyberbunny-tui -k YOUR_API_KEY
-```
-
-**特性：**
-- 全屏交互界面
-- 实时流式响应
-- React 组件化
-- 消息历史
-
-## 🛠️ 技术栈
-
-### 核心技术
-
-- **Monorepo**: pnpm workspace
-- **语言**: TypeScript
-- **构建**: Vite 5
-- **包管理**: pnpm
-
-### 前端框架
-
-- **Web/Desktop**: React 19 + Vite
-- **TUI**: Ink 6 (React for CLI)
-- **UI 组件**: shadcn/ui (Radix UI)
-- **样式**: Tailwind CSS
-
-### 状态管理
-
-- **Store**: Zustand
-- **持久化**: localStorage / IndexedDB / conf
-
-### 平台支持
-
-- **Browser**: localStorage + IndexedDB
-- **Electron**: IPC + electron-store
-- **Node.js**: conf (CLI/TUI)
-- **React Native**: AsyncStorage (预留)
-
-### 工具链
-
-- **CLI**: Commander.js
-- **Terminal UI**: Ink 6
-- **Desktop**: Electron + electron-builder
-- **Python**: Pyodide (浏览器内 Python)
-- **国际化**: i18next
-
-## 📚 文档
-
-- [CLI 使用指南](./packages/cli/README.md)
-- [技能系统设计](./docs/SKILLS_DESIGN.md)
-- [平台抽象层](./packages/shared/src/platform/)
-
-## 🔧 配置
-
-### 环境变量
-
-```bash
-# API Key
-CYBERBUNNY_API_KEY=sk-xxx
-
-# CORS 代理 (可选)
-VITE_PROXY_WORKER_URL=https://your-worker.workers.dev
-```
-
-### 配置文件
-
-浏览器端配置存储在 localStorage：
-- `webagent-sessions` - 会话数据
-- `webagent-settings` - 设置
-
-CLI/TUI 配置存储在：
-- macOS: `~/Library/Preferences/cyberbunny-nodejs/`
-- Linux: `~/.config/cyberbunny-nodejs/`
-- Windows: `%APPDATA%\cyberbunny-nodejs\`
-
-## 🎨 平台检测
-
-CyberBunny 在运行时自动检测平台：
-
-```typescript
-import { getPlatform } from '@shared/platform';
-
-const platform = getPlatform();
-// { type: 'browser' | 'desktop' | 'mobile' | 'cli' | 'tui' }
-```
-
-每个平台提供统一的接口：
-- **Storage**: 配置和数据持久化
-- **API**: HTTP 请求
-- **FS**: 文件系统 (可选)
-
-## 🧪 开发
-
-### 依赖管理（pnpm 严格模式）
-
-本项目使用 pnpm workspace，默认运行在**严格模式**下：每个包只能访问自己 `package.json` 中声明的直接依赖。
-
-由于 `shared` 和 `ui-web` 等 workspace 包以**源码形式**被消费（`"main": "./src/index.ts"`，非编译产物），Vite 构建时会直接处理它们的源码。这意味着它们的 `import` 语句需要从消费方（如 `web`、`desktop`）的 `node_modules` 中解析。
-
-**因此，`web` 和 `desktop` 的 `package.json` 必须显式声明 `shared` / `ui-web` 的传递依赖**（如 Radix UI、i18next、zustand 等），即使自身源码并不直接 import 这些包。
+**Therefore, `web` and `desktop` must explicitly declare transitive dependencies** from `shared` / `ui-web` (such as Radix UI, i18next, zustand, etc.), even if their own source code doesn't directly import them.
 
 ```
-web/desktop 源码
-  → import { Foo } from '@cyberbunny/ui-web'    # workspace 源码引用
-    → ui-web 源码 import '@radix-ui/react-dialog'  # 传递依赖
-      → Vite 从 web/desktop 的 node_modules 解析  # 严格模式下必须声明
+web/desktop source
+  → import { Foo } from '@cyberbunny/ui-web'    # workspace source reference
+    → ui-web source import '@radix-ui/react-dialog'  # transitive dependency
+      → Vite resolves from web/desktop node_modules  # must be declared in strict mode
 ```
 
-> **注意**：不要随意移除 `web`/`desktop` 中看似"冗余"的依赖，否则构建会失败。如果未来将 workspace 包改为发布编译产物，则可以移除这些重复声明。
+> **Note**: Do not remove seemingly "redundant" dependencies from `web`/`desktop`, or the build will fail. These can be removed if workspace packages are later published as compiled artifacts.
 
-### 类型检查
+### Type Checking
 
 ```bash
 pnpm typecheck
 ```
 
-### 代码规范
+### Linting
 
 ```bash
 pnpm lint
 ```
 
-### 添加新平台
+### Adding a New Platform
 
-1. 创建 `packages/your-platform/`
-2. 实现平台适配器 `src/platform/adapter.ts`
-3. 初始化平台上下文 `setPlatformContext()`
-4. 更新 `packages/shared/src/platform/types.ts`
+1. Create `packages/your-platform/`
+2. Implement the platform adapter in `src/platform/adapter.ts`
+3. Initialize the platform context with `setPlatformContext()`
+4. Update `packages/shared/src/platform/types.ts`
 
-## 📝 可用命令
+## 📝 Available Commands
 
 ```bash
-# 开发
-pnpm dev              # Web 开发服务器
-pnpm dev:desktop      # Electron 开发
-pnpm dev:tui          # TUI 开发
+# Development
+pnpm dev              # Web dev server
+pnpm dev:desktop      # Electron dev
+pnpm dev:tui          # TUI dev
 
-# 构建
-pnpm build            # 构建 Web
-pnpm build:desktop    # 构建 Electron
-pnpm build:cli        # 构建 CLI
-pnpm build:tui        # 构建 TUI
+# Build
+pnpm build            # Build Web
+pnpm build:desktop    # Build Electron
+pnpm build:cli        # Build CLI
+pnpm build:tui        # Build TUI
 
-# 打包
-pnpm package:desktop  # 打包桌面应用
+# Package
+pnpm package:desktop  # Package desktop app
 
-# 工具
-pnpm typecheck        # 类型检查所有包
-pnpm lint             # 代码检查
-pnpm preview          # 预览 Web 构建
+# Tools
+pnpm typecheck        # Type check all packages
+pnpm lint             # Lint code
+pnpm preview          # Preview Web build
 ```
 
-## 🔒 隐私与安全
+## 🔒 Privacy & Security
 
-- ✅ 数据完全本地存储
-- ✅ 不上传任何用户数据
-- ✅ API Key 本地加密存储
-- ✅ 支持自托管 CORS 代理
+- ✅ All data stored locally
+- ✅ No user data uploaded
+- ✅ API keys stored locally with encryption
+- ✅ Self-hosted CORS proxy supported
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎贡献代码、报告问题或提出建议！
+Contributions, bug reports, and suggestions are welcome!
 
-## 📄 许可证
+## 📄 License
 
 MIT License
 
-## 🙏 致谢
+## 🙏 Acknowledgements
 
-- [shadcn/ui](https://ui.shadcn.com/) - UI 组件
-- [Pyodide](https://pyodide.org/) - 浏览器内 Python
+- [shadcn/ui](https://ui.shadcn.com/) - UI components
+- [Pyodide](https://pyodide.org/) - In-browser Python
 - [Ink](https://github.com/vadimdemedes/ink) - React for CLI
-- [Commander.js](https://github.com/tj/commander.js) - CLI 框架
+- [Commander.js](https://github.com/tj/commander.js) - CLI framework
 
 ---
 
-**CyberBunny** - 一个真正的多平台 AI Agent 🐰
+**CyberBunny** - A truly cross-platform AI Agent 🐰
