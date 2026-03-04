@@ -12,18 +12,18 @@
   },
   "dependencies": {
     "@cyberbunny/shared": "workspace:*",
-    "ai": "^6.0.111",
-    "conf": "^12.0.0",
-    "ink": "^6.0.0",
-    "ink-spinner": "^5.0.0",
-    "ink-text-input": "^6.0.0",
-    "react": "^19.2.4"
+    "ai": "catalog:",
+    "conf": "catalog:",
+    "ink": "catalog:",
+    "ink-spinner": "catalog:",
+    "ink-text-input": "catalog:",
+    "react": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@types/react": "^19.2.14",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.8"
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
   }
 }

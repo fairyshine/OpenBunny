@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { List, SegmentedButtons, Text, Divider, TextInput, Button } from 'react-native-paper';
 import { useSettingsStore } from '@shared/stores/settings';
+import { APP_VERSION } from '@shared/version';
 import type { Theme, Language } from '@shared/stores/settings';
 
 export default function GeneralSettingsScreen() {
@@ -75,7 +76,7 @@ export default function GeneralSettingsScreen() {
 
       <List.Section>
         <List.Subheader>{t('settings.about')}</List.Subheader>
-        <List.Item title="CyberBunny Mobile" description={t('settings.version')} />
+        <List.Item title="CyberBunny Mobile" description={t('settings.version', { version: APP_VERSION })} />
         <List.Item title="" description={t('settings.aboutDesc')} />
       </List.Section>
     </ScrollView>

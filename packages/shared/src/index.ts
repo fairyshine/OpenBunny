@@ -1,3 +1,6 @@
+// Version
+export { APP_VERSION } from './version';
+
 // Platform
 export * from './platform';
 

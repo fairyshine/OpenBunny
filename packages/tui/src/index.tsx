@@ -3,6 +3,7 @@ import React from 'react';
 import { render } from 'ink';
 import { initNodePlatform } from '@shared/platform/node';
 import type { IPlatformStorage } from '@shared/platform';
+import { detectNodeOS } from '@shared/platform/detect';
 import Conf from 'conf';
 import { useSessionStore } from '@shared/stores/session';
 import App from './App';
@@ -15,7 +16,7 @@ const storage: IPlatformStorage = {
   removeItem: (key: string) => store.delete(key),
 };
 initNodePlatform(
-  { type: 'tui', isBrowser: false, isDesktop: false, isMobile: false, isCLI: false, isTUI: true },
+  { type: 'tui', os: detectNodeOS(), isBrowser: false, isDesktop: false, isMobile: false, isCLI: false, isTUI: true },
   storage,
 );
 

@@ -1,3 +1,112 @@
 packages:
   - 'packages/*'
   - 'worker'
+
+catalog:
+  # ── Frameworks ──
+  react: ^19.2.4
+  react-dom: ^19.2.4
+  react-native: 0.84.1
+
+  # ── AI SDK ──
+  ai: ^6.0.111
+  "@ai-sdk/anthropic": ^3.0.54
+  "@ai-sdk/google": ^3.0.37
+  "@ai-sdk/mcp": ^1.0.23
+  "@ai-sdk/openai": ^3.0.39
+
+  # ── Radix UI ──
+  "@radix-ui/react-dialog": ^1.1.15
+  "@radix-ui/react-dropdown-menu": ^2.1.16
+  "@radix-ui/react-label": ^2.1.8
+  "@radix-ui/react-scroll-area": ^1.2.10
+  "@radix-ui/react-select": ^2.2.6
+  "@radix-ui/react-separator": ^1.1.8
+  "@radix-ui/react-slot": ^1.2.4
+  "@radix-ui/react-switch": ^1.2.6
+  "@radix-ui/react-tabs": ^1.1.13
+  "@radix-ui/react-tooltip": ^1.2.8
+
+  # ── Styling ──
+  tailwindcss: ^3.4.0
+  tailwind-merge: ^2.2.0
+  tailwindcss-animate: ^1.0.7
+  autoprefixer: ^10.4.16
+  postcss: ^8.4.32
+  class-variance-authority: ^0.7.1
+  clsx: ^2.0.0
+
+  # ── i18n ──
+  i18next: ^25.8.13
+  i18next-browser-languagedetector: ^8.2.1
+  react-i18next: ^16.5.4
+
+  # ── State ──
+  zustand: ^5.0.2
+
+  # ── UI Components ──
+  lucide-react: ^0.576.0
+  react-day-picker: ^9.14.0
+  react-virtuoso: ^4.18.3
+  date-fns: ^4.1.0
+
+  # ── Storage / Data ──
+  idb: ^8.0.3
+  uuid: ^9.0.1
+  conf: ^12.0.0
+  zod: ^4.3.6
+
+  # ── CLI ──
+  commander: ^11.1.0
+  chalk: ^5.3.0
+  ora: ^8.0.1
+  ink: ^6.0.0
+  ink-spinner: ^5.0.0
+  ink-text-input: ^6.0.0
+
+  # ── Build / Dev ──
+  typescript: ^5.7.3
+  vite: ^5.0.8
+  "@vitejs/plugin-react": ^4.2.1
+  tsx: ^4.7.0
+
+  # ── Types ──
+  "@types/react": ^19.2.14
+  "@types/react-dom": ^19.2.3
+  "@types/uuid": ^9.0.7
+  "@types/node": ^20.10.0
+
+  # ── Electron ──
+  electron: ^28.0.0
+  electron-builder: ^24.9.1
+  vite-plugin-electron: ^0.28.0
+  vite-plugin-electron-renderer: ^0.14.5
+
+  # ── Mobile (Expo) ──
+  expo: ~55.0.4
+  expo-status-bar: ~3.0.0
+  expo-file-system: ~18.1.0
+  expo-localization: ~16.1.0
+  expo-sharing: ~13.0.0
+  expo-clipboard: ~7.0.0
+  react-native-paper: ^5.12.5
+  react-native-safe-area-context: ^4.12.0
+  react-native-screens: ^4.3.0
+  react-native-gesture-handler: ^2.21.0
+  react-native-reanimated: ^3.17.0
+  react-native-markdown-display: ^7.0.2
+  react-native-vector-icons: ^10.2.0
+  "@react-navigation/native": ^7.0.0
+  "@react-navigation/native-stack": ^7.0.0
+  "@react-navigation/bottom-tabs": ^7.0.0
+  "@react-navigation/drawer": ^7.0.0
+  "@react-native-async-storage/async-storage": ^2.1.0
+
+  # ── Worker ──
+  "@cloudflare/workers-types": ^4.20241127.0
+  wrangler: ^3.94.0
+
+  # ── Misc ──
+  node-fetch: ^3.3.2
+  "@babel/core": ^7.25.2
+  babel-plugin-module-resolver: ^5.0.2

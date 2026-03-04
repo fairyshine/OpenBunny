@@ -13,6 +13,7 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { ChevronRight, Settings, ExternalLink } from 'lucide-react';
+import { APP_VERSION } from '@shared/version';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -251,7 +252,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       {t('settings.aboutDesc')}
                     </p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="px-2 py-1 bg-primary/10 text-primary rounded">{t('settings.version')}</span>
+                      <span className="px-2 py-1 bg-primary/10 text-primary rounded">{t('settings.version', { version: APP_VERSION })}</span>
                       <span>•</span>
                       <span>React 19 + shadcn/ui</span>
                     </div>

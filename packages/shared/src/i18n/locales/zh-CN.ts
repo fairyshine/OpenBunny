@@ -67,7 +67,7 @@ const zhCN = {
   'settings.preloadPythonDesc': '启动时自动初始化 Pyodide，加快首次执行速度',
   'settings.about': '关于 CyberBunny',
   'settings.aboutDesc': '这是一个浏览器端的 AI Agent，支持 MCP 协议、技能系统和 Python 代码执行。',
-  'settings.version': '版本 0.1.0',
+  'settings.version': '版本 {{version}}',
   'settings.language': '语言',
   'settings.language.system': '跟随系统',
   'settings.language.zhCN': '中文',

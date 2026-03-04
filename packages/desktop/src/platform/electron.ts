@@ -1,5 +1,5 @@
 import { setPlatformContext } from '@shared/platform';
-import type { IPlatformStorage, IPlatformFS, IPlatformAPI } from '@shared/platform';
+import type { IPlatformStorage, IPlatformFS, IPlatformAPI, OSType } from '@shared/platform';
 import { setThemeHandler, setLanguageHandler } from '@shared/stores/settings';
 import { applyTheme } from '@cyberbunny/ui-web';
 import i18n from '@shared/i18n';
@@ -9,6 +9,7 @@ declare global {
   interface Window {
     electronAPI: {
       platform: string;
+      os: string;
       fs: {
         readFile: (path: string) => Promise<string>;
         writeFile: (path: string, content: string) => Promise<void>;
@@ -52,9 +53,12 @@ const electronAPI: IPlatformAPI = {
  * Initialize Electron desktop platform context
  */
 export function initDesktopPlatform(): void {
+  const os = (window.electronAPI.os || 'unknown') as OSType;
+
   setPlatformContext({
     info: {
       type: 'desktop',
+      os,
       isBrowser: false,
       isDesktop: true,
       isMobile: false,
@@ -69,5 +73,5 @@ export function initDesktopPlatform(): void {
     i18n.changeLanguage(lang);
   });
 
-  console.log('[Platform] Initialized: desktop (Electron)');
+  console.log(`[Platform] Initialized: desktop (Electron) on ${os}`);
 }

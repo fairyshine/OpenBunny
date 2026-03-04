@@ -1,5 +1,6 @@
+import { Platform } from 'react-native';
 import { setPlatformContext } from '@shared/platform';
-import type { IPlatformAPI, IPlatformContext } from '@shared/platform';
+import type { IPlatformAPI, IPlatformContext, OSType } from '@shared/platform';
 import { setThemeHandler, setLanguageHandler } from '@shared/stores/settings';
 import { setFileSystemInstance } from '@shared/services/filesystem';
 import { nativeStorage } from './storage';
@@ -18,9 +19,12 @@ const nativeAPI: IPlatformAPI = {
  * Initialize React Native mobile platform context
  */
 export function initMobilePlatform(): void {
+  const os: OSType = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'unknown';
+
   const context: IPlatformContext = {
     info: {
       type: 'mobile',
+      os,
       isBrowser: false,
       isDesktop: false,
       isMobile: true,

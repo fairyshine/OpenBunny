@@ -1,8 +1,10 @@
 // Platform detection and abstraction layer
 export type PlatformType = 'browser' | 'desktop' | 'mobile' | 'cli' | 'tui';
+export type OSType = 'windows' | 'macos' | 'linux' | 'android' | 'ios' | 'unknown';
 
 export interface PlatformInfo {
   type: PlatformType;
+  os: OSType;
   isBrowser: boolean;
   isDesktop: boolean;
   isMobile: boolean;

@@ -67,7 +67,7 @@ const enUS = {
   'settings.preloadPythonDesc': 'Auto-initialize Pyodide on startup to speed up first execution',
   'settings.about': 'About CyberBunny',
   'settings.aboutDesc': 'A browser-based AI Agent supporting MCP protocol, skill system, and Python code execution.',
-  'settings.version': 'Version 0.1.0',
+  'settings.version': 'Version {{version}}',
   'settings.language': 'Language',
   'settings.language.system': 'System',
   'settings.language.zhCN': '中文',
