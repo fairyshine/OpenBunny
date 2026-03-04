@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import * as readline from 'readline';
 import { callLLM } from '@shared/services/llm/streaming';
 import { useSessionStore } from '@shared/stores/session';
-import type { LLMMessage } from '@shared/types';
+import type { ModelMessage } from 'ai';
 
 export const chatCommand = new Command('chat')
   .description('Start an interactive chat session')
@@ -31,7 +31,7 @@ export const chatCommand = new Command('chat')
       maxTokens: parseInt(opts.maxTokens),
     };
 
-    const history: LLMMessage[] = [];
+    const history: ModelMessage[] = [];
     if (opts.system) {
       history.push({ role: 'system', content: opts.system });
     }

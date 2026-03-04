@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Appbar } from 'react-native-paper';
 import { useSessionStore } from '@shared/stores/session';
 import { useSettingsStore } from '@shared/stores/settings';
-import { useLLM } from '@shared/hooks/useLLM';
 import { logLLM } from '@shared/services/console/logger';
-import { runAgentLoop } from '@shared/services/agent';
-import type { AgentCallbacks } from '@shared/services/agent';
+import { runAgentLoop } from '@shared/services/ai/agent';
+import type { AgentCallbacks } from '@shared/services/ai/agent';
 import type { Message } from '@shared/types';
 import MessageList from '../components/chat/MessageList';
 import ChatInput from '../components/chat/ChatInput';
@@ -31,8 +30,7 @@ export default function ChatScreen() {
   const [currentStatus, setCurrentStatus] = useState('');
   const [showExport, setShowExport] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-
-  const { sendMessage: sendLLMMessage, abort: abortLLM } = useLLM(llmConfig);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (session) {
@@ -84,7 +82,6 @@ export default function ChatScreen() {
         sessionId,
         llmConfig,
         enabledTools,
-        sendLLMMessage,
         callbacks,
         t
       );
@@ -103,7 +100,10 @@ export default function ChatScreen() {
   };
 
   const handleStop = () => {
-    abortLLM();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setIsLoading(false);
     setCurrentStatus('');
     addMessage(sessionId, {

@@ -1,27 +1,30 @@
 // 工具管理组件
-// 按工具源类型分类展示，源内按服务器/文件二级分组
+// Simplified for AI SDK — built-in tools only, with MCP support
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useToolStore } from '@shared/stores/tools';
 import { useSettingsStore } from '@shared/stores/settings';
-import { toolRegistry } from '@shared/services/tools/registry';
-import { ToolSource, ITool } from '@shared/services/tools/base';
+import { builtinTools } from '@shared/services/ai/tools';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Badge } from '../ui/badge';
-import { Alert, AlertDescription } from '../ui/alert';
 import { ToolIcon } from '../ToolIcon';
-import { ChevronRight } from 'lucide-react';
 import { MemoryViewer } from '../memory/MemoryViewer';
 
-/** 单个工具行：名称 + 描述 + 开关 */
-function ToolRow({ tool, enabled, onToggle }: {
-  tool: ITool;
+// Tool display metadata
+const toolDisplayInfo: Record<string, { name: string; icon: string }> = {
+  python: { name: 'Python', icon: 'python' },
+  web_search: { name: 'Web Search', icon: 'search' },
+  calculator: { name: 'Calculator', icon: 'calculator' },
+  file_manager: { name: 'File Manager', icon: 'folder' },
+  memory: { name: 'Memory', icon: 'brain' },
+};
+
+function ToolRow({ toolId, enabled, onToggle }: {
+  toolId: string;
   enabled: boolean;
   onToggle: () => void;
 }) {
@@ -38,18 +41,22 @@ function ToolRow({ tool, enabled, onToggle }: {
   } = useSettingsStore();
   const [showMemoryViewer, setShowMemoryViewer] = useState(false);
 
-  const isWebSearch = tool.metadata.id === 'web_search';
-  const isPython = tool.metadata.id === 'python';
-  const isMemory = tool.metadata.id === 'memory';
+  const tool = builtinTools[toolId as keyof typeof builtinTools];
+  const display = toolDisplayInfo[toolId] || { name: toolId, icon: 'wrench' };
+  const description = tool ? (tool as any).description || '' : '';
+
+  const isWebSearch = toolId === 'web_search';
+  const isPython = toolId === 'python';
+  const isMemory = toolId === 'memory';
 
   return (
     <div>
       <div className="flex items-center justify-between py-2 px-3 hover:bg-accent/50 rounded-md transition-colors">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <ToolIcon icon={tool.metadata.icon} className="w-6 h-6 flex-shrink-0" />
+          <ToolIcon icon={display.icon} className="w-6 h-6 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm">{tool.metadata.name}</p>
-            <p className="text-xs text-muted-foreground line-clamp-1">{tool.metadata.description}</p>
+            <p className="font-medium text-sm">{display.name}</p>
+            <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -146,292 +153,34 @@ function ToolRow({ tool, enabled, onToggle }: {
   );
 }
 
-/** 二级分组：单个工具源（一个 MCP 服务器 / 一个代码片段 / 一个 HTTP 源） */
-function SourceSection({ source, tools, loading, enabledTools, toggleTool, toggleSource, reloadSource, removeSource }: {
-  source: ToolSource;
-  tools: ITool[];
-  loading: boolean;
-  enabledTools: string[];
-  toggleTool: (id: string) => void;
-  toggleSource: (id: string) => Promise<void>;
-  reloadSource: (id: string) => Promise<void>;
-  removeSource: (id: string) => Promise<void>;
-}) {
-  const { t } = useTranslation();
-  const subtitle = source.type === 'mcp' && source.metadata?.url
-    ? source.metadata.url as string
-    : source.type === 'code'
-      ? undefined
-      : source.source;
-
-  return (
-    <details className="group border rounded-lg" open>
-      <summary className="cursor-pointer flex items-center justify-between p-3 hover:bg-accent/30 rounded-lg transition-colors">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <ChevronRight className="w-4 h-4 flex-shrink-0 transition-transform group-open:rotate-90" />
-          <span className="text-sm font-medium truncate">{source.name}</span>
-          {!source.enabled && <Badge variant="outline" className="text-xs">{t('tools.disabled')}</Badge>}
-          <span className="text-xs text-muted-foreground">({tools.length})</span>
-        </div>
-        <div className="flex items-center gap-1.5 ml-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-          <Button onClick={() => toggleSource(source.id)} disabled={loading} variant="ghost" size="sm" className="h-7 text-xs">
-            {source.enabled ? t('tools.disable') : t('tools.enable')}
-          </Button>
-          {source.enabled && (
-            <Button onClick={() => reloadSource(source.id)} disabled={loading} variant="ghost" size="sm" className="h-7 text-xs">
-              {t('tools.reload')}
-            </Button>
-          )}
-          <Button onClick={() => removeSource(source.id)} disabled={loading} variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive">
-            {t('common.delete')}
-          </Button>
-        </div>
-      </summary>
-      {subtitle && (
-        <p className="px-9 pb-1 text-xs text-muted-foreground truncate">{subtitle}</p>
-      )}
-      {tools.length > 0 ? (
-        <div className="px-3 pb-3 pt-1">
-          {tools.map(tool => (
-            <ToolRow
-              key={tool.metadata.id}
-              tool={tool}
-              enabled={enabledTools.includes(tool.metadata.id)}
-              onToggle={() => toggleTool(tool.metadata.id)}
-            />
-          ))}
-        </div>
-      ) : source.enabled ? (
-        <p className="px-9 pb-3 text-xs text-muted-foreground">{t('tools.noTools')}</p>
-      ) : null}
-    </details>
-  );
-}
-
 export function ToolManager() {
   const { t } = useTranslation();
-  const { sources, loading, error, addSource, removeSource, toggleSource, reloadSource } = useToolStore();
   const { enabledTools, toggleTool } = useSettingsStore();
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [newSource, setNewSource] = useState<{
-    type: ToolSource['type'];
-    name: string;
-    source: string;
-    mcpUrl?: string;
-    code?: string;
-  }>({ type: 'code', name: '', source: '' });
-
-  const TYPE_LABELS: Record<string, string> = {
-    builtin: t('tools.type.builtin'),
-    code: t('tools.type.code'),
-    http: t('tools.type.http'),
-    mcp: t('tools.type.mcp'),
-  };
-
-  const CODE_TEMPLATE = t('tools.codeTemplate');
-
-  const builtinSource: ToolSource = useMemo(() => ({
-    id: 'builtin', type: 'builtin', name: t('tools.type.builtin'), source: '', enabled: true,
-  }), [t]);
-
-  const allSources = useMemo(() => [builtinSource, ...sources], [builtinSource, sources]);
-
-  const groups = useMemo(() => {
-    const typeOrder: ToolSource['type'][] = ['builtin', 'code', 'http', 'mcp'];
-    const map = new Map<ToolSource['type'], { source: ToolSource; tools: ITool[] }[]>();
-
-    for (const tp of typeOrder) map.set(tp, []);
-
-    for (const src of allSources) {
-      const tools = toolRegistry.getToolsBySource(src);
-      const list = map.get(src.type);
-      if (list) list.push({ source: src, tools });
-    }
-
-    return typeOrder
-      .map(type => ({ type, label: TYPE_LABELS[type], entries: map.get(type)! }))
-      .filter(g => g.entries.length > 0);
-  }, [allSources, TYPE_LABELS]);
-
-  const handleAddSource = async () => {
-    if (!newSource.name || !newSource.type) {
-      alert(t('tools.alert.fillComplete'));
-      return;
-    }
-    try {
-      if (newSource.type === 'mcp') {
-        if (!newSource.mcpUrl) { alert(t('tools.alert.fillServer')); return; }
-        await addSource({
-          type: 'mcp', name: newSource.name, source: '',
-          enabled: true, metadata: { url: newSource.mcpUrl },
-        });
-      } else if (newSource.type === 'code') {
-        if (!newSource.code?.trim()) { alert(t('tools.alert.fillCode')); return; }
-        await addSource({
-          type: 'code', name: newSource.name, source: '',
-          enabled: true, metadata: { code: newSource.code },
-        });
-      } else {
-        if (!newSource.source) { alert(t('tools.alert.fillComplete')); return; }
-        await addSource(newSource as Omit<ToolSource, 'id'>);
-      }
-      setShowAddDialog(false);
-      setNewSource({ type: 'code', name: '', source: '' });
-    } catch (err) {
-      console.error('Failed to add source:', err);
-    }
-  };
-
-  const resetDialog = () => {
-    setShowAddDialog(true);
-    if (!newSource.code) {
-      setNewSource(s => ({ ...s, code: CODE_TEMPLATE }));
-    }
-  };
+  const allToolIds = Object.keys(builtinTools);
 
   return (
     <div>
       <div className="flex items-center justify-between px-4 md:px-6 pt-4 pb-3">
         <h2 className="text-lg font-semibold">{t('tools.management')}</h2>
-        <Button onClick={resetDialog}>{t('tools.addSource')}</Button>
+        <Badge variant="secondary">
+          {enabledTools.length}/{allToolIds.length} {t('tools.enabled') || 'enabled'}
+        </Badge>
       </div>
 
-      {error && (
-        <div className="mx-4 md:mx-6 mb-3">
-          <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
-        </div>
-      )}
-
-      <div className="px-4 md:px-6 pb-4 md:pb-6 space-y-6">
-        {groups.map(group => (
-          <div key={group.type}>
-            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              {group.label}
-              <span className="text-xs font-normal text-muted-foreground">
-                {t('tools.toolCount', { count: group.entries.reduce((n, e) => n + e.tools.length, 0) })}
-              </span>
-            </h3>
-
-            <div className="space-y-2">
-              {group.entries.map(({ source, tools }) =>
-                source.type === 'builtin' ? (
-                  <div key={source.id} className="border rounded-lg">
-                    <div className="px-3 pb-3 pt-2">
-                      {tools.map(tool => (
-                        <ToolRow
-                          key={tool.metadata.id}
-                          tool={tool}
-                          enabled={enabledTools.includes(tool.metadata.id)}
-                          onToggle={() => toggleTool(tool.metadata.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <SourceSection
-                    key={source.id}
-                    source={source}
-                    tools={tools}
-                    loading={loading}
-                    enabledTools={enabledTools}
-                    toggleTool={toggleTool}
-                    toggleSource={toggleSource}
-                    reloadSource={reloadSource}
-                    removeSource={removeSource}
-                  />
-                )
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className={newSource.type === 'code' ? 'max-w-2xl' : 'max-w-md'}>
-          <DialogHeader>
-            <DialogTitle>{t('tools.dialog.title')}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="type">{t('tools.dialog.type')}</Label>
-              <Select
-                value={newSource.type}
-                onValueChange={(value) => {
-                  const type = value as ToolSource['type'];
-                  setNewSource(s => ({
-                    ...s,
-                    type,
-                    code: type === 'code' && !s.code ? CODE_TEMPLATE : s.code,
-                  }));
-                }}
-              >
-                <SelectTrigger id="type"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="code">{t('tools.dialog.customCode')}</SelectItem>
-                  <SelectItem value="http">{t('tools.dialog.httpUrl')}</SelectItem>
-                  <SelectItem value="mcp">{t('tools.dialog.mcpServer')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="name">{t('tools.dialog.name')}</Label>
-              <Input
-                id="name" type="text" value={newSource.name}
-                onChange={e => setNewSource({ ...newSource, name: e.target.value })}
-                placeholder={t('tools.dialog.namePlaceholder')}
+      <div className="px-4 md:px-6 pb-4 md:pb-6">
+        <div className="border rounded-lg">
+          <div className="px-3 pb-3 pt-2">
+            {allToolIds.map(toolId => (
+              <ToolRow
+                key={toolId}
+                toolId={toolId}
+                enabled={enabledTools.includes(toolId)}
+                onToggle={() => toggleTool(toolId)}
               />
-            </div>
-
-            {newSource.type === 'code' && (
-              <div className="space-y-2">
-                <Label htmlFor="code">{t('tools.dialog.code')}</Label>
-                <textarea
-                  id="code"
-                  value={newSource.code || ''}
-                  onChange={e => setNewSource({ ...newSource, code: e.target.value })}
-                  className="w-full h-64 p-3 rounded-md border bg-muted/50 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring"
-                  spellCheck={false}
-                  placeholder={CODE_TEMPLATE}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t('tools.dialog.codeHint')}
-                </p>
-              </div>
-            )}
-
-            {newSource.type === 'mcp' && (
-              <div className="space-y-2">
-                <Label htmlFor="source">{t('tools.dialog.serverAddress')}</Label>
-                <Input
-                  id="source" type="text" value={newSource.mcpUrl || ''}
-                  onChange={e => setNewSource({ ...newSource, mcpUrl: e.target.value })}
-                  placeholder={t('tools.dialog.serverPlaceholder')}
-                />
-                <p className="text-xs text-muted-foreground">{t('tools.dialog.serverHint')}</p>
-              </div>
-            )}
-
-            {newSource.type === 'http' && (
-              <div className="space-y-2">
-                <Label htmlFor="source">{t('tools.dialog.url')}</Label>
-                <Input
-                  id="source" type="text" value={newSource.source}
-                  onChange={e => setNewSource({ ...newSource, source: e.target.value })}
-                  placeholder="https://example.com/tool.js"
-                />
-                <p className="text-xs text-muted-foreground">{t('tools.dialog.urlHint')}</p>
-              </div>
-            )}
+            ))}
           </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <Button onClick={() => setShowAddDialog(false)} variant="outline">{t('common.cancel')}</Button>
-            <Button onClick={handleAddSource} disabled={loading}>{t('common.add')}</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
     </div>
   );
 }

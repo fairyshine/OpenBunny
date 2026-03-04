@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSessionStore } from '@shared/stores/session';
-import { buildChatCompletionsUrl } from '@shared/utils/api';
+import { createModel } from '@shared/services/ai/provider';
+import { generateText } from 'ai';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
@@ -44,62 +45,22 @@ export default function ConnectionTest() {
         return;
       }
 
-      const { url: apiUrl, targetUrl } = buildChatCompletionsUrl(llmConfig);
-
       log(t('connTest.testing'));
-      log(t('connTest.requestUrl', { url: apiUrl }));
-      if (targetUrl) {
-        log(t('connTest.targetUrl', { url: targetUrl }));
-      }
+      log('Using AI SDK to test connection...');
       log('');
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${llmConfig.apiKey}`,
-      };
+      const model = createModel(llmConfig);
 
-      if (targetUrl) {
-        headers['X-Target-URL'] = targetUrl;
-      }
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: llmConfig.model,
-          messages: [{ role: 'user', content: 'test' }],
-          max_tokens: 10,
-          stream: false,
-        }),
+      const { text } = await generateText({
+        model,
+        messages: [{ role: 'user', content: 'Say "ok" and nothing else.' }],
+        maxTokens: 10,
       });
 
-      log(t('connTest.responseStatus', { status: response.status, statusText: response.statusText }));
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        log('');
-        log(t('connTest.requestFailed'));
-        log(errorText.substring(0, 500));
-        log('');
-        log(t('connTest.possibleReasons'));
-        if (llmConfig.baseUrl) {
-          log(t('connTest.vllmNotRunning'));
-          log(t('connTest.vllmNoCors'));
-          log(t('connTest.baseUrlError'));
-          log(t('connTest.modelNameError'));
-        } else {
-          log(t('connTest.apiKeyInvalid'));
-          log(t('connTest.networkErrorNum'));
-        }
-        return;
-      }
-
-      const data = await response.json();
       log('');
       log(t('connTest.success'));
       log('');
-      log(t('connTest.responseData'));
-      log(JSON.stringify(data, null, 2));
+      log(`Response: ${text}`);
 
     } catch (error) {
       log('');
@@ -109,14 +70,9 @@ export default function ConnectionTest() {
       log(t('connTest.possibleReasons'));
       if (llmConfig.baseUrl) {
         log(t('connTest.vllmNotRunning'));
-        log(t('connTest.vllmNoCorsShort'));
-        log('   python -m vllm.entrypoints.openai.api_server \\');
-        log('              --model your-model \\');
-        log('              --allowed-origins "*"');
         log(t('connTest.baseUrlError'));
       } else {
         log('1. ' + t('connTest.networkError'));
-        log(t('connTest.firewallBlock'));
       }
     } finally {
       setTesting(false);

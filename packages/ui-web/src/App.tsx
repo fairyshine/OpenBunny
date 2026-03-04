@@ -6,7 +6,6 @@ import Header from './components/layout/Header';
 import WelcomeScreen from './components/layout/WelcomeScreen';
 import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
 import { useSettingsStore } from '@shared/stores/settings';
-import { useToolStore } from '@shared/stores/tools';
 import { useSkillStore } from '@shared/stores/skills';
 import { pythonExecutor } from '@shared/services/python/executor';
 import { fileSystem } from '@shared/services/filesystem';
@@ -24,8 +23,7 @@ function App() {
   const createSession = useSessionStore(s => s.createSession);
   const initializePython = useSettingsStore(s => s.initializePython);
   const theme = useSettingsStore(s => s.theme);
-  const initSources = useToolStore(s => s.initSources);
-  const initSkillSources = useSkillStore(s => s.initSources);
+  const loadSkills = useSkillStore(s => s.loadSkills);
   const [showWelcome, setShowWelcome] = useState(!currentSession);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -69,12 +67,9 @@ function App() {
       pythonExecutor.initialize().catch(console.error);
     }
 
-    // 初始化工具源（重新加载持久化的源）
-    initSources().catch(console.error);
-
-    // 初始化 Skills 源
-    initSkillSources().catch(console.error);
-  }, [currentSession, initializePython, initSources, initSkillSources]);
+    // 初始化 Skills
+    loadSkills();
+  }, [currentSession, initializePython, loadSkills]);
 
   // 初始化全局快捷键系统
   useEffect(() => {

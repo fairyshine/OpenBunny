@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Button, Text, Card, useTheme, ActivityIndicator } from 'react-native-paper';
+import { Button, Text, Card, useTheme } from 'react-native-paper';
 import { useSessionStore } from '@shared/stores/session';
-import { buildChatCompletionsUrl } from '@shared/utils/api';
+import { createModel } from '@shared/services/ai/provider';
+import { generateText } from 'ai';
 
 export default function ConnectionTestScreen() {
   const { t } = useTranslation();
@@ -33,69 +34,20 @@ export default function ConnectionTestScreen() {
         return;
       }
 
-      const { url: apiUrl, targetUrl } = buildChatCompletionsUrl(llmConfig);
-      appendLog(`Request URL: ${apiUrl}`);
-      if (targetUrl) {
-        appendLog(`Target URL: ${targetUrl}`);
-      }
-      appendLog('');
-      appendLog('Sending test request...');
+      appendLog('Sending test request via AI SDK...');
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
+      const model = createModel(llmConfig);
 
-      if (llmConfig.provider === 'anthropic') {
-        headers['x-api-key'] = llmConfig.apiKey;
-        headers['anthropic-version'] = '2023-06-01';
-      } else {
-        headers['Authorization'] = `Bearer ${llmConfig.apiKey}`;
-      }
-
-      if (targetUrl) {
-        headers['X-Target-URL'] = targetUrl;
-      }
-
-      const body = llmConfig.provider === 'anthropic'
-        ? {
-            model: llmConfig.model,
-            messages: [{ role: 'user', content: 'test' }],
-            max_tokens: 10,
-          }
-        : {
-            model: llmConfig.model,
-            messages: [{ role: 'user', content: 'test' }],
-            max_tokens: 10,
-          };
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
+      const { text } = await generateText({
+        model,
+        messages: [{ role: 'user', content: 'Say "ok" and nothing else.' }],
+        maxTokens: 10,
       });
 
-      appendLog(`Response Status: ${response.status} ${response.statusText}`);
       appendLog('');
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        appendLog(`ERROR: ${errorText.slice(0, 500)}`);
-        appendLog('');
-        appendLog('--- Troubleshooting ---');
-        if (llmConfig.baseUrl) {
-          appendLog('1. Check if the service is running');
-          appendLog('2. Verify the base URL is correct');
-          appendLog('3. Check CORS configuration');
-        } else {
-          appendLog('1. Verify your API key');
-          appendLog('2. Check network connectivity');
-        }
-      } else {
-        const data = await response.json();
-        appendLog('SUCCESS!');
-        appendLog('');
-        appendLog(JSON.stringify(data, null, 2).slice(0, 500));
-      }
+      appendLog('SUCCESS!');
+      appendLog('');
+      appendLog(`Response: ${text}`);
     } catch (error) {
       appendLog(`ERROR: ${error instanceof Error ? error.message : String(error)}`);
       appendLog('');

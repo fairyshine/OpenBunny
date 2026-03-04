@@ -3,10 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useSessionStore } from '@shared/stores/session';
 import { useSettingsStore } from '@shared/stores/settings';
 import { Message } from '@shared/types';
-import { useLLM } from '@shared/hooks/useLLM';
 import { logLLM } from '@shared/services/console/logger';
-import { runAgentLoop } from '@shared/services/agent';
-import type { AgentCallbacks } from '@shared/services/agent';
+import { runAgentLoop } from '@shared/services/ai/agent';
+import type { AgentCallbacks } from '@shared/services/ai/agent';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ExportDialog from './ExportDialog';
@@ -27,7 +26,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const { sessions, addMessage, updateMessage, llmConfig } = useSessionStore();
   const { enabledTools } = useSettingsStore();
-  const { sendMessage: sendLLMMessage, abort: abortLLM } = useLLM(llmConfig);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const session = sessions.find((s) => s.id === sessionId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,7 +36,10 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
   }, [session?.messages, currentStatus]);
 
   const handleStop = () => {
-    abortLLM();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setIsLoading(false);
     setCurrentStatus('');
     addMessage(sessionId, {
@@ -75,7 +77,6 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
         sessionId,
         llmConfig,
         enabledTools,
-        sendLLMMessage,
         callbacks,
         t
       );
