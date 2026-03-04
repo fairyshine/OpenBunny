@@ -9,6 +9,21 @@ interface Env {
   ALLOWED_ORIGINS: string;
 }
 
+/** Headers that should NOT be forwarded to the target API */
+const HOP_BY_HOP_HEADERS = new Set([
+  'host',
+  'connection',
+  'keep-alive',
+  'transfer-encoding',
+  'te',
+  'trailer',
+  'upgrade',
+  'proxy-authorization',
+  'proxy-connection',
+  // Our custom header — consumed by the proxy, not forwarded
+  'x-target-url',
+]);
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -21,12 +36,18 @@ export default {
     const isAllowedOrigin = allowedOrigins.some(allowed => {
       if (allowed === '*') return true;
       if (allowed === origin) return true;
-      // Support wildcard subdomains like *.github.io
       if (allowed.startsWith('*.')) {
         const domain = allowed.slice(2);
         return origin.endsWith(domain);
       }
       return false;
+    });
+
+    // CORS headers helper
+    const corsHeaders = (extra?: Record<string, string>) => ({
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Credentials': 'true',
+      ...extra,
     });
 
     // Handle CORS preflight
@@ -38,57 +59,52 @@ export default {
       return new Response(null, {
         status: 204,
         headers: {
-          'Access-Control-Allow-Origin': origin,
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Target-URL, Accept',
+          ...corsHeaders(),
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+          'Access-Control-Allow-Headers': request.headers.get('Access-Control-Request-Headers') || '*',
           'Access-Control-Max-Age': '86400',
         },
       });
     }
 
-    // Handle proxy requests
-    if (request.method === 'POST' && url.pathname === '/proxy') {
+    // Handle proxy requests — accept any method
+    if (url.pathname === '/proxy') {
       if (!isAllowedOrigin) {
-        return new Response('Forbidden: Origin not allowed', { status: 403 });
+        return new Response('Forbidden: Origin not allowed', { status: 403, headers: corsHeaders() });
       }
 
       const targetUrl = request.headers.get('X-Target-URL');
       if (!targetUrl) {
-        return new Response('Bad Request: Missing X-Target-URL header', { status: 400 });
+        return new Response('Bad Request: Missing X-Target-URL header', { status: 400, headers: corsHeaders() });
       }
 
       try {
-        // Validate target URL
         const target = new URL(targetUrl);
         if (target.protocol !== 'https:' && target.protocol !== 'http:') {
-          return new Response('Bad Request: Invalid target URL protocol', { status: 400 });
+          return new Response('Bad Request: Invalid target URL protocol', { status: 400, headers: corsHeaders() });
         }
 
-        // Forward request to target API
+        // Forward all headers except hop-by-hop ones
         const targetHeaders = new Headers();
-
-        // Forward essential headers
-        const headersToForward = ['Content-Type', 'Authorization', 'Accept', 'User-Agent'];
-        for (const header of headersToForward) {
-          const value = request.headers.get(header);
-          if (value) {
-            targetHeaders.set(header, value);
+        for (const [key, value] of request.headers.entries()) {
+          if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
+            targetHeaders.set(key, value);
           }
         }
+        // Set correct Host for the target
+        targetHeaders.set('Host', target.host);
 
-        // Make request to target API
         const targetResponse = await fetch(targetUrl, {
-          method: 'POST',
+          method: request.method,
           headers: targetHeaders,
           body: request.body,
         });
 
-        // Create response with CORS headers
+        // Stream response back with CORS headers
         const responseHeaders = new Headers(targetResponse.headers);
         responseHeaders.set('Access-Control-Allow-Origin', origin);
         responseHeaders.set('Access-Control-Allow-Credentials', 'true');
 
-        // Stream response back to client (zero-copy for SSE)
         return new Response(targetResponse.body, {
           status: targetResponse.status,
           statusText: targetResponse.statusText,
@@ -104,10 +120,7 @@ export default {
           }),
           {
             status: 502,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': origin,
-            }
+            headers: { 'Content-Type': 'application/json', ...corsHeaders() },
           }
         );
       }

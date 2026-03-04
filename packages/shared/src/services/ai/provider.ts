@@ -44,7 +44,6 @@ function createBrowserFetch(proxyUrl?: string): typeof globalThis.fetch | undefi
 
       return globalThis.fetch(`${workerBase}/proxy`, {
         ...init,
-        method: init?.method || 'POST',
         headers: {
           ...Object.fromEntries(new Headers(init?.headers).entries()),
           'X-Target-URL': originalUrl,
