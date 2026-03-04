@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSessionStore } from '@shared/stores/session';
-import { testConnection } from '@shared/services/ai/provider';
+import { testConnection as testLLMConnection } from '@shared/services/ai/provider';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
@@ -48,7 +48,7 @@ export default function ConnectionTest() {
       log('Using AI SDK to test connection...');
       log('');
 
-      const text = await testConnection(llmConfig);
+      const text = await testLLMConnection(llmConfig);
 
       log('');
       log(t('connTest.success'));
