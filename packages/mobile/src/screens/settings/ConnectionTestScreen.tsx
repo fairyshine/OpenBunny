@@ -3,8 +3,7 @@ import { View, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Text, Card, useTheme } from 'react-native-paper';
 import { useSessionStore } from '@shared/stores/session';
-import { createModel } from '@shared/services/ai/provider';
-import { generateText } from 'ai';
+import { testConnection } from '@shared/services/ai/provider';
 
 export default function ConnectionTestScreen() {
   const { t } = useTranslation();
@@ -36,13 +35,7 @@ export default function ConnectionTestScreen() {
 
       appendLog('Sending test request via AI SDK...');
 
-      const model = createModel(llmConfig);
-
-      const { text } = await generateText({
-        model,
-        messages: [{ role: 'user', content: 'Say "ok" and nothing else.' }],
-        maxTokens: 10,
-      });
+      const text = await testConnection(llmConfig);
 
       appendLog('');
       appendLog('SUCCESS!');

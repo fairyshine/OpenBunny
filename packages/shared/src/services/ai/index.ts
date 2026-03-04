@@ -1,4 +1,4 @@
-export { createProvider, createModel } from './provider';
+export { createProvider, createModel, testConnection } from './provider';
 export { builtinTools, getEnabledTools } from './tools';
 export { generateSkillsSystemPrompt, getBuiltinSkills } from './skills';
 export type { SkillInfo } from './skills';

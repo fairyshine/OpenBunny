@@ -19,7 +19,7 @@ export type { IFileSystem, FileSystemEntry } from './services/filesystem';
 export { pythonExecutor } from './services/python/executor';
 
 // Services - AI (new unified AI service)
-export { createProvider, createModel } from './services/ai/provider';
+export { createProvider, createModel, testConnection } from './services/ai/provider';
 export { builtinTools, getEnabledTools } from './services/ai/tools';
 export { generateSkillsSystemPrompt, getBuiltinSkills } from './services/ai/skills';
 export type { SkillInfo } from './services/ai/skills';

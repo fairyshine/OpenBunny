@@ -163,7 +163,7 @@ export function ToolManager() {
       <div className="flex items-center justify-between px-4 md:px-6 pt-4 pb-3">
         <h2 className="text-lg font-semibold">{t('tools.management')}</h2>
         <Badge variant="secondary">
-          {enabledTools.length}/{allToolIds.length} {t('tools.enabled') || 'enabled'}
+          {enabledTools.length}/{allToolIds.length} {t('tools.enable') || 'enabled'}
         </Badge>
       </div>
 

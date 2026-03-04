@@ -109,7 +109,7 @@ export const calculatorTool = tool({
 });
 
 export const fileManagerTool = tool({
-  description: 'Manage files: read, write, list, mkdir, delete operations on the virtual file system.',
+  description: 'Manage files: read, write, list, mkdir, delete operations on the virtual file system sandbox.',
   inputSchema: z.object({
     operation: z.enum(['read', 'write', 'list', 'mkdir', 'delete']).describe('File operation to perform'),
     path: z.string().describe('File or directory path'),

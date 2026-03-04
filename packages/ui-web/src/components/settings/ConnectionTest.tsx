@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSessionStore } from '@shared/stores/session';
-import { createModel } from '@shared/services/ai/provider';
-import { generateText } from 'ai';
+import { testConnection } from '@shared/services/ai/provider';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
@@ -49,13 +48,7 @@ export default function ConnectionTest() {
       log('Using AI SDK to test connection...');
       log('');
 
-      const model = createModel(llmConfig);
-
-      const { text } = await generateText({
-        model,
-        messages: [{ role: 'user', content: 'Say "ok" and nothing else.' }],
-        maxTokens: 10,
-      });
+      const text = await testConnection(llmConfig);
 
       log('');
       log(t('connTest.success'));
