@@ -341,12 +341,8 @@ export const execTool = tool({
     if (typeof window !== 'undefined' && (window as any).electronAPI?.exec) {
       try {
         const loginShell = useSettingsStore.getState().execLoginShell;
-        const execPromise = (window as any).electronAPI.exec.execute(command, sessionId, loginShell);
-        const result = await withTimeout(
-          execPromise,
-          timeout,
-          `Shell command timed out after ${timeout}ms`
-        ) as any;
+        const execPromise = (window as any).electronAPI.exec.execute(command, sessionId, loginShell, timeout);
+        const result = await execPromise as any;
         if (result.error) {
           return `Error:\n${result.error}`;
         }

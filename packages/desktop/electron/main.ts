@@ -120,7 +120,7 @@ function getOrCreateSession(sessionId: string, loginShell: boolean = false): { p
   return session;
 }
 
-ipcMain.handle('exec:execute', async (_event, command: string, sessionId?: string, loginShell?: boolean) => {
+ipcMain.handle('exec:execute', async (_event, command: string, sessionId?: string, loginShell?: boolean, timeoutMs?: number) => {
   // Only allow on macOS and Linux
   if (process.platform === 'win32') {
     return { error: 'exec tool is only supported on macOS and Linux', sessionId: '', exitCode: -1, output: '' };
@@ -129,6 +129,7 @@ ipcMain.handle('exec:execute', async (_event, command: string, sessionId?: strin
   const sid = sessionId || `session_${Date.now()}`;
   const session = getOrCreateSession(sid, loginShell ?? false);
   const { process: child } = session;
+  const execTimeout = timeoutMs || 300000; // Default 5 minutes
 
   return new Promise<{ sessionId: string; exitCode: number; output: string; error?: string }>((resolve) => {
     let output = '';
@@ -140,8 +141,8 @@ ipcMain.handle('exec:execute', async (_event, command: string, sessionId?: strin
 
     const timeout = setTimeout(() => {
       cleanup();
-      resolve({ sessionId: sid, exitCode: -1, output: output || errorOutput, error: 'Command timed out after 30s' });
-    }, 30000);
+      resolve({ sessionId: sid, exitCode: -1, output: output || errorOutput, error: `Command timed out after ${execTimeout}ms` });
+    }, execTimeout);
 
     const onStdout = (data: Buffer) => {
       const text = data.toString();

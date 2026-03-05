@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Shell exec operations (persistent sessions)
   exec: {
-    execute: (command: string, sessionId?: string, loginShell?: boolean) => ipcRenderer.invoke('exec:execute', command, sessionId, loginShell),
+    execute: (command: string, sessionId?: string, loginShell?: boolean, timeoutMs?: number) => ipcRenderer.invoke('exec:execute', command, sessionId, loginShell, timeoutMs),
     destroySession: (sessionId: string) => ipcRenderer.invoke('exec:destroySession', sessionId),
     listSessions: () => ipcRenderer.invoke('exec:listSessions'),
   },
