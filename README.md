@@ -11,16 +11,12 @@ Verified Provider: DeepSeek、OpenRouter
 ## ✨ Features
 
 - 🌐 **Multi-platform** - Browser / Electron / React Native / CLI / TUI
-- 🔧 **Tool System** - Built-in Python execution, file management, web search, and more
+- 🔧 **Tool System** - Built-in Python execution, shell command execution (Desktop), file management, web search, and more
 - 🎯 **Skill System** - Extensible skills based on the AgentSkills.io format
 - 🔌 **MCP Support** - Model Context Protocol integration
 - 🌍 **i18n** - Chinese / English bilingual support
 - 💾 **Local Storage** - All data stored locally for privacy
 - 🎨 **Modern UI** - Built with React 19 + Tailwind CSS + shadcn/ui
-
-## 🚀 In Progress
-
-- 🔧**Tool exec** - run shell command (only support in desktop)
 
 ## 📦 Monorepo Structure
 

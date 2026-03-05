@@ -16,6 +16,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     rename: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:rename', oldPath, newPath),
   },
 
+  // Shell exec operations (persistent sessions)
+  exec: {
+    execute: (command: string, sessionId?: string) => ipcRenderer.invoke('exec:execute', command, sessionId),
+    destroySession: (sessionId: string) => ipcRenderer.invoke('exec:destroySession', sessionId),
+    listSessions: () => ipcRenderer.invoke('exec:listSessions'),
+  },
+
   // Storage operations
   storage: {
     getItem: (key: string) => ipcRenderer.invoke('storage:getItem', key),

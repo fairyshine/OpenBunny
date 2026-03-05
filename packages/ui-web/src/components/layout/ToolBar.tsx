@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@shared/stores/settings';
 import { builtinTools } from '@shared/services/ai/tools';
+import { detectPlatform } from '@shared/platform/detect';
 import { Badge } from '../ui/badge';
 import { ToolIcon } from '../ToolIcon';
 
@@ -11,7 +12,11 @@ const toolDisplayInfo: Record<string, { name: string; description: string; icon:
   calculator: { name: 'Calculator', description: 'Calculate math expressions', icon: 'calculator' },
   file_manager: { name: 'File Manager', description: 'Manage files', icon: 'folder' },
   memory: { name: 'Memory', description: 'Persistent memory', icon: 'brain' },
+  exec: { name: 'Shell Exec', description: 'Execute shell commands (Desktop only)', icon: 'terminal' },
 };
+
+const platform = detectPlatform();
+const execAvailable = platform.isDesktop && (platform.os === 'macos' || platform.os === 'linux');
 
 export default function ToolBar() {
   const { t } = useTranslation();
@@ -24,15 +29,16 @@ export default function ToolBar() {
       <div className="flex items-center gap-1 flex-nowrap">
         {allToolIds.map((toolId) => {
           const info = toolDisplayInfo[toolId] || { name: toolId, description: '', icon: 'wrench' };
+          const isExecDisabled = toolId === 'exec' && !execAvailable;
           return (
             <Badge
               key={toolId}
-              onClick={() => toggleTool(toolId)}
+              onClick={() => !isExecDisabled && toggleTool(toolId)}
               variant={enabledTools.includes(toolId) ? 'default' : 'outline'}
               className={`cursor-pointer transition-all whitespace-nowrap ${
                 !enabledTools.includes(toolId) ? 'opacity-60' : ''
-              }`}
-              title={info.description}
+              }${isExecDisabled ? ' opacity-40 cursor-not-allowed' : ''}`}
+              title={isExecDisabled ? t('tools.exec.desktopOnly') : info.description}
             >
               <ToolIcon icon={info.icon} className="w-3.5 h-3.5 mr-1" />
               <span>{info.name}</span>

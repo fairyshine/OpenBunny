@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@shared/stores/settings';
 import { builtinTools } from '@shared/services/ai/tools';
+import { detectPlatform } from '@shared/platform/detect';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -21,6 +22,7 @@ const toolDisplayInfo: Record<string, { name: string; icon: string }> = {
   calculator: { name: 'Calculator', icon: 'calculator' },
   file_manager: { name: 'File Manager', icon: 'folder' },
   memory: { name: 'Memory', icon: 'brain' },
+  exec: { name: 'Shell Exec', icon: 'terminal' },
 };
 
 function ToolRow({ toolId, enabled, onToggle }: {
@@ -48,15 +50,23 @@ function ToolRow({ toolId, enabled, onToggle }: {
   const isWebSearch = toolId === 'web_search';
   const isPython = toolId === 'python';
   const isMemory = toolId === 'memory';
+  const isExec = toolId === 'exec';
+
+  // exec tool is only available on desktop macOS/Linux
+  const platform = detectPlatform();
+  const execAvailable = platform.isDesktop && (platform.os === 'macos' || platform.os === 'linux');
+  const execDisabled = isExec && !execAvailable;
 
   return (
     <div>
       <div className="flex items-center justify-between py-2 px-3 hover:bg-accent/50 rounded-md transition-colors">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <ToolIcon icon={display.icon} className="w-6 h-6 flex-shrink-0" />
+          <ToolIcon icon={display.icon} className={`w-6 h-6 flex-shrink-0${execDisabled ? ' opacity-50' : ''}`} />
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm">{display.name}</p>
-            <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
+            <p className={`font-medium text-sm${execDisabled ? ' opacity-50' : ''}`}>{display.name}</p>
+            <p className="text-xs text-muted-foreground line-clamp-1">
+              {execDisabled ? t('tools.exec.desktopOnly') : description}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -74,6 +84,7 @@ function ToolRow({ toolId, enabled, onToggle }: {
             checked={enabled}
             onCheckedChange={onToggle}
             className="flex-shrink-0"
+            disabled={execDisabled}
           />
         </div>
       </div>

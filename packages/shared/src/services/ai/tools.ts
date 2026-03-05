@@ -273,6 +273,29 @@ export const memoryTool = tool({
   },
 });
 
+export const execTool = tool({
+  description: 'Execute shell commands in a persistent session (Desktop only: macOS/Linux). Maintains shell state across commands.',
+  inputSchema: z.object({
+    command: z.string().describe('Shell command to execute'),
+    sessionId: z.string().optional().describe('Session ID for persistent shell (optional, auto-generated if not provided)'),
+  }),
+  execute: async ({ command, sessionId }) => {
+    // Check if running on desktop platform
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.exec) {
+      try {
+        const result = await (window as any).electronAPI.exec.execute(command, sessionId);
+        if (result.error) {
+          return `Error:\n${result.error}`;
+        }
+        return `Session: ${result.sessionId}\nExit Code: ${result.exitCode}\n\nOutput:\n\`\`\`\n${result.output}\n\`\`\``;
+      } catch (error) {
+        return `Error: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    }
+    return 'Error: exec tool is only available on desktop platforms (macOS/Linux)';
+  },
+});
+
 /**
  * All built-in tools keyed by tool ID
  */
@@ -282,6 +305,7 @@ export const builtinTools = {
   calculator: calculatorTool,
   file_manager: fileManagerTool,
   memory: memoryTool,
+  exec: execTool,
 } as const;
 
 /**

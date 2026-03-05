@@ -10,6 +10,7 @@ import {
 } from 'react-native-paper';
 import { useSettingsStore } from '@shared/stores/settings';
 import { builtinTools } from '@shared/services/ai/tools';
+import { detectPlatform } from '@shared/platform/detect';
 
 const toolDisplayInfo: Record<string, { name: string; icon: string; description: string }> = {
   python: { name: 'Python', icon: 'language-python', description: 'Execute Python code' },
@@ -17,6 +18,7 @@ const toolDisplayInfo: Record<string, { name: string; icon: string; description:
   calculator: { name: 'Calculator', icon: 'calculator', description: 'Calculate math expressions' },
   file_manager: { name: 'File Manager', icon: 'folder', description: 'Manage files' },
   memory: { name: 'Memory', icon: 'brain', description: 'Persistent memory' },
+  exec: { name: 'Shell Exec', icon: 'console', description: 'Execute shell commands (Desktop only)' },
 };
 
 export default function ToolManagerScreen() {
@@ -25,6 +27,8 @@ export default function ToolManagerScreen() {
   const { enabledTools, toggleTool, enableAllTools, disableAllTools } = useSettingsStore();
 
   const allToolIds = Object.keys(builtinTools);
+  const platform = detectPlatform();
+  const execAvailable = platform.isDesktop && (platform.os === 'macos' || platform.os === 'linux');
 
   return (
     <View style={styles.container}>
@@ -43,18 +47,20 @@ export default function ToolManagerScreen() {
         keyExtractor={(item) => item}
         renderItem={({ item: toolId }) => {
           const info = toolDisplayInfo[toolId] || { name: toolId, icon: 'wrench', description: '' };
+          const isExecDisabled = toolId === 'exec' && !execAvailable;
           return (
             <List.Item
               title={info.name}
-              description={info.description}
-              titleStyle={{ fontSize: 13 }}
+              description={isExecDisabled ? t('tools.exec.desktopOnly') : info.description}
+              titleStyle={{ fontSize: 13, opacity: isExecDisabled ? 0.5 : 1 }}
               descriptionStyle={{ fontSize: 11 }}
               descriptionNumberOfLines={2}
-              left={(p) => <List.Icon {...p} icon={info.icon} />}
+              left={(p) => <List.Icon {...p} icon={info.icon} style={{ opacity: isExecDisabled ? 0.5 : 1 }} />}
               right={() => (
                 <Switch
                   value={enabledTools.includes(toolId)}
                   onValueChange={() => toggleTool(toolId)}
+                  disabled={isExecDisabled}
                 />
               )}
             />

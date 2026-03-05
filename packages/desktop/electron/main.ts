@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawn, type ChildProcess } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,7 +13,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
     },
@@ -86,6 +87,114 @@ ipcMain.handle('fs:rm', async (_, filePath: string) => {
 ipcMain.handle('fs:rename', async (_, oldPath: string, newPath: string) => {
   const fs = await import('fs/promises');
   return fs.rename(oldPath, newPath);
+});
+
+// --- Persistent shell session management ---
+const shellSessions = new Map<string, { process: ChildProcess; shell: string }>();
+
+function getDefaultShell(): string {
+  if (process.platform === 'win32') return 'cmd.exe';
+  return process.env.SHELL || '/bin/zsh';
+}
+
+function getOrCreateSession(sessionId: string): { process: ChildProcess; shell: string } {
+  let session = shellSessions.get(sessionId);
+  if (session && !session.process.killed) {
+    return session;
+  }
+  const shell = getDefaultShell();
+  const child = spawn(shell, ['-i'], {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, TERM: 'dumb' },
+    cwd: process.env.HOME || '/',
+  });
+  child.on('exit', () => {
+    shellSessions.delete(sessionId);
+  });
+  session = { process: child, shell };
+  shellSessions.set(sessionId, session);
+  return session;
+}
+
+ipcMain.handle('exec:execute', async (_event, command: string, sessionId?: string) => {
+  // Only allow on macOS and Linux
+  if (process.platform === 'win32') {
+    return { error: 'exec tool is only supported on macOS and Linux', sessionId: '', exitCode: -1, output: '' };
+  }
+
+  const sid = sessionId || `session_${Date.now()}`;
+  const session = getOrCreateSession(sid);
+  const { process: child } = session;
+
+  return new Promise<{ sessionId: string; exitCode: number; output: string; error?: string }>((resolve) => {
+    let output = '';
+    let errorOutput = '';
+
+    // Use a unique end marker to detect command completion
+    const endMarker = `__EXEC_END_${Date.now()}_${Math.random().toString(36).slice(2)}__`;
+    const exitCodeMarker = `__EXIT_CODE_${Date.now()}_${Math.random().toString(36).slice(2)}__`;
+
+    const timeout = setTimeout(() => {
+      cleanup();
+      resolve({ sessionId: sid, exitCode: -1, output: output || errorOutput, error: 'Command timed out after 30s' });
+    }, 30000);
+
+    const onStdout = (data: Buffer) => {
+      const text = data.toString();
+      output += text;
+      // Check if we have the end marker in the accumulated output
+      if (output.includes(endMarker)) {
+        cleanup();
+        // Parse exit code and clean output
+        const exitCodeMatch = output.match(new RegExp(`${exitCodeMarker}(\\d+)`));
+        const exitCode = exitCodeMatch ? parseInt(exitCodeMatch[1], 10) : 0;
+        // Remove markers and the echo commands from output
+        let cleanOutput = output
+          .replace(new RegExp(`echo ${exitCodeMarker}.*`, 'g'), '')
+          .replace(new RegExp(`${exitCodeMarker}\\d+`, 'g'), '')
+          .replace(new RegExp(`echo ${endMarker}`, 'g'), '')
+          .replace(new RegExp(endMarker, 'g'), '')
+          .trim();
+        resolve({ sessionId: sid, exitCode, output: cleanOutput });
+      }
+    };
+
+    const onStderr = (data: Buffer) => {
+      errorOutput += data.toString();
+    };
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      child.stdout?.off('data', onStdout);
+      child.stderr?.off('data', onStderr);
+    };
+
+    child.stdout?.on('data', onStdout);
+    child.stderr?.on('data', onStderr);
+
+    // Send command followed by markers to detect completion
+    child.stdin?.write(`${command}\necho ${exitCodeMarker}$?\necho ${endMarker}\n`);
+  });
+});
+
+ipcMain.handle('exec:destroySession', async (_event, sessionId: string) => {
+  const session = shellSessions.get(sessionId);
+  if (session) {
+    session.process.kill();
+    shellSessions.delete(sessionId);
+  }
+});
+
+ipcMain.handle('exec:listSessions', async () => {
+  return Array.from(shellSessions.keys());
+});
+
+// Clean up all shell sessions on app quit
+app.on('before-quit', () => {
+  for (const [, session] of shellSessions) {
+    session.process.kill();
+  }
+  shellSessions.clear();
 });
 
 // Storage operations (using electron-store or similar)

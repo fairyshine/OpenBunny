@@ -271,6 +271,7 @@ export default {
   'tools.exec.diaryRead': '📅 日记 ({{date}}):\n```\n{{content}}\n```',
   'tools.exec.diaryUpdated': '[完成] {{date}} 日记已更新。',
   'tools.exec.diariesListed': '📅 日记列表 ({{count}} 篇):\n\n{{list}}',
+  'tools.exec.desktopOnly': 'Shell 执行仅在桌面端（macOS / Linux）可用',
 
   // Connection Test
   'connTest.configInfo': '=== 配置信息 ===',

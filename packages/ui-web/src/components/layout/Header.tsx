@@ -1,6 +1,7 @@
 import { useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Settings, Menu, Brain, Languages, CheckIcon, Keyboard } from '../icons';
+import { SquareTerminal } from 'lucide-react';
 import { useSettingsStore } from '@shared/stores/settings';
 import type { Language } from '@shared/stores/settings';
 import { MemoryViewer } from '../memory/MemoryViewer';
@@ -83,7 +84,7 @@ export default function Header({ onToggleConsole, onToggleSidebar }: HeaderProps
                     variant="ghost"
                     size="icon"
                   >
-                    <span className="font-mono text-sm font-medium">&gt;_</span>
+                    <SquareTerminal className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>{t('header.console')}</TooltipContent>

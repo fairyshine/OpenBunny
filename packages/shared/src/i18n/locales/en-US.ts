@@ -271,6 +271,7 @@ export default {
   'tools.exec.diaryRead': '📅 Diary ({{date}}):\n```\n{{content}}\n```',
   'tools.exec.diaryUpdated': '[Done] Diary updated for {{date}}.',
   'tools.exec.diariesListed': '📅 Diary entries ({{count}}):\n\n{{list}}',
+  'tools.exec.desktopOnly': 'Shell Exec is only available on desktop (macOS / Linux)',
 
   // Connection Test
   'connTest.configInfo': '=== Configuration ===',
