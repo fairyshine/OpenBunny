@@ -11,8 +11,14 @@ const t = () => i18n.t.bind(i18n);
 
 /**
  * Wrap a promise with timeout
+ * @param timeoutMs - Timeout in milliseconds, -1 means no timeout (wait forever)
  */
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  // -1 means no timeout, wait forever
+  if (timeoutMs === -1) {
+    return promise;
+  }
+
   // Validate timeout value
   const validTimeout = (typeof timeoutMs === 'number' && timeoutMs > 0) ? timeoutMs : 300000;
 

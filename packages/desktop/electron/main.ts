@@ -139,10 +139,14 @@ ipcMain.handle('exec:execute', async (_event, command: string, sessionId?: strin
     const endMarker = `__EXEC_END_${Date.now()}_${Math.random().toString(36).slice(2)}__`;
     const exitCodeMarker = `__EXIT_CODE_${Date.now()}_${Math.random().toString(36).slice(2)}__`;
 
-    const timeout = setTimeout(() => {
-      cleanup();
-      resolve({ sessionId: sid, exitCode: -1, output: output || errorOutput, error: `Command timed out after ${execTimeout}ms` });
-    }, execTimeout);
+    // -1 means no timeout (wait forever)
+    let timeout: NodeJS.Timeout | null = null;
+    if (execTimeout !== -1) {
+      timeout = setTimeout(() => {
+        cleanup();
+        resolve({ sessionId: sid, exitCode: -1, output: output || errorOutput, error: `Command timed out after ${execTimeout}ms` });
+      }, execTimeout);
+    }
 
     const onStdout = (data: Buffer) => {
       const text = data.toString();
@@ -169,7 +173,7 @@ ipcMain.handle('exec:execute', async (_event, command: string, sessionId?: strin
     };
 
     const cleanup = () => {
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
       child.stdout?.off('data', onStdout);
       child.stderr?.off('data', onStderr);
     };
