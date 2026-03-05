@@ -186,8 +186,19 @@ function App() {
             ) : (
               <>
                 <SessionTabs />
-                {currentSession ? (
-                  <ChatContainer sessionId={currentSession.id} />
+                {openSessionIds.length > 0 ? (
+                  <div className="flex-1 relative overflow-hidden">
+                    {openSessionIds.map((sessionId) => (
+                      <div
+                        key={sessionId}
+                        className={`absolute inset-0 ${
+                          currentSession?.id === sessionId ? 'block' : 'hidden'
+                        }`}
+                      >
+                        <ChatContainer sessionId={sessionId} />
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-muted-foreground">
                     <p>{t('chat.noSessionHint')}</p>
