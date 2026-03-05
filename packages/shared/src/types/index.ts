@@ -70,4 +70,5 @@ export interface Session {
   updatedAt: number;
   deletedAt?: number;
   isStreaming?: boolean; // 是否正在进行对话
+  systemPrompt?: string; // 系统提示词
 }

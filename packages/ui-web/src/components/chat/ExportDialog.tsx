@@ -10,11 +10,12 @@ import { Download } from '../icons';
 
 interface ExportDialogProps {
   messages: Message[];
+  systemPrompt?: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function ExportDialog({ messages, isOpen, onClose }: ExportDialogProps) {
+export default function ExportDialog({ messages, systemPrompt, isOpen, onClose }: ExportDialogProps) {
   const { t } = useTranslation();
   const [format, setFormat] = useState<'json' | 'markdown' | 'text'>('markdown');
 
@@ -25,17 +26,17 @@ export default function ExportDialog({ messages, isOpen, onClose }: ExportDialog
 
     switch (format) {
       case 'json':
-        content = MessageHistoryManager.exportToJSON(messages);
+        content = MessageHistoryManager.exportToJSON(messages, systemPrompt);
         filename = `conversation-${Date.now()}.json`;
         mimeType = 'application/json';
         break;
       case 'markdown':
-        content = MessageHistoryManager.exportToMarkdown(messages);
+        content = MessageHistoryManager.exportToMarkdown(messages, systemPrompt);
         filename = `conversation-${Date.now()}.md`;
         mimeType = 'text/markdown';
         break;
       case 'text':
-        content = MessageHistoryManager.exportToText(messages);
+        content = MessageHistoryManager.exportToText(messages, systemPrompt);
         filename = `conversation-${Date.now()}.txt`;
         mimeType = 'text/plain';
         break;
@@ -55,11 +56,11 @@ export default function ExportDialog({ messages, isOpen, onClose }: ExportDialog
   const getPreview = () => {
     switch (format) {
       case 'json':
-        return MessageHistoryManager.exportToJSON(messages).slice(0, 500);
+        return MessageHistoryManager.exportToJSON(messages, systemPrompt).slice(0, 500);
       case 'markdown':
-        return MessageHistoryManager.exportToMarkdown(messages).slice(0, 500);
+        return MessageHistoryManager.exportToMarkdown(messages, systemPrompt).slice(0, 500);
       case 'text':
-        return MessageHistoryManager.exportToText(messages).slice(0, 500);
+        return MessageHistoryManager.exportToText(messages, systemPrompt).slice(0, 500);
     }
   };
 

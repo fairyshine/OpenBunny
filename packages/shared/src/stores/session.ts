@@ -21,6 +21,7 @@ interface SessionState {
   setLLMConfig: (config: Partial<LLMConfig>) => void;
   clearAllSessions: () => void;
   setSessionStreaming: (sessionId: string, isStreaming: boolean) => void;
+  setSessionSystemPrompt: (sessionId: string, systemPrompt: string) => void;
 }
 
 // Selector to get current session (derived from sessions + currentSessionId)
@@ -169,6 +170,14 @@ export const useSessionStore = create<SessionState>()(
         set((state) => ({
           sessions: state.sessions.map((s) =>
             s.id === sessionId ? { ...s, isStreaming } : s
+          ),
+        }));
+      },
+
+      setSessionSystemPrompt: (sessionId: string, systemPrompt: string) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, systemPrompt } : s
           ),
         }));
       },

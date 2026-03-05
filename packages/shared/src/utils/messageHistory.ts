@@ -157,17 +157,31 @@ export class MessageHistoryManager {
   /**
    * 导出消息为 JSON
    */
-  static exportToJSON(messages: Message[]): string {
-    return JSON.stringify(messages, null, 2);
+  static exportToJSON(messages: Message[], systemPrompt?: string): string {
+    const exportData = {
+      systemPrompt: systemPrompt || null,
+      messages,
+      exportedAt: new Date().toISOString(),
+    };
+    return JSON.stringify(exportData, null, 2);
   }
 
   /**
    * 导出消息为 Markdown
    */
-  static exportToMarkdown(messages: Message[]): string {
+  static exportToMarkdown(messages: Message[], systemPrompt?: string): string {
     const t = i18n.t.bind(i18n);
     const lines: string[] = [];
     lines.push(t('history.title') + '\n');
+
+    // Add system prompt if available
+    if (systemPrompt) {
+      lines.push('## System Prompt\n');
+      lines.push('```');
+      lines.push(systemPrompt);
+      lines.push('```\n');
+      lines.push('---\n');
+    }
 
     const turns = this.getConversationTurns(messages);
 
@@ -216,9 +230,19 @@ export class MessageHistoryManager {
   /**
    * 导出消息为纯文本
    */
-  static exportToText(messages: Message[]): string {
+  static exportToText(messages: Message[], systemPrompt?: string): string {
     const t = i18n.t.bind(i18n);
     const lines: string[] = [];
+
+    // Add system prompt if available
+    if (systemPrompt) {
+      lines.push('=== SYSTEM PROMPT ===');
+      lines.push(systemPrompt);
+      lines.push('');
+      lines.push('=== CONVERSATION ===');
+      lines.push('');
+    }
+
     const turns = this.getConversationTurns(messages);
 
     for (const turn of turns) {

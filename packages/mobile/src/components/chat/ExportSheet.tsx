@@ -7,13 +7,14 @@ import type { Message } from '@shared/types';
 
 interface ExportSheetProps {
   messages: Message[];
+  systemPrompt?: string;
   visible: boolean;
   onDismiss: () => void;
 }
 
 type ExportFormat = 'json' | 'markdown' | 'text';
 
-export default function ExportSheet({ messages, visible, onDismiss }: ExportSheetProps) {
+export default function ExportSheet({ messages, systemPrompt, visible, onDismiss }: ExportSheetProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const [format, setFormat] = useState<ExportFormat>('markdown');
@@ -26,15 +27,15 @@ export default function ExportSheet({ messages, visible, onDismiss }: ExportShee
 
     switch (format) {
       case 'json':
-        content = MessageHistoryManager.exportToJSON(messages);
+        content = MessageHistoryManager.exportToJSON(messages, systemPrompt);
         title = 'conversation.json';
         break;
       case 'markdown':
-        content = MessageHistoryManager.exportToMarkdown(messages);
+        content = MessageHistoryManager.exportToMarkdown(messages, systemPrompt);
         title = 'conversation.md';
         break;
       case 'text':
-        content = MessageHistoryManager.exportToText(messages);
+        content = MessageHistoryManager.exportToText(messages, systemPrompt);
         title = 'conversation.txt';
         break;
     }

@@ -33,7 +33,7 @@ export async function runAgentLoop(
   t: TFunction,
   proxyUrl?: string,
   toolTimeout?: number
-): Promise<void> {
+): Promise<string> {
   // Validate configuration
   if (!llmConfig.apiKey) {
     callbacks.addMessage(sessionId, {
@@ -42,7 +42,7 @@ export async function runAgentLoop(
       content: t('chat.configRequired'),
       timestamp: Date.now(),
     });
-    return;
+    return '';
   }
 
   if (!llmConfig.model || !llmConfig.model.trim()) {
@@ -52,7 +52,7 @@ export async function runAgentLoop(
       content: t('chat.modelRequired'),
       timestamp: Date.now(),
     });
-    return;
+    return '';
   }
 
   const timeout = toolTimeout || 300000; // Default 5 minutes
@@ -296,6 +296,7 @@ export async function runAgentLoop(
     }
 
     logLLM('success', 'Agent loop completed');
+    return systemPrompt;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error('[Agent] Error in agent loop:', error);

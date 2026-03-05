@@ -91,7 +91,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     logLLM('info', `User message: ${content.trim().slice(0, 100)}${content.length > 100 ? '...' : ''}`);
 
     try {
-      await runAgentLoop(
+      const systemPrompt = await runAgentLoop(
         content.trim(),
         sessionId,
         llmConfig,
@@ -101,6 +101,8 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
         proxyUrl,
         toolExecutionTimeout
       );
+      // Save system prompt to session
+      useSessionStore.getState().setSessionSystemPrompt(sessionId, systemPrompt);
     } catch (error) {
       console.error('Error:', error);
       addMessage(sessionId, {
@@ -167,6 +169,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
 
       <ExportDialog
         messages={session.messages}
+        systemPrompt={session.systemPrompt}
         isOpen={showExportDialog}
         onClose={() => setShowExportDialog(false)}
       />

@@ -94,7 +94,7 @@ export default function ChatScreen() {
     logLLM('info', `User message: ${content.trim().slice(0, 100)}${content.length > 100 ? '...' : ''}`);
 
     try {
-      await runAgentLoop(
+      const systemPrompt = await runAgentLoop(
         content.trim(),
         sessionId,
         llmConfig,
@@ -104,6 +104,8 @@ export default function ChatScreen() {
         proxyUrl,
         toolExecutionTimeout
       );
+      // Save system prompt to session
+      useSessionStore.getState().setSessionSystemPrompt(sessionId, systemPrompt);
     } catch (error) {
       console.error('[Chat] Agent loop error:', error);
       addMessage(sessionId, {
@@ -152,6 +154,7 @@ export default function ChatScreen() {
 
       <ExportSheet
         messages={session.messages}
+        systemPrompt={session.systemPrompt}
         visible={showExport}
         onDismiss={() => setShowExport(false)}
       />
