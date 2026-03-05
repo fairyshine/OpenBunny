@@ -202,16 +202,17 @@ app.on('before-quit', () => {
   shellSessions.clear();
 });
 
-// Storage operations (using electron-store or similar)
-ipcMain.handle('storage:getItem', async (_event, _key: string) => {
-  // TODO: Implement with electron-store
-  return null;
+// Storage operations (using localStorage-like in-memory store for Electron)
+const electronStore = new Map<string, string>();
+
+ipcMain.handle('storage:getItem', async (_event, key: string) => {
+  return electronStore.get(key) || null;
 });
 
-ipcMain.handle('storage:setItem', async (_event, _key: string, _value: string) => {
-  // TODO: Implement with electron-store
+ipcMain.handle('storage:setItem', async (_event, key: string, value: string) => {
+  electronStore.set(key, value);
 });
 
-ipcMain.handle('storage:removeItem', async (_event, _key: string) => {
-  // TODO: Implement with electron-store
+ipcMain.handle('storage:removeItem', async (_event, key: string) => {
+  electronStore.delete(key);
 });
