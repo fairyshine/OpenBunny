@@ -210,7 +210,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                             key={session.id}
                             onClick={() => {
                               if (editingId !== session.id) {
-                                setCurrentSession(session.id);
+                                useSessionStore.getState().openSession(session.id);
                                 handleItemClick();
                               }
                             }}

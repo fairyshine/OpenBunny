@@ -6,6 +6,7 @@ import { logSettings } from '../services/console/logger';
 interface SessionState {
   sessions: Session[];
   currentSessionId: string | null;
+  openSessionIds: string[]; // 打开的会话标签页
   llmConfig: LLMConfig;
 
   // Actions
@@ -22,6 +23,8 @@ interface SessionState {
   clearAllSessions: () => void;
   setSessionStreaming: (sessionId: string, isStreaming: boolean) => void;
   setSessionSystemPrompt: (sessionId: string, systemPrompt: string) => void;
+  openSession: (id: string) => void;
+  closeSession: (id: string) => void;
 }
 
 // Selector to get current session (derived from sessions + currentSessionId)
@@ -45,6 +48,7 @@ export const useSessionStore = create<SessionState>()(
     (set, get) => ({
       sessions: [],
       currentSessionId: null,
+      openSessionIds: [],
       llmConfig: {
         provider: 'openai',
         apiKey: '',
@@ -65,6 +69,7 @@ export const useSessionStore = create<SessionState>()(
         set((state) => ({
           sessions: [session, ...state.sessions],
           currentSessionId: session.id,
+          openSessionIds: [...state.openSessionIds, session.id],
         }));
 
         return session;
@@ -180,6 +185,34 @@ export const useSessionStore = create<SessionState>()(
             s.id === sessionId ? { ...s, systemPrompt } : s
           ),
         }));
+      },
+
+      openSession: (id: string) => {
+        set((state) => {
+          // 如果已经打开，只切换到该会话
+          if (state.openSessionIds.includes(id)) {
+            return { currentSessionId: id };
+          }
+          // 否则添加到打开列表并切换
+          return {
+            openSessionIds: [...state.openSessionIds, id],
+            currentSessionId: id,
+          };
+        });
+      },
+
+      closeSession: (id: string) => {
+        set((state) => {
+          const newOpenIds = state.openSessionIds.filter(sid => sid !== id);
+          // 如果关闭的是当前会话，切换到下一个打开的会话
+          const newCurrentId = state.currentSessionId === id
+            ? (newOpenIds[newOpenIds.length - 1] || null)
+            : state.currentSessionId;
+          return {
+            openSessionIds: newOpenIds,
+            currentSessionId: newCurrentId,
+          };
+        });
       },
     }),
     {

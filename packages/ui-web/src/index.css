@@ -311,3 +311,23 @@ code {
   mask-composite: exclude;
   pointer-events: none;
 }
+
+/* 流光标签页动画 */
+.streaming-tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--primary)) 20%,
+    hsl(var(--primary) / 0.8) 40%,
+    hsl(var(--primary)) 60%,
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}

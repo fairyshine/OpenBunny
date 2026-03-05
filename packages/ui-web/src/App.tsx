@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import ChatContainer from './components/chat/ChatContainer';
+import SessionTabs from './components/chat/SessionTabs';
 import Sidebar from './components/sidebar/Sidebar';
 import Header from './components/layout/Header';
 import WelcomeScreen from './components/layout/WelcomeScreen';
@@ -175,12 +176,17 @@ function App() {
                   onSave={handleSaveFile}
                 />
               </Suspense>
-            ) : currentSession ? (
-              <ChatContainer sessionId={currentSession.id} />
             ) : (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                <p>{t('chat.noSessionHint')}</p>
-              </div>
+              <>
+                <SessionTabs />
+                {currentSession ? (
+                  <ChatContainer sessionId={currentSession.id} />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                    <p>{t('chat.noSessionHint')}</p>
+                  </div>
+                )}
+              </>
             )}
           </main>
         </div>
