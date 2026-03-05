@@ -20,6 +20,7 @@ interface SessionState {
   updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => void;
   setLLMConfig: (config: Partial<LLMConfig>) => void;
   clearAllSessions: () => void;
+  setSessionStreaming: (sessionId: string, isStreaming: boolean) => void;
 }
 
 // Selector to get current session (derived from sessions + currentSessionId)
@@ -162,6 +163,14 @@ export const useSessionStore = create<SessionState>()(
 
       clearAllSessions: () => {
         set({ sessions: [], currentSessionId: null });
+      },
+
+      setSessionStreaming: (sessionId: string, isStreaming: boolean) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, isStreaming } : s
+          ),
+        }));
       },
     }),
     {

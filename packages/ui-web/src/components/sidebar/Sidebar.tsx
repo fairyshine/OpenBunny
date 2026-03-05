@@ -215,11 +215,11 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                               }
                             }}
                             onDoubleClick={() => startRename(session.id, session.name)}
-                            className={`group flex items-center justify-between p-3 rounded-md cursor-pointer transition-all ${
+                            className={`group relative flex items-center justify-between p-3 rounded-md cursor-pointer transition-all ${
                               currentSession?.id === session.id
                                 ? 'bg-foreground/5 border border-foreground/10'
                                 : 'hover:bg-muted/50 border border-transparent'
-                            }`}
+                            } ${session.isStreaming ? 'streaming-border' : ''}`}
                           >
                             <div className="flex-1 min-w-0">
                               {editingId === session.id ? (

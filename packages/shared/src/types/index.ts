@@ -69,4 +69,5 @@ export interface Session {
   createdAt: number;
   updatedAt: number;
   deletedAt?: number;
+  isStreaming?: boolean; // 是否正在进行对话
 }

@@ -272,3 +272,42 @@ code {
 .border-elegant-hover:hover {
   border-color: hsl(var(--foreground) / 0.2);
 }
+
+/* 流光边框动画 */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.streaming-border {
+  position: relative;
+  overflow: hidden;
+}
+
+.streaming-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--primary)) 20%,
+    hsl(var(--primary) / 0.8) 40%,
+    hsl(var(--primary)) 60%,
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}

@@ -42,6 +42,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     }
     setIsLoading(false);
     setCurrentStatus('');
+    useSessionStore.getState().setSessionStreaming(sessionId, false);
     addMessage(sessionId, {
       id: crypto.randomUUID(),
       role: 'assistant',
@@ -86,6 +87,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
 
     setIsLoading(true);
     setCurrentStatus('');
+    useSessionStore.getState().setSessionStreaming(sessionId, true);
     logLLM('info', `User message: ${content.trim().slice(0, 100)}${content.length > 100 ? '...' : ''}`);
 
     try {
@@ -110,6 +112,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     } finally {
       setIsLoading(false);
       setCurrentStatus('');
+      useSessionStore.getState().setSessionStreaming(sessionId, false);
     }
   };
 
