@@ -8,10 +8,10 @@
     "build": "tsc && vite build && electron-builder",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "package": "electron-builder --dir",
-    "package:mac": "electron-builder --mac",
-    "package:win": "electron-builder --win",
-    "package:linux": "electron-builder --linux"
+    "package": "tsc && vite build && electron-builder --dir",
+    "package:mac": "tsc && vite build && electron-builder --mac",
+    "package:win": "tsc && vite build && electron-builder --win",
+    "package:linux": "tsc && vite build && electron-builder --linux"
   },
   "dependencies": {
     "@cyberbunny/shared": "workspace:*",
