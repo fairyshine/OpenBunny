@@ -28,8 +28,6 @@ function App() {
   const theme = useSettingsStore(s => s.theme);
   const enableSessionTabs = useSettingsStore(s => s.enableSessionTabs);
   const loadSkills = useSkillStore(s => s.loadSkills);
-  const [showWelcome, setShowWelcome] = useState(!currentSession);
-  const [showStatusScreen, setShowStatusScreen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [showConsole, setShowConsole] = useState(false);
@@ -62,30 +60,6 @@ function App() {
 
   // 初始化
   useEffect(() => {
-    if (enableSessionTabs) {
-      // 标签栏模式：如果没有打开的会话标签，显示状态页
-      if (openSessionIds.length === 0 && sessions.length === 0) {
-        setShowWelcome(true);
-        setShowStatusScreen(false);
-      } else if (openSessionIds.length === 0 && sessions.length > 0) {
-        // 有会话但没有打开的标签，显示状态页（不显示开始按钮）
-        setShowWelcome(false);
-        setShowStatusScreen(true);
-      } else {
-        setShowWelcome(false);
-        setShowStatusScreen(false);
-      }
-    } else {
-      // 传统模式：如果没有当前会话，显示欢迎页
-      if (!currentSession) {
-        setShowWelcome(true);
-        setShowStatusScreen(false);
-      } else {
-        setShowWelcome(false);
-        setShowStatusScreen(false);
-      }
-    }
-
     // 预加载 Python 环境
     if (initializePython) {
       pythonExecutor.initialize().catch(console.error);
@@ -93,7 +67,7 @@ function App() {
 
     // 初始化 Skills
     loadSkills();
-  }, [enableSessionTabs, openSessionIds.length, sessions.length, currentSession, initializePython, loadSkills]);
+  }, [initializePython, loadSkills]);
 
   // 初始化全局快捷键系统
   useEffect(() => {
@@ -124,7 +98,6 @@ function App() {
 
   const handleStart = () => {
     createSession(t('header.newSession'));
-    setShowWelcome(false);
   };
 
   const handleSelectFile = (path: string) => {
@@ -145,31 +118,30 @@ function App() {
     }
   };
 
-  if (showWelcome) {
-    return (
-      <div className="h-screen flex flex-col bg-background">
-        <Header
-          onToggleConsole={() => setShowConsole(v => !v)}
-          onToggleSidebar={() => setIsSidebarOpen(v => !v)}
-        />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex overflow-hidden">
-            <Sidebar
-              onSelectFile={handleSelectFile}
-              isOpen={isSidebarOpen}
-              onClose={() => setIsSidebarOpen(false)}
-            />
-            <StatusScreen onStart={handleStart} showStartButton={true} />
-          </div>
-          <Suspense fallback={<div />}>
-            <ConsolePanel isOpen={showConsole} onClose={() => setShowConsole(false)} />
-          </Suspense>
-        </div>
-      </div>
-    );
-  }
+  // 判断是否应该显示状态页
+  const shouldShowStatusScreen = () => {
+    if (enableSessionTabs) {
+      // 标签栏模式：没有打开的标签时显示状态页
+      return openSessionIds.length === 0;
+    } else {
+      // 传统模式：没有当前会话时显示状态页
+      return !currentSession;
+    }
+  };
 
-  if (showStatusScreen) {
+  // 判断状态页是否显示开始按钮
+  const shouldShowStartButton = () => {
+    if (enableSessionTabs) {
+      // 标签栏模式：没有任何会话时显示开始按钮
+      return sessions.length === 0;
+    } else {
+      // 传统模式：总是显示开始按钮
+      return true;
+    }
+  };
+
+  // 如果应该显示状态页，直接返回状态页
+  if (shouldShowStatusScreen() && !selectedFile) {
     return (
       <div className="h-screen flex flex-col bg-background">
         <Header
@@ -183,7 +155,7 @@ function App() {
               isOpen={isSidebarOpen}
               onClose={() => setIsSidebarOpen(false)}
             />
-            <StatusScreen onStart={handleStart} showStartButton={false} />
+            <StatusScreen onStart={handleStart} showStartButton={shouldShowStartButton()} />
           </div>
           <Suspense fallback={<div />}>
             <ConsolePanel isOpen={showConsole} onClose={() => setShowConsole(false)} />
@@ -227,22 +199,18 @@ function App() {
               <>
                 {enableSessionTabs && <SessionTabs />}
                 {enableSessionTabs ? (
-                  openSessionIds.length > 0 ? (
-                    <div className="flex-1 relative overflow-hidden">
-                      {openSessionIds.map((sessionId) => (
-                        <div
-                          key={sessionId}
-                          className={`absolute inset-0 ${
-                            currentSession?.id === sessionId ? 'block' : 'hidden'
-                          }`}
-                        >
-                          <ChatContainer sessionId={sessionId} />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <StatusScreen onStart={handleStart} showStartButton={sessions.length === 0} />
-                  )
+                  <div className="flex-1 relative overflow-hidden">
+                    {openSessionIds.map((sessionId) => (
+                      <div
+                        key={sessionId}
+                        className={`absolute inset-0 ${
+                          currentSession?.id === sessionId ? 'block' : 'hidden'
+                        }`}
+                      >
+                        <ChatContainer sessionId={sessionId} />
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   currentSession ? (
                     <ChatContainer sessionId={currentSession.id} />
