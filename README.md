@@ -4,10 +4,7 @@ A cross-platform personal AI assistant that runs on multiple platforms (browser,
 
 ## 🚀 Quick Start
 
-1. Visit [https://fairyshine.github.io/CyberBunny/](https://fairyshine.github.io/CyberBunny/)
-2. Enter your LLM API Key in Settings > LLM
-3. Deploy a CORS proxy Worker in Settings > General and fill in the proxy URL
-4. Enjoy!
+Visit [https://fairyshine.github.io/CyberBunny/](https://fairyshine.github.io/CyberBunny/) and enjoy !
 
 ## ✨ Features
 
