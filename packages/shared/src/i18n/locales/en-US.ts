@@ -39,6 +39,24 @@ const enUS = {
   'welcome.badge.calc': 'Math Calculation',
   'welcome.badge.file': 'File Operations',
 
+  // Status Screen
+  'status.subtitle': 'Browser-based Intelligent Agent System',
+  'status.startButton': 'Get Started',
+  'status.configHint': 'Configure your API Key in Settings to unlock full features',
+  'status.quickStart': 'Quick Start',
+  'status.feature.python.title': 'Python Execution',
+  'status.feature.python.desc': 'In-browser Python runtime with scientific computing libraries',
+  'status.feature.search.title': 'Web Search',
+  'status.feature.search.desc': 'Quickly retrieve web information and real-time news',
+  'status.feature.calc.title': 'Smart Calculation',
+  'status.feature.calc.desc': 'Math computation and data analysis capabilities',
+  'status.feature.file.title': 'File Management',
+  'status.feature.file.desc': 'Sandboxed file system, safe and reliable',
+  'status.badge.python': 'Python Execution',
+  'status.badge.search': 'Web Search',
+  'status.badge.calc': 'Math Calculation',
+  'status.badge.file': 'File Operations',
+
   // Settings
   'settings.title': 'Settings',
   'settings.tabs.llm': 'LLM',

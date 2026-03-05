@@ -4,7 +4,7 @@ import ChatContainer from './components/chat/ChatContainer';
 import SessionTabs from './components/chat/SessionTabs';
 import Sidebar from './components/sidebar/Sidebar';
 import Header from './components/layout/Header';
-import WelcomeScreen from './components/layout/WelcomeScreen';
+import StatusScreen from './components/layout/StatusScreen';
 import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
 import { useSettingsStore } from '@shared/stores/settings';
 import { useSkillStore } from '@shared/stores/skills';
@@ -29,6 +29,7 @@ function App() {
   const enableSessionTabs = useSettingsStore(s => s.enableSessionTabs);
   const loadSkills = useSkillStore(s => s.loadSkills);
   const [showWelcome, setShowWelcome] = useState(!currentSession);
+  const [showStatusScreen, setShowStatusScreen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [showConsole, setShowConsole] = useState(false);
@@ -62,21 +63,26 @@ function App() {
   // 初始化
   useEffect(() => {
     if (enableSessionTabs) {
-      // 标签栏模式：如果没有打开的会话标签，显示欢迎页
+      // 标签栏模式：如果没有打开的会话标签，显示状态页
       if (openSessionIds.length === 0 && sessions.length === 0) {
         setShowWelcome(true);
+        setShowStatusScreen(false);
       } else if (openSessionIds.length === 0 && sessions.length > 0) {
-        // 有会话但没有打开的标签，不显示欢迎页
+        // 有会话但没有打开的标签，显示状态页（不显示开始按钮）
         setShowWelcome(false);
+        setShowStatusScreen(true);
       } else {
         setShowWelcome(false);
+        setShowStatusScreen(false);
       }
     } else {
       // 传统模式：如果没有当前会话，显示欢迎页
       if (!currentSession) {
         setShowWelcome(true);
+        setShowStatusScreen(false);
       } else {
         setShowWelcome(false);
+        setShowStatusScreen(false);
       }
     }
 
@@ -153,7 +159,31 @@ function App() {
               isOpen={isSidebarOpen}
               onClose={() => setIsSidebarOpen(false)}
             />
-            <WelcomeScreen onStart={handleStart} />
+            <StatusScreen onStart={handleStart} showStartButton={true} />
+          </div>
+          <Suspense fallback={<div />}>
+            <ConsolePanel isOpen={showConsole} onClose={() => setShowConsole(false)} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  if (showStatusScreen) {
+    return (
+      <div className="h-screen flex flex-col bg-background">
+        <Header
+          onToggleConsole={() => setShowConsole(v => !v)}
+          onToggleSidebar={() => setIsSidebarOpen(v => !v)}
+        />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex overflow-hidden">
+            <Sidebar
+              onSelectFile={handleSelectFile}
+              isOpen={isSidebarOpen}
+              onClose={() => setIsSidebarOpen(false)}
+            />
+            <StatusScreen onStart={handleStart} showStartButton={false} />
           </div>
           <Suspense fallback={<div />}>
             <ConsolePanel isOpen={showConsole} onClose={() => setShowConsole(false)} />

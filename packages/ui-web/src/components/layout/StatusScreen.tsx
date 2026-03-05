@@ -5,34 +5,35 @@ import { Card, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { FileCode, Globe, Calculator, FolderOpen } from '../icons';
 
-interface WelcomeScreenProps {
+interface StatusScreenProps {
   onStart: () => void;
+  showStartButton?: boolean;
 }
 
-export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
+export default function StatusScreen({ onStart, showStartButton = true }: StatusScreenProps) {
   const { t } = useTranslation();
   const [, setStep] = useState(0);
 
   const features: { icon: ReactNode; title: string; description: string }[] = [
     {
       icon: <FileCode className="w-7 h-7" />,
-      title: t('welcome.feature.python.title'),
-      description: t('welcome.feature.python.desc'),
+      title: t('status.feature.python.title'),
+      description: t('status.feature.python.desc'),
     },
     {
       icon: <Globe className="w-7 h-7" />,
-      title: t('welcome.feature.search.title'),
-      description: t('welcome.feature.search.desc'),
+      title: t('status.feature.search.title'),
+      description: t('status.feature.search.desc'),
     },
     {
       icon: <Calculator className="w-7 h-7" />,
-      title: t('welcome.feature.calc.title'),
-      description: t('welcome.feature.calc.desc'),
+      title: t('status.feature.calc.title'),
+      description: t('status.feature.calc.desc'),
     },
     {
       icon: <FolderOpen className="w-7 h-7" />,
-      title: t('welcome.feature.file.title'),
-      description: t('welcome.feature.file.desc'),
+      title: t('status.feature.file.title'),
+      description: t('status.feature.file.desc'),
     },
   ];
 
@@ -54,7 +55,7 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
             CyberBunny
           </h1>
           <p className="text-base text-muted-foreground max-w-md mx-auto leading-relaxed">
-            {t('welcome.subtitle')}
+            {t('status.subtitle')}
           </p>
         </div>
 
@@ -79,36 +80,38 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
         </div>
 
         {/* CTA */}
-        <div className="text-center space-y-4">
-          <Button
-            onClick={handleStart}
-            size="lg"
-            className="px-10 py-6 text-base font-medium shadow-elegant-lg hover-lift"
-          >
-            {t('welcome.startButton')}
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            {t('welcome.configHint')}
-          </p>
-        </div>
+        {showStartButton && (
+          <div className="text-center space-y-4">
+            <Button
+              onClick={handleStart}
+              size="lg"
+              className="px-10 py-6 text-base font-medium shadow-elegant-lg hover-lift"
+            >
+              {t('status.startButton')}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              {t('status.configHint')}
+            </p>
+          </div>
+        )}
 
         {/* Quick Tips */}
-        <div className="mt-12 p-6 rounded-lg border-elegant bg-muted/30">
+        <div className={`${showStartButton ? 'mt-12' : 'mt-0'} p-6 rounded-lg border-elegant bg-muted/30`}>
           <p className="text-sm font-medium mb-3 text-foreground">
-            {t('welcome.quickStart')}
+            {t('status.quickStart')}
           </p>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="font-mono text-xs border-elegant">
-              {t('welcome.badge.python')}
+              {t('status.badge.python')}
             </Badge>
             <Badge variant="outline" className="font-mono text-xs border-elegant">
-              {t('welcome.badge.search')}
+              {t('status.badge.search')}
             </Badge>
             <Badge variant="outline" className="font-mono text-xs border-elegant">
-              {t('welcome.badge.calc')}
+              {t('status.badge.calc')}
             </Badge>
             <Badge variant="outline" className="font-mono text-xs border-elegant">
-              {t('welcome.badge.file')}
+              {t('status.badge.file')}
             </Badge>
           </div>
         </div>

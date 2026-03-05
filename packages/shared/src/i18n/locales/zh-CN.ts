@@ -39,6 +39,24 @@ const zhCN = {
   'welcome.badge.calc': '数学计算',
   'welcome.badge.file': '文件操作',
 
+  // Status Screen
+  'status.subtitle': '浏览器端智能代理系统',
+  'status.startButton': '开始使用',
+  'status.configHint': '在设置中配置 API Key 后即可使用完整功能',
+  'status.quickStart': '快速开始',
+  'status.feature.python.title': 'Python 执行',
+  'status.feature.python.desc': '浏览器内 Python 运行时，支持科学计算库',
+  'status.feature.search.title': '网页搜索',
+  'status.feature.search.desc': '快速获取网络信息和实时资讯',
+  'status.feature.calc.title': '智能计算',
+  'status.feature.calc.desc': '数学计算和数据分析能力',
+  'status.feature.file.title': '文件管理',
+  'status.feature.file.desc': '沙盒文件系统，安全可靠',
+  'status.badge.python': 'Python 代码执行',
+  'status.badge.search': '网页搜索',
+  'status.badge.calc': '数学计算',
+  'status.badge.file': '文件操作',
+
   // Settings
   'settings.title': '设置',
   'settings.tabs.llm': '大模型',

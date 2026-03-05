@@ -24,7 +24,7 @@ export { default as ConnectionTest } from './components/settings/ConnectionTest'
 export { default as Header } from './components/layout/Header';
 export { default as ToolBar } from './components/layout/ToolBar';
 export { default as ConsolePanel } from './components/layout/ConsolePanel';
-export { default as WelcomeScreen } from './components/layout/WelcomeScreen';
+export { default as StatusScreen } from './components/layout/StatusScreen';
 export { ThemeToggle } from './components/layout/ThemeToggle';
 
 // Components - Memory
