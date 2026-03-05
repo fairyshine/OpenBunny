@@ -68,7 +68,8 @@
       "Bash(done)",
       "Bash(node:*)",
       "Bash(rm:*)",
-      "Bash(do echo:*)"
+      "Bash(do echo:*)",
+      "Bash(hdiutil info:*)"
     ]
   }
 }

@@ -6,6 +6,8 @@ A cross-platform personal AI assistant that runs on multiple platforms (browser,
 
 Visit [https://fairyshine.github.io/CyberBunny/](https://fairyshine.github.io/CyberBunny/) and enjoy !
 
+Deepseek API has been verified well.
+
 ## ✨ Features
 
 - 🌐 **Multi-platform** - Browser / Electron / React Native / CLI / TUI
@@ -65,36 +67,6 @@ pnpm typecheck
 
 ```bash
 pnpm lint
-```
-
-### Adding a New Platform
-
-1. Create `packages/your-platform/`
-2. Implement the platform adapter in `src/platform/adapter.ts`
-3. Initialize the platform context with `setPlatformContext()`
-4. Update `packages/shared/src/platform/types.ts`
-
-## 📝 Available Commands
-
-```bash
-# Development
-pnpm dev              # Web dev server
-pnpm dev:desktop      # Electron dev
-pnpm dev:tui          # TUI dev
-
-# Build
-pnpm build            # Build Web
-pnpm build:desktop    # Build Electron
-pnpm build:cli        # Build CLI
-pnpm build:tui        # Build TUI
-
-# Package
-pnpm package:desktop  # Package desktop app
-
-# Tools
-pnpm typecheck        # Type check all packages
-pnpm lint             # Lint code
-pnpm preview          # Preview Web build
 ```
 
 ## 🔒 Privacy & Security

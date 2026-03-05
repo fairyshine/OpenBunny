@@ -12,7 +12,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.mjs'),
       nodeIntegration: false,
       contextIsolation: true,
     },
@@ -23,8 +23,18 @@ function createWindow() {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    const indexPath = path.join(__dirname, '../dist/index.html');
+    console.log('[Main] Loading:', indexPath);
+    mainWindow.loadFile(indexPath);
   }
+
+  // Debug: capture renderer errors
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc) => {
+    console.error('[Main] did-fail-load:', code, desc);
+  });
+  mainWindow.webContents.on('console-message', (_e, _level, message) => {
+    console.log('[Renderer]', message);
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
