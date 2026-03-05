@@ -7,23 +7,26 @@ files:
   - dist
   - dist-electron
 mac:
+  icon: build/icon.icns
   artifactName: ${productName}-${version}-${arch}.${ext}
   target:
     - target: dmg
       arch:
-        - x64
+        # - x64
         - arm64
-    - target: zip
-      arch:
-        - x64
-        - arm64
+    # - target: zip
+    #   arch:
+    #     - x64
+    #     - arm64
 win:
+  icon: build/icon.ico
   artifactName: ${productName}-${version}-setup.${ext}
   target:
     - target: nsis
       arch:
         - x64
 linux:
+  icon: build/icon.png
   artifactName: ${productName}-${version}.${ext}
   target:
     - target: AppImage
