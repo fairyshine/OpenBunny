@@ -27,11 +27,12 @@ declare global {
   }
 }
 
-// Electron storage implementation (via IPC)
+// Electron storage implementation - use native localStorage (Chromium built-in)
+// No need for IPC storage since Electron has localStorage
 const electronStorage: IPlatformStorage = {
-  getItem: (key: string) => window.electronAPI.storage.getItem(key),
-  setItem: (key: string, value: string) => window.electronAPI.storage.setItem(key, value),
-  removeItem: (key: string) => window.electronAPI.storage.removeItem(key),
+  getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
+  setItem: (key: string, value: string) => Promise.resolve(localStorage.setItem(key, value)),
+  removeItem: (key: string) => Promise.resolve(localStorage.removeItem(key)),
 };
 
 // Electron file system implementation (via IPC)
