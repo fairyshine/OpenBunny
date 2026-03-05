@@ -125,6 +125,14 @@ export async function runAgentLoop(
           lastChunkLogTime = now;
         }
 
+        // Log tool-call chunks for debugging
+        if (chunk.type === 'tool-call') {
+          console.log('[Agent] Tool call chunk received:', {
+            toolCallId: chunk.toolCallId,
+            toolName: chunk.toolName,
+          });
+        }
+
         // Create step message on first text-delta if not yet created
         if (chunk.type === 'text-delta') {
           if (!currentStepMessageId) {
@@ -154,6 +162,7 @@ export async function runAgentLoop(
           toolCallsCount: toolCalls?.length || 0,
           toolResultsCount: toolResults?.length || 0,
           finishReason,
+          stepCount,
         });
         logLLM('info', `Agent loop - step ${stepCount} finished, text: ${text ? text.slice(0, 50) : 'none'}, toolCalls: ${toolCalls?.length || 0}, finishReason: ${finishReason}`);
 
@@ -165,10 +174,23 @@ export async function runAgentLoop(
           });
         }
 
-        if (toolCalls && toolCalls.length > 0 && toolResults) {
+        if (toolCalls && toolCalls.length > 0) {
+          console.log('[Agent] Processing tool calls:', toolCalls.length);
+
+          if (!toolResults || toolResults.length === 0) {
+            console.warn('[Agent] WARNING: toolCalls present but no toolResults!');
+            logLLM('warning', 'Tool calls present but no tool results');
+          }
+
           for (let i = 0; i < toolCalls.length; i++) {
             const tc = toolCalls[i];
-            const tr = toolResults[i];
+            const tr = toolResults?.[i];
+
+            console.log(`[Agent] Processing tool call ${i + 1}/${toolCalls.length}:`, {
+              toolName: tc.toolName,
+              toolCallId: tc.toolCallId,
+              hasResult: !!tr,
+            });
 
             logTool('info', `Tool call: ${tc.toolName}`, {
               input: JSON.stringify(tc.input).slice(0, 200),
@@ -191,31 +213,39 @@ export async function runAgentLoop(
 
             callbacks.setStatus(t('chat.executing', { toolName: tc.toolName }));
 
-            const resultContent = typeof tr.output === 'string' ? tr.output : JSON.stringify(tr.output);
-            const toolResultMsgId = callbacks.generateId();
+            if (tr) {
+              const resultContent = typeof tr.output === 'string' ? tr.output : JSON.stringify(tr.output);
+              const toolResultMsgId = callbacks.generateId();
 
-            // Display tool result immediately (no streaming delay)
-            callbacks.addMessage(sessionId, {
-              id: toolResultMsgId,
-              role: 'tool',
-              content: resultContent,
-              timestamp: Date.now(),
-              type: 'tool_result',
-              toolName: tc.toolName,
-              toolOutput: resultContent,
-              toolCallId: tc.toolCallId,
-              groupId,
-            });
+              console.log(`[Agent] Adding tool result for ${tc.toolName}, length:`, resultContent.length);
 
-            logTool('success', `Tool ${tc.toolName} completed`, { resultLength: resultContent.length });
+              // Display tool result immediately (no streaming delay)
+              callbacks.addMessage(sessionId, {
+                id: toolResultMsgId,
+                role: 'tool',
+                content: resultContent,
+                timestamp: Date.now(),
+                type: 'tool_result',
+                toolName: tc.toolName,
+                toolOutput: resultContent,
+                toolCallId: tc.toolCallId,
+                groupId,
+              });
+
+              logTool('success', `Tool ${tc.toolName} completed`, { resultLength: resultContent.length });
+            } else {
+              console.error(`[Agent] No result for tool call ${tc.toolName}`);
+            }
           }
 
           callbacks.setStatus('');
+          console.log('[Agent] Finished processing all tool calls');
         }
 
         // Reset for next step
         currentStepMessageId = null;
         currentStepContent = '';
+        console.log('[Agent] Step finished, reset for next step');
       },
     });
 
