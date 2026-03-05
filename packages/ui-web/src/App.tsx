@@ -32,6 +32,7 @@ function App() {
   const [fileContent, setFileContent] = useState<string>('');
   const [showConsole, setShowConsole] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showStatusPage, setShowStatusPage] = useState(false);
 
   // Apply theme on mount
   useEffect(() => {
@@ -98,15 +99,13 @@ function App() {
 
   const handleStart = () => {
     createSession(t('header.newSession'));
+    setShowStatusPage(false);
   };
 
   const handleLogoClick = () => {
-    // 关闭所有打开的标签，进入状态页
     if (enableSessionTabs) {
-      // 标签栏模式：关闭所有打开的标签
-      openSessionIds.forEach(id => {
-        useSessionStore.getState().closeSession(id);
-      });
+      // 标签栏模式：切换状态页显示
+      setShowStatusPage(prev => !prev);
     } else {
       // 传统模式：清除当前会话
       useSessionStore.getState().setCurrentSession('');
@@ -136,8 +135,8 @@ function App() {
   // 判断是否应该显示状态页
   const shouldShowStatusScreen = () => {
     if (enableSessionTabs) {
-      // 标签栏模式：没有打开的标签时显示状态页
-      return openSessionIds.length === 0;
+      // 标签栏模式：手动控制或没有打开的标签时显示状态页
+      return showStatusPage || openSessionIds.length === 0;
     } else {
       // 传统模式：没有当前会话时显示状态页
       return !currentSession;
