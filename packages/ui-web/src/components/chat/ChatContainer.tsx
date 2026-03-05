@@ -25,7 +25,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
   const [currentStatus, setCurrentStatus] = useState<string>('');
   const [showExportDialog, setShowExportDialog] = useState(false);
   const { sessions, addMessage, updateMessage, llmConfig } = useSessionStore();
-  const { enabledTools, proxyUrl } = useSettingsStore();
+  const { enabledTools, proxyUrl, toolExecutionTimeout } = useSettingsStore();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const session = sessions.find((s) => s.id === sessionId);
@@ -55,6 +55,16 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     updateMessage,
     setStatus: setCurrentStatus,
     generateId: () => crypto.randomUUID(),
+    streamToolOutput: (sessionId, msgId, chunk) => {
+      const session = useSessionStore.getState().sessions.find(s => s.id === sessionId);
+      if (!session) return;
+      const message = session.messages.find(m => m.id === msgId);
+      if (!message) return;
+      updateMessage(sessionId, msgId, {
+        content: (message.content || '') + chunk,
+        toolOutput: (message.toolOutput || '') + chunk,
+      });
+    },
   };
 
   const handleSendMessage = async (content: string) => {
@@ -86,7 +96,8 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
         enabledTools,
         callbacks,
         t,
-        proxyUrl
+        proxyUrl,
+        toolExecutionTimeout
       );
     } catch (error) {
       console.error('Error:', error);

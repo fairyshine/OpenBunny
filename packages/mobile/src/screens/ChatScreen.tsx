@@ -23,7 +23,7 @@ export default function ChatScreen() {
   const { sessionId } = route.params;
 
   const { sessions, addMessage, updateMessage, llmConfig } = useSessionStore();
-  const { enabledTools, proxyUrl } = useSettingsStore();
+  const { enabledTools, proxyUrl, toolExecutionTimeout } = useSettingsStore();
   const session = sessions.find((s) => s.id === sessionId);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +54,16 @@ export default function ChatScreen() {
     updateMessage,
     setStatus: setCurrentStatus,
     generateId: () => crypto.randomUUID(),
+    streamToolOutput: (sessionId, msgId, chunk) => {
+      const session = useSessionStore.getState().sessions.find(s => s.id === sessionId);
+      if (!session) return;
+      const message = session.messages.find(m => m.id === msgId);
+      if (!message) return;
+      updateMessage(sessionId, msgId, {
+        content: (message.content || '') + chunk,
+        toolOutput: (message.toolOutput || '') + chunk,
+      });
+    },
   };
 
   const handleSend = async (content: string) => {
@@ -90,7 +100,8 @@ export default function ChatScreen() {
         enabledTools,
         callbacks,
         t,
-        proxyUrl
+        proxyUrl,
+        toolExecutionTimeout
       );
     } catch (error) {
       console.error('[Chat] Agent loop error:', error);

@@ -38,6 +38,10 @@ interface SettingsState {
   execLoginShell: boolean;
   setExecLoginShell: (value: boolean) => void;
 
+  // Tool execution settings
+  toolExecutionTimeout: number;
+  setToolExecutionTimeout: (timeout: number) => void;
+
   // UI settings
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -78,6 +82,12 @@ export const useSettingsStore = create<SettingsState>()(
       setExecLoginShell: (value) => {
         logSettings('info', `Exec login shell: ${value ? 'enabled' : 'disabled'}`);
         set({ execLoginShell: value });
+      },
+
+      toolExecutionTimeout: 300000, // 5 minutes default
+      setToolExecutionTimeout: (timeout) => {
+        logSettings('info', `Tool execution timeout: ${timeout}ms`);
+        set({ toolExecutionTimeout: timeout });
       },
 
       theme: 'system',

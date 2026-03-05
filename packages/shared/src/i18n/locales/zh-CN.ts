@@ -275,6 +275,8 @@ export default {
   'tools.exec.desktopOnly': 'Shell 执行仅在桌面端（macOS / Linux）可用',
   'settings.execLoginShell': '加载用户配置文件',
   'settings.execLoginShellDesc': '启动 Shell 时加载 ~/.zshrc 或 ~/.bashrc，使 Homebrew 等工具可用',
+  'settings.toolTimeout': '工具执行超时时间',
+  'settings.toolTimeoutHint': '工具执行的最大等待时间（毫秒），默认 5 分钟。如果工具持续输出结果，会自动延长等待时间。',
 
   // Connection Test
   'connTest.configInfo': '=== 配置信息 ===',

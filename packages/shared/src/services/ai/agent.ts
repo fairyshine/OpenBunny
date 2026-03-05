@@ -18,6 +18,7 @@ export interface AgentCallbacks {
   updateMessage(sessionId: string, msgId: string, updates: Partial<Message>): void;
   setStatus(status: string): void;
   generateId(): string;
+  streamToolOutput?(sessionId: string, msgId: string, chunk: string): void;
 }
 
 /**
@@ -30,7 +31,8 @@ export async function runAgentLoop(
   enabledTools: string[],
   callbacks: AgentCallbacks,
   t: TFunction,
-  proxyUrl?: string
+  proxyUrl?: string,
+  _toolTimeout?: number
 ): Promise<void> {
   // Validate configuration
   if (!llmConfig.apiKey) {
@@ -111,7 +113,7 @@ export async function runAgentLoop(
           });
         }
       },
-      onStepFinish: ({ text, toolCalls, toolResults }) => {
+      onStepFinish: async ({ text, toolCalls, toolResults }) => {
         logLLM('info', `Agent loop - step ${stepCount} finished`);
 
         // Finalize the current step's text message
@@ -143,23 +145,43 @@ export async function runAgentLoop(
               toolInput: JSON.stringify(tc.input, null, 2),
               toolCallId: tc.toolCallId,
               groupId,
-              metadata: { toolDescription },
+              metadata: { toolDescription, streaming: true },
             });
 
             callbacks.setStatus(t('chat.executing', { toolName: tc.toolName }));
 
             const resultContent = typeof tr.output === 'string' ? tr.output : JSON.stringify(tr.output);
             const toolResultMsgId = callbacks.generateId();
+
+            // Create tool result message with streaming flag
             callbacks.addMessage(sessionId, {
               id: toolResultMsgId,
               role: 'tool',
-              content: resultContent,
+              content: '',
               timestamp: Date.now(),
               type: 'tool_result',
               toolName: tc.toolName,
-              toolOutput: resultContent,
+              toolOutput: '',
               toolCallId: tc.toolCallId,
               groupId,
+              metadata: { streaming: true },
+            });
+
+            // Stream the result content character by character
+            if (callbacks.streamToolOutput) {
+              const chunkSize = 50; // Characters per chunk
+              for (let pos = 0; pos < resultContent.length; pos += chunkSize) {
+                const chunk = resultContent.slice(pos, pos + chunkSize);
+                callbacks.streamToolOutput(sessionId, toolResultMsgId, chunk);
+                await new Promise(resolve => setTimeout(resolve, 10)); // Small delay for visual effect
+              }
+            }
+
+            // Finalize the tool result message
+            callbacks.updateMessage(sessionId, toolResultMsgId, {
+              content: resultContent,
+              toolOutput: resultContent,
+              metadata: { streaming: false },
             });
 
             logTool('success', `Tool ${tc.toolName} completed`, { resultLength: resultContent.length });

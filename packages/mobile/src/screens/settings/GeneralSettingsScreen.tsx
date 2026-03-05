@@ -8,7 +8,16 @@ import type { Theme, Language } from '@shared/stores/settings';
 
 export default function GeneralSettingsScreen() {
   const { t } = useTranslation();
-  const { theme, setTheme, language, setLanguage, proxyUrl, setProxyUrl } = useSettingsStore();
+  const {
+    theme,
+    setTheme,
+    language,
+    setLanguage,
+    proxyUrl,
+    setProxyUrl,
+    toolExecutionTimeout,
+    setToolExecutionTimeout
+  } = useSettingsStore();
 
   return (
     <ScrollView style={styles.container}>
@@ -69,6 +78,28 @@ export default function GeneralSettingsScreen() {
               {t('settings.proxyDeploy')}
             </Button>
           </View>
+        </View>
+      </List.Section>
+
+      <Divider />
+
+      <List.Section>
+        <List.Subheader>{t('settings.toolTimeout')}</List.Subheader>
+        <View style={styles.inputContainer}>
+          <TextInput
+            mode="outlined"
+            value={String(toolExecutionTimeout)}
+            onChangeText={(text) => {
+              const value = parseInt(text) || 300000;
+              setToolExecutionTimeout(Math.max(10000, Math.min(1800000, value)));
+            }}
+            keyboardType="numeric"
+            dense
+            right={<TextInput.Affix text={`${Math.floor(toolExecutionTimeout / 1000)}s`} />}
+          />
+          <Text variant="bodySmall" style={styles.hint}>
+            {t('settings.toolTimeoutHint')}
+          </Text>
         </View>
       </List.Section>
 

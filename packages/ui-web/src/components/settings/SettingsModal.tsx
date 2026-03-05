@@ -27,7 +27,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     language,
     setLanguage,
     proxyUrl,
-    setProxyUrl
+    setProxyUrl,
+    toolExecutionTimeout,
+    setToolExecutionTimeout
   } = useSettingsStore();
 
   return (
@@ -85,11 +87,14 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       const allModels = models.includes(llmConfig.model)
                         ? models
                         : [llmConfig.model, ...models];
-                      return allModels.map((m: string) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ));
+                      // Filter out empty strings to avoid Select.Item error
+                      return allModels
+                        .filter((m: string) => m && m.trim())
+                        .map((m: string) => (
+                          <SelectItem key={m} value={m}>
+                            {m}
+                          </SelectItem>
+                        ));
                     })()}
                   </SelectContent>
                 </Select>
@@ -225,6 +230,26 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </a>
                 </div>
                 <p className="text-xs text-muted-foreground">{t('settings.proxyHint')}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="toolTimeout" className="text-sm font-medium">{t('settings.toolTimeout')}</Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="toolTimeout"
+                    type="number"
+                    min="10000"
+                    max="1800000"
+                    step="1000"
+                    value={toolExecutionTimeout}
+                    onChange={(e) => setToolExecutionTimeout(parseInt(e.target.value) || 300000)}
+                    className="h-10"
+                  />
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {Math.floor(toolExecutionTimeout / 1000)}s
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">{t('settings.toolTimeoutHint')}</p>
               </div>
 
               <Separator />

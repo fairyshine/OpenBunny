@@ -50,12 +50,18 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
   // Tool result message
   if (message.type === 'tool_result') {
+    const isStreaming = message.metadata?.streaming === true;
     return (
       <View style={[styles.container, styles.assistantContainer]}>
         <View style={[styles.toolBubble, { backgroundColor: theme.colors.tertiaryContainer || theme.colors.surfaceVariant }]}>
           <List.Accordion
             title={`${message.toolName || 'Tool'} Result`}
             left={(props) => <List.Icon {...props} icon="check-circle-outline" />}
+            right={(props) => isStreaming ? (
+              <View style={styles.streamingIndicator}>
+                <Text style={{ fontSize: 8, color: theme.colors.primary }}>●</Text>
+              </View>
+            ) : undefined}
             expanded={expanded}
             onPress={() => setExpanded(!expanded)}
             style={{ backgroundColor: 'transparent', padding: 0 }}
@@ -181,5 +187,10 @@ const styles = StyleSheet.create({
   codeText: {
     fontFamily: 'monospace',
     fontSize: 11,
+  },
+  streamingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
   },
 });
