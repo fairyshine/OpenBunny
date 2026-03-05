@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Switch } from '../ui/switch';
 import { Separator } from '../ui/separator';
 import { ChevronRight, Settings, ExternalLink } from 'lucide-react';
 import { APP_VERSION } from '@shared/version';
@@ -29,7 +30,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     proxyUrl,
     setProxyUrl,
     toolExecutionTimeout,
-    setToolExecutionTimeout
+    setToolExecutionTimeout,
+    enableSessionTabs,
+    setEnableSessionTabs
   } = useSettingsStore();
 
   return (
@@ -206,6 +209,20 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <SelectItem value="en-US">{t('settings.language.enUS')}</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="sessionTabs" className="text-sm font-medium">{t('settings.sessionTabs')}</Label>
+                    <p className="text-xs text-muted-foreground">{t('settings.sessionTabsHint')}</p>
+                  </div>
+                  <Switch
+                    id="sessionTabs"
+                    checked={enableSessionTabs}
+                    onCheckedChange={setEnableSessionTabs}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

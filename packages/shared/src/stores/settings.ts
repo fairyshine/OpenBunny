@@ -50,6 +50,10 @@ interface SettingsState {
   language: Language;
   setLanguage: (lang: Language) => void;
 
+  // Session tabs settings
+  enableSessionTabs: boolean;
+  setEnableSessionTabs: (value: boolean) => void;
+
   // Tool settings
   enabledTools: string[];
   toggleTool: (toolId: string) => void;
@@ -100,6 +104,12 @@ export const useSettingsStore = create<SettingsState>()(
       setLanguage: (lang) => {
         set({ language: lang });
         onLanguageChange?.(resolveLanguage(lang));
+      },
+
+      enableSessionTabs: true,
+      setEnableSessionTabs: (value) => {
+        logSettings('info', `Session tabs: ${value ? 'enabled' : 'disabled'}`);
+        set({ enableSessionTabs: value });
       },
 
       enabledTools: [...DEFAULT_ENABLED_TOOLS],

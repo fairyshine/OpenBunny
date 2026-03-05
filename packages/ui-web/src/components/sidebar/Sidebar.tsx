@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
+import { useSettingsStore } from '@shared/stores/settings';
 import { Trash, ChevronLeft, ChevronRight, MessageSquare, Folder, Edit2, Plus, Undo2, TrashIcon } from '../icons';
 import FileTree from './FileTree';
 import { Button } from '../ui/button';
@@ -21,6 +22,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
   const { setCurrentSession, deleteSession, renameSession, createSession, restoreSession, permanentlyDeleteSession, clearTrash } = useSessionStore();
   const currentSession = useSessionStore(selectCurrentSession);
   const allSessions = useSessionStore(s => s.sessions);
+  const enableSessionTabs = useSettingsStore(s => s.enableSessionTabs);
   const sessions = useMemo(() => allSessions.filter(s => !s.deletedAt), [allSessions]);
   const deletedSessions = useMemo(() => allSessions.filter(s => s.deletedAt).sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0)), [allSessions]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -210,12 +212,17 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                             key={session.id}
                             onClick={() => {
                               if (editingId !== session.id) {
-                                // 如果点击的是当前会话，则关闭它
-                                if (currentSession?.id === session.id) {
-                                  useSessionStore.getState().closeSession(session.id);
+                                if (enableSessionTabs) {
+                                  // 标签栏模式：如果点击的是当前会话，则关闭它
+                                  if (currentSession?.id === session.id) {
+                                    useSessionStore.getState().closeSession(session.id);
+                                  } else {
+                                    // 否则打开该会话
+                                    useSessionStore.getState().openSession(session.id);
+                                  }
                                 } else {
-                                  // 否则打开该会话
-                                  useSessionStore.getState().openSession(session.id);
+                                  // 传统模式：直接切换会话
+                                  setCurrentSession(session.id);
                                 }
                                 handleItemClick();
                               }

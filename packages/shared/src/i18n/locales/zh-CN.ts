@@ -91,6 +91,10 @@ const zhCN = {
   'settings.theme.light': '浅色',
   'settings.theme.dark': '深色',
   'settings.theme.system': '跟随系统',
+  'settings.sessionTabs': '启用会话标签栏',
+  'settings.sessionTabsHint': '开启后可同时打开多个会话并行执行，关闭后使用传统切换模式',
+  'settings.toolTimeout': '工具执行超时',
+  'settings.toolTimeoutHint': '工具执行的最大等待时间（毫秒），设置为 -1 表示永久等待',
 
   // Chat
   'chat.input.placeholder': '输入消息 (Enter 发送，Shift+Enter 换行)',
@@ -275,8 +279,6 @@ export default {
   'tools.exec.desktopOnly': 'Shell 执行仅在桌面端（macOS / Linux）可用',
   'settings.execLoginShell': '加载用户配置文件',
   'settings.execLoginShellDesc': '启动 Shell 时加载 ~/.zshrc 或 ~/.bashrc，使 Homebrew 等工具可用',
-  'settings.toolTimeout': '工具执行超时时间',
-  'settings.toolTimeoutHint': '工具执行的最大等待时间（毫秒），默认 5 分钟。如果工具持续输出结果，会自动延长等待时间。',
 
   // Connection Test
   'connTest.configInfo': '=== 配置信息 ===',

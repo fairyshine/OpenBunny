@@ -91,6 +91,10 @@ const enUS = {
   'settings.theme.light': 'Light',
   'settings.theme.dark': 'Dark',
   'settings.theme.system': 'System',
+  'settings.sessionTabs': 'Enable Session Tabs',
+  'settings.sessionTabsHint': 'Enable multi-session tabs for parallel execution, disable for traditional switching mode',
+  'settings.toolTimeout': 'Tool Execution Timeout',
+  'settings.toolTimeoutHint': 'Maximum wait time for tool execution (milliseconds), set to -1 for infinite wait',
 
   // Chat
   'chat.input.placeholder': 'Type a message (Enter to send, Shift+Enter for new line)',
@@ -275,8 +279,6 @@ export default {
   'tools.exec.desktopOnly': 'Shell Exec is only available on desktop (macOS / Linux)',
   'settings.execLoginShell': 'Load User Profile',
   'settings.execLoginShellDesc': 'Source ~/.zshrc or ~/.bashrc on shell startup, making tools like Homebrew available',
-  'settings.toolTimeout': 'Tool Execution Timeout',
-  'settings.toolTimeoutHint': 'Maximum wait time for tool execution (milliseconds), default 5 minutes. Automatically extends if tool continues outputting results.',
 
   // Connection Test
   'connTest.configInfo': '=== Configuration ===',
