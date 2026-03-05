@@ -241,9 +241,7 @@ function App() {
                       ))}
                     </div>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                      <p>{t('chat.noSessionHint')}</p>
-                    </div>
+                    <StatusScreen onStart={handleStart} showStartButton={sessions.length === 0} />
                   )
                 ) : (
                   currentSession ? (
