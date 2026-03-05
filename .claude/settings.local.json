@@ -80,7 +80,8 @@
       "WebFetch(domain:cdn.jsdelivr.net)",
       "Bash(mkdir:*)",
       "Bash(du:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(/tmp/test-minimal-agent.js:*)"
     ]
   }
 }

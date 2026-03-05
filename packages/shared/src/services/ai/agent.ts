@@ -79,11 +79,28 @@ export async function runAgentLoop(
 
   systemPrompt += generateSkillsSystemPrompt();
 
+  console.log('[Agent] Starting agent loop with config:', {
+    provider: llmConfig.provider,
+    model: llmConfig.model,
+    temperature: llmConfig.temperature,
+    maxTokens: llmConfig.maxTokens,
+    toolCount,
+    systemPromptLength: systemPrompt.length,
+    userInputLength: userInput.length,
+  });
+
   let stepCount = 0;
   let currentStepMessageId: string | null = null;
   let currentStepContent = '';
 
   try {
+    console.log('[Agent] Creating streamText with:', {
+      hasModel: !!model,
+      hasSystemPrompt: !!systemPrompt,
+      hasMessages: true,
+      toolCount: Object.keys(tools).length,
+    });
+
     const result = streamText({
       model,
       system: systemPrompt,
@@ -96,11 +113,13 @@ export async function runAgentLoop(
         isEnabled: false,
       },
       onChunk: ({ chunk }) => {
+        console.log('[Agent] onChunk called, type:', chunk.type);
         logLLM('debug', `Chunk received: ${chunk.type}`);
         // Create step message on first text-delta if not yet created
         if (chunk.type === 'text-delta') {
           if (!currentStepMessageId) {
             stepCount++;
+            console.log('[Agent] Creating new step message, stepCount:', stepCount);
             currentStepMessageId = callbacks.generateId();
             currentStepContent = '';
             callbacks.addMessage(sessionId, {
@@ -119,6 +138,12 @@ export async function runAgentLoop(
         }
       },
       onStepFinish: async ({ text, toolCalls, toolResults }) => {
+        console.log('[Agent] onStepFinish called:', {
+          hasText: !!text,
+          textLength: text?.length || 0,
+          toolCallsCount: toolCalls?.length || 0,
+          toolResultsCount: toolResults?.length || 0,
+        });
         logLLM('info', `Agent loop - step ${stepCount} finished, text: ${text ? text.slice(0, 50) : 'none'}, toolCalls: ${toolCalls?.length || 0}`);
 
         // Finalize the current step's text message
@@ -184,17 +209,22 @@ export async function runAgentLoop(
     });
 
     // Consume the stream (callbacks handle UI updates via onChunk)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let chunkCount = 0;
-    for await (const _chunk of result.textStream) {
+    console.log('[Agent] Starting to consume textStream...');
+    for await (const chunk of result.textStream) {
       // textStream must be consumed to drive the stream
       chunkCount++;
+      if (chunkCount === 1) {
+        console.log('[Agent] First chunk received from textStream:', chunk.slice(0, 50));
+      }
     }
+    console.log('[Agent] Stream consumed, total chunks:', chunkCount);
     logLLM('info', `Stream consumed, total chunks: ${chunkCount}`);
 
     logLLM('success', 'Agent loop completed');
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Agent] Error in agent loop:', error);
     logLLM('error', `Agent loop error: ${errorMsg}`);
     console.error('[Agent] Full error:', error);
     throw error;
