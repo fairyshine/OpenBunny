@@ -5,8 +5,8 @@ import { logSettings } from '../services/console/logger';
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'zh-CN' | 'en-US' | 'system';
 
-const SUPPORTED_TOOL_IDS = new Set(['python', 'web_search', 'calculator', 'file_manager', 'memory', 'exec']);
-const DEFAULT_ENABLED_TOOLS = ['python', 'calculator', 'web_search', 'file_manager', 'memory'];
+const SUPPORTED_TOOL_IDS = new Set(['python', 'web_search', 'file_manager', 'memory', 'exec']);
+const DEFAULT_ENABLED_TOOLS = ['python', 'web_search', 'file_manager', 'memory'];
 
 // Platform-injected callbacks
 let onThemeChange: ((theme: Theme) => void) | null = null;

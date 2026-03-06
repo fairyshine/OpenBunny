@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { FileCode, Globe, Calculator, FolderOpen } from '../icons';
+import { FileCode, Globe, FolderOpen } from '../icons';
 import SystemInfo from './SystemInfo';
 
 interface StatusScreenProps {
@@ -25,11 +25,6 @@ export default function StatusScreen({ onStart, showStartButton = true }: Status
       icon: <Globe className="w-7 h-7" />,
       title: t('status.feature.search.title'),
       description: t('status.feature.search.desc'),
-    },
-    {
-      icon: <Calculator className="w-7 h-7" />,
-      title: t('status.feature.calc.title'),
-      description: t('status.feature.calc.desc'),
     },
     {
       icon: <FolderOpen className="w-7 h-7" />,
@@ -110,9 +105,6 @@ export default function StatusScreen({ onStart, showStartButton = true }: Status
             </Badge>
             <Badge variant="outline" className="font-mono text-xs border-elegant">
               {t('status.badge.search')}
-            </Badge>
-            <Badge variant="outline" className="font-mono text-xs border-elegant">
-              {t('status.badge.calc')}
             </Badge>
             <Badge variant="outline" className="font-mono text-xs border-elegant">
               {t('status.badge.file')}

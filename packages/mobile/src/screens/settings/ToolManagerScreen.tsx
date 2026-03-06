@@ -15,7 +15,6 @@ import { detectPlatform } from '@shared/platform/detect';
 const toolDisplayInfo: Record<string, { name: string; icon: string; description: string }> = {
   python: { name: 'Python', icon: 'language-python', description: 'Execute Python code' },
   web_search: { name: 'Web Search', icon: 'magnify', description: 'Search the web' },
-  calculator: { name: 'Calculator', icon: 'calculator', description: 'Calculate math expressions' },
   file_manager: { name: 'File Manager', icon: 'folder', description: 'Manage files' },
   memory: { name: 'Memory', icon: 'brain', description: 'Persistent memory' },
   exec: { name: 'Shell Exec', icon: 'console', description: 'Execute shell commands (Desktop only)' },

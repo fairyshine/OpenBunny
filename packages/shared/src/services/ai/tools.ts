@@ -138,27 +138,6 @@ export const webSearchTool = tool({
   },
 });
 
-export const calculatorTool = tool({
-  description: 'Calculate mathematical expressions using Python.',
-  inputSchema: z.object({
-    expression: z.string().describe('Mathematical expression to evaluate'),
-  }),
-  execute: async ({ expression }) => {
-    const timeout = useSettingsStore.getState().toolExecutionTimeout || 300000;
-    try {
-      const code = `import math\nresult = ${expression}\nprint(f"Result: {result}")\nresult`;
-      const pyResult = await withTimeout(
-        pythonExecutor.execute(code),
-        timeout,
-        `Calculator execution timed out after ${timeout}ms`
-      );
-      return `${expression} = ${pyResult.output.replace('Result: ', '')}`;
-    } catch (error) {
-      return t()('tools.exec.calcError', { error: error instanceof Error ? error.message : String(error) });
-    }
-  },
-});
-
 export const fileManagerTool = tool({
   description: 'Manage files: read, write, list, mkdir, delete operations on the virtual file system. The root directory is /root.',
   inputSchema: z.object({
@@ -374,7 +353,6 @@ export const execTool = tool({
 export const builtinTools = {
   python: pythonTool,
   web_search: webSearchTool,
-  calculator: calculatorTool,
   file_manager: fileManagerTool,
   memory: memoryTool,
   exec: execTool,

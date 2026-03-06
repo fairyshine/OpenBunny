@@ -19,7 +19,6 @@ import { MemoryViewer } from '../memory/MemoryViewer';
 const toolDisplayInfo: Record<string, { name: string; icon: string }> = {
   python: { name: 'Python', icon: 'python' },
   web_search: { name: 'Web Search', icon: 'search' },
-  calculator: { name: 'Calculator', icon: 'calculator' },
   file_manager: { name: 'File Manager', icon: 'folder' },
   memory: { name: 'Memory', icon: 'brain' },
   exec: { name: 'Shell Exec', icon: 'terminal' },

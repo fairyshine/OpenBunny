@@ -9,7 +9,6 @@ import { ToolIcon } from '../ToolIcon';
 const toolDisplayInfo: Record<string, { name: string; description: string; icon: string }> = {
   python: { name: 'Python', description: 'Execute Python code', icon: 'python' },
   web_search: { name: 'Web Search', description: 'Search the web', icon: 'search' },
-  calculator: { name: 'Calculator', description: 'Calculate math expressions', icon: 'calculator' },
   file_manager: { name: 'File Manager', description: 'Manage files', icon: 'folder' },
   memory: { name: 'Memory', description: 'Persistent memory', icon: 'brain' },
   exec: { name: 'Shell Exec', description: 'Execute shell commands (Desktop only)', icon: 'terminal' },

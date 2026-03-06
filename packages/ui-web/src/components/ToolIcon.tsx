@@ -1,7 +1,6 @@
 import {
   SquareFunction,
   Search,
-  Calculator,
   FolderOpen,
   Plug,
   Wrench,
@@ -13,7 +12,6 @@ import type { LucideProps } from 'lucide-react';
 const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   python: SquareFunction,
   search: Search,
-  calculator: Calculator,
   folder: FolderOpen,
   plug: Plug,
   brain: Brain,
