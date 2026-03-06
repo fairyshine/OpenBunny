@@ -4,6 +4,7 @@ import { Send, Loader, Code, X } from '../icons';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import ToolBar from '../layout/ToolBar';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -50,7 +51,11 @@ export default function ChatInput({ onSend, onStop, isLoading, disabled, placeho
 
   return (
     <div className="border-t border-border bg-background p-4 md:p-6 pb-safe">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto flex flex-col gap-2">
+        <div className="flex items-center px-1 min-w-0">
+          <ToolBar />
+        </div>
+
         <div className="relative flex items-end gap-2 bg-muted/30 border border-border rounded-xl p-2 shadow-elegant">
           <TooltipProvider>
             <Tooltip>

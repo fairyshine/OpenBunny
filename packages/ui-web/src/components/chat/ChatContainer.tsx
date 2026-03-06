@@ -9,7 +9,6 @@ import type { AgentCallbacks } from '@shared/services/ai/agent';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ExportDialog from './ExportDialog';
-import ToolBar from '../layout/ToolBar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Download } from '../icons';
@@ -135,20 +134,13 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <div className="border-b px-4 py-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <ToolBar />
-
-        <div className="flex items-center gap-2">
+      <div className="flex-1 overflow-y-auto relative">
+        <div className="sticky top-0 z-10 flex items-center justify-end gap-2 px-3 py-1.5 pointer-events-none">
           {currentStatus && (
-            <Badge variant="secondary" className="animate-pulse">
+            <Badge variant="secondary" className="animate-pulse pointer-events-auto shadow-sm">
               {currentStatus}
             </Badge>
           )}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto relative">
-        <div className="sticky top-2 right-2 z-10 flex justify-end pr-2 pointer-events-none">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -156,7 +148,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
                   onClick={() => setShowExportDialog(true)}
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 pointer-events-auto opacity-60 hover:opacity-100 transition-opacity"
+                  className="h-8 w-8 pointer-events-auto opacity-50 hover:opacity-100 transition-opacity"
                 >
                   <Download className="w-4 h-4" />
                 </Button>
