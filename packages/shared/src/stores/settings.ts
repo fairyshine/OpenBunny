@@ -6,7 +6,7 @@ import type { UserProfile, AgentProfile } from '../types';
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'zh-CN' | 'en-US' | 'system';
 
-const SUPPORTED_TOOL_IDS = new Set(['python', 'web_search', 'file_manager', 'memory', 'exec']);
+const SUPPORTED_TOOL_IDS = new Set(['python', 'web_search', 'file_manager', 'memory', 'exec', 'cron']);
 const DEFAULT_ENABLED_TOOLS = ['python', 'web_search', 'file_manager', 'memory'];
 
 // Platform-injected callbacks

@@ -2,7 +2,8 @@ import { tool, type Tool } from 'ai';
 import { z } from 'zod';
 import { pythonExecutor } from '../python/executor';
 import { fileSystem } from '../filesystem';
-import { logPython, logFile } from '../console/logger';
+import { cronManager } from '../cron';
+import { logPython, logFile, logTool } from '../console/logger';
 import { getErrorMessage } from '../../utils/errors';
 import { useSettingsStore } from '../../stores/settings';
 import i18n from '../../i18n';
@@ -152,6 +153,9 @@ export const fileManagerTool = tool({
       if (normalizedPath.includes('/.memory') || normalizedPath === '/root/.memory') {
         return '[Error] Access to .memory directory is restricted';
       }
+      if (normalizedPath.includes('/.skills') || normalizedPath === '/root/.skills') {
+        return '[Error] Access to .skills directory is restricted';
+      }
 
       const fileOperation = (async () => {
         await fileSystem.initialize();
@@ -183,7 +187,7 @@ export const fileManagerTool = tool({
           case 'list': {
             const targetPath = normalizedPath || '/root';
             const entries = await fileSystem.readdir(targetPath);
-            const filtered = entries.filter((e: any) => e.name !== '.memory');
+            const filtered = entries.filter((e: any) => e.name !== '.memory' && e.name !== '.skills');
             if (filtered.length === 0) {
               return `${targetPath}\n${t()('tools.exec.emptyFolder')}`;
             }
@@ -347,6 +351,56 @@ export const execTool = tool({
   },
 });
 
+export const cronTool = tool({
+  description: 'Schedule periodic tasks using cron expressions. Supports add, remove, list, and clear operations.',
+  inputSchema: z.object({
+    operation: z.enum(['add', 'remove', 'list', 'clear']).describe('Cron operation to perform'),
+    expression: z.string().optional().describe('Cron expression for scheduling (e.g. "*/5 * * * *" for every 5 minutes, "0 9 * * *" for daily at 9am). Required for add operation.'),
+    description: z.string().optional().describe('Human-readable description of what this task does. Required for add operation.'),
+    id: z.string().optional().describe('Job ID for remove operation'),
+  }),
+  execute: async ({ operation, expression, description, id }) => {
+    try {
+      switch (operation) {
+        case 'add': {
+          if (!expression) return t()('tools.exec.cronNeedExpression');
+          if (!description) return t()('tools.exec.cronNeedDescription');
+          const job = cronManager.add(expression, description);
+          logTool('success', t()('tools.exec.cronAdded', { description, expression }));
+          const nextStr = job.nextRun ? new Date(job.nextRun).toLocaleString() : '-';
+          return t()('tools.exec.cronAddedResult', { id: job.id, expression, description, nextRun: nextStr });
+        }
+        case 'remove': {
+          if (!id) return t()('tools.exec.cronNeedId');
+          const removed = cronManager.remove(id);
+          if (!removed) return t()('tools.exec.cronNotFound', { id });
+          logTool('success', t()('tools.exec.cronRemoved', { id }));
+          return t()('tools.exec.cronRemovedResult', { id });
+        }
+        case 'list': {
+          const jobs = cronManager.list();
+          if (jobs.length === 0) return t()('tools.exec.cronEmpty');
+          const lines = jobs.map((j) => {
+            const next = j.nextRun ? new Date(j.nextRun).toLocaleString() : '-';
+            const last = j.lastRun ? new Date(j.lastRun).toLocaleString() : '-';
+            return `- **${j.description}**\n  ID: \`${j.id}\`\n  Schedule: \`${j.expression}\` | Runs: ${j.runCount} | Next: ${next} | Last: ${last}`;
+          });
+          return t()('tools.exec.cronListResult', { count: jobs.length, list: lines.join('\n\n') });
+        }
+        case 'clear': {
+          cronManager.clear();
+          logTool('success', t()('tools.exec.cronCleared'));
+          return t()('tools.exec.cronClearedResult');
+        }
+      }
+    } catch (error) {
+      const msg = getErrorMessage(error);
+      logTool('error', t()('tools.exec.cronFailed'), msg);
+      return t()('tools.exec.cronFailedResult', { error: msg });
+    }
+  },
+});
+
 /**
  * All built-in tools keyed by tool ID
  */
@@ -356,6 +410,7 @@ export const builtinTools = {
   file_manager: fileManagerTool,
   memory: memoryTool,
   exec: execTool,
+  cron: cronTool,
 } as const;
 
 /**

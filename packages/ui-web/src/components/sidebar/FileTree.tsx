@@ -39,7 +39,6 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
     try {
       const entries = await fileSystem.readdir(path);
       return entries
-        .filter(entry => entry.name !== '.memory')
         .sort((a, b) => {
           if (a.type === 'directory' && b.type !== 'directory') return -1;
           if (a.type !== 'directory' && b.type === 'directory') return 1;

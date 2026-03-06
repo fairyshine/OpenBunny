@@ -202,6 +202,56 @@ const enUS = {
   'tools.exec.diariesListed': '📅 Diary entries ({{count}}):\n\n{{list}}',
   'tools.exec.desktopOnly': 'Shell Exec is only available on desktop (macOS / Linux)',
 
+  // Cron tool
+  'tools.exec.cronNeedExpression': '[Error] Add operation requires the expression parameter',
+  'tools.exec.cronNeedDescription': '[Error] Add operation requires the description parameter',
+  'tools.exec.cronNeedId': '[Error] Remove operation requires the id parameter',
+  'tools.exec.cronNotFound': '[Error] Cron job not found: {{id}}',
+  'tools.exec.cronAdded': 'Added cron job: {{description}} ({{expression}})',
+  'tools.exec.cronAddedResult': '[Done] Cron job created\nID: `{{id}}`\nSchedule: `{{expression}}`\nDescription: {{description}}\nNext run: {{nextRun}}',
+  'tools.exec.cronRemoved': 'Removed cron job: {{id}}',
+  'tools.exec.cronRemovedResult': '[Done] Cron job removed: {{id}}',
+  'tools.exec.cronEmpty': 'No cron jobs scheduled.',
+  'tools.exec.cronListResult': 'Cron jobs ({{count}}):\n\n{{list}}',
+  'tools.exec.cronCleared': 'Cleared all cron jobs',
+  'tools.exec.cronClearedResult': '[Done] All cron jobs cleared.',
+  'tools.exec.cronFailed': 'Cron operation failed',
+  'tools.exec.cronFailedResult': '[Error] Cron operation failed: {{error}}',
+
+  // Cron viewer
+  'tools.cron.name': 'Cron Jobs',
+  'tools.cron.title': 'Scheduled Tasks',
+  'tools.cron.empty': 'No scheduled tasks',
+  'tools.cron.emptyHint': 'Ask AI to create a scheduled task via chat',
+  'tools.cron.schedule': 'Schedule',
+  'tools.cron.nextRun': 'Next run',
+  'tools.cron.lastRun': 'Last run',
+  'tools.cron.runCount': 'Run count',
+  'tools.cron.remove': 'Remove',
+  'tools.cron.clearAll': 'Clear all',
+  'tools.cron.add': 'Add',
+  'tools.cron.addErrorDesc': 'Please enter a task description',
+  'tools.cron.addErrorExpr': 'Please set a schedule',
+  'tools.cron.descriptionPlaceholder': 'Task description, e.g. Remind me to drink water',
+  'tools.cron.advanced': 'Custom expression',
+  'tools.cron.every': 'Every',
+  'tools.cron.minutesUnit': 'minutes',
+  'tools.cron.everyHourAt': 'Every hour at',
+  'tools.cron.dailyAt': 'Daily at',
+  'tools.cron.weeklyOn': 'Every',
+  'tools.cron.at': 'at',
+  'tools.cron.type.minutes': 'Minutes',
+  'tools.cron.type.hourly': 'Hourly',
+  'tools.cron.type.daily': 'Daily',
+  'tools.cron.type.weekly': 'Weekly',
+  'tools.cron.weekday.MON': 'Mon',
+  'tools.cron.weekday.TUE': 'Tue',
+  'tools.cron.weekday.WED': 'Wed',
+  'tools.cron.weekday.THU': 'Thu',
+  'tools.cron.weekday.FRI': 'Fri',
+  'tools.cron.weekday.SAT': 'Sat',
+  'tools.cron.weekday.SUN': 'Sun',
+
   // Connection Test
   'connTest.configInfo': '=== Configuration ===',
   'connTest.baseUrlDefault': '(default)',
@@ -344,11 +394,6 @@ const enUS = {
 
   // System Prompt
   'systemPrompt.assistant': 'You are an intelligent assistant.',
-  'systemPrompt.withTools': `You are an intelligent assistant that can call tools to complete tasks.
-
-## Available Tools
-
-{{toolDescriptions}}`,
 
   // Logger
   'logger.startup': 'CyberBunny started',
@@ -365,14 +410,37 @@ const enUS = {
   'memory.entries': '{{count}} entries',
   'memory.selectEntry': 'Select an entry to view',
 
-  // Skills (Mobile)
+  // Skills
   'skills.title': 'Skills',
-  'skills.desc': 'Manage and configure skills',
+  'skills.desc': 'Manage and configure skills. Skills are stored as folders with SKILL.md files.',
   'skills.add': 'Add Skill',
+  'skills.create': 'Create Skill',
   'skills.empty': 'No skills loaded',
   'skills.name': 'Skill Name',
+  'skills.nameHint': 'Lowercase alphanumeric with hyphens (e.g. my-skill)',
+  'skills.description': 'Description',
   'skills.folderPath': 'Folder Path',
   'skills.notFound': 'Skill not found',
+  'skills.builtin': 'Built-in',
+  'skills.user': 'User',
+  'skills.edit': 'Edit',
+  'skills.delete': 'Delete',
+  'skills.deleteConfirm': 'Are you sure you want to delete skill "{{name}}"?',
+  'skills.save': 'Save',
+  'skills.saving': 'Saving...',
+  'skills.saved': 'Skill saved successfully',
+  'skills.createNew': 'Create New Skill',
+  'skills.editSkill': 'Edit Skill',
+  'skills.editor': 'SKILL.md Editor',
+  'skills.preview': 'Preview',
+  'skills.files': 'Files',
+  'skills.cannotDeleteBuiltin': 'Built-in skills cannot be deleted',
+  'skills.invalidName': 'Invalid name: lowercase letters, numbers, and hyphens only',
+  'skills.loadError': 'Failed to load skills',
+  'skills.saveError': 'Failed to save skill',
+  'skills.deleteError': 'Failed to delete skill',
+  'skills.totalCount': '{{count}} skills available',
+  'skills.toolName': 'Tool: skills_{{name}}',
 
   // Welcome (Mobile)
   'welcome.subtitle': 'Browser-based Intelligent Agent System',

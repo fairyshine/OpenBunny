@@ -1,80 +1,74 @@
 /**
- * Skills — parse SKILL.md files and generate system prompts
- * Skills are not AI SDK tools; they are instructions injected into the system prompt.
+ * Skills — register loaded skills as callable tools (opencode pattern)
+ * Each skill becomes a tool named `skills_{{name}}` that injects the SKILL.md body
+ * as a synthetic instruction when invoked.
  */
 
-export interface SkillInfo {
-  id: string;
-  name: string;
-  description: string;
-  body: string;
+import { tool, type Tool } from 'ai';
+import { z } from 'zod';
+import { useSkillStore } from '../../stores/skills';
+import type { LoadedSkill } from '../skills';
+
+/**
+ * Create a tool for a single skill (opencode pattern: lazy loading via tool invocation)
+ */
+function createSkillTool(skill: LoadedSkill): Tool {
+  return tool({
+    description: `[Skill] ${skill.description}`,
+    inputSchema: z.object({
+      input: z.string().describe('User request or context for this skill'),
+    }),
+    execute: async ({ input }) => {
+      // Return the skill body as instructions for the model to follow
+      return `## Skill: ${skill.name}\n\n${skill.body}\n\n---\n\n**User request:** ${input}`;
+    },
+  });
 }
 
 /**
- * Built-in skills defined inline (previously loaded from SKILL.md files)
+ * Get all skills as tools (keyed as skills_{{name}})
  */
-const builtinSkillDefs: SkillInfo[] = [
-  {
-    id: 'data-analysis',
-    name: 'data-analysis',
-    description: 'Analyze data files (CSV, JSON, Excel) using Python. Performs statistical analysis, generates visualizations, and creates summary reports.',
-    body: `# Data Analysis Skill
+export function getSkillTools(): Record<string, Tool> {
+  const skills = useSkillStore.getState().skills;
+  const tools: Record<string, Tool> = {};
 
-## When to use this skill
-Use this skill when the user needs to:
-- Analyze CSV, JSON, or Excel files
-- Generate statistical summaries
-- Create visualizations (charts, graphs, plots)
-- Find patterns or correlations in data
-- Clean or transform data
+  for (const skill of skills) {
+    const toolName = `skills_${skill.name.replace(/-/g, '_')}`;
+    tools[toolName] = createSkillTool(skill);
+  }
 
-## How it works
-This skill uses Python with pandas, numpy, and matplotlib to analyze data files.`,
-  },
-  {
-    id: 'web-research',
-    name: 'web-research',
-    description: 'Search the web, extract information from multiple sources, and generate comprehensive research reports.',
-    body: `# Web Research Skill
-
-## When to use this skill
-Use this skill when the user needs to:
-- Search for information on the internet
-- Compare information from multiple sources
-- Create research reports or summaries
-- Verify facts across different websites
-
-## How it works
-This skill orchestrates web search and content extraction to create comprehensive research reports.`,
-  },
-];
-
-export function getBuiltinSkills(): SkillInfo[] {
-  return builtinSkillDefs;
+  return tools;
 }
 
 /**
  * Generate system prompt section describing available skills
  */
 export function generateSkillsSystemPrompt(): string {
-  const skills = getBuiltinSkills();
+  const skills = useSkillStore.getState().skills;
 
   if (skills.length === 0) {
     return '';
   }
 
-  const skillDescriptions = skills.map(skill =>
-    `- **${skill.name}** (${skill.id}): ${skill.description}`
-  ).join('\n');
+  const skillDescriptions = skills.map(skill => {
+    const toolName = `skills_${skill.name.replace(/-/g, '_')}`;
+    return `- **${skill.name}** (tool: \`${toolName}\`): ${skill.description}`;
+  }).join('\n');
 
   return `
 
 ## Available Skills
 
-You have access to the following high-level skills that orchestrate multiple tools:
+You have access to the following skills as tools. Invoke a skill tool when you need its specialized workflow:
 
 ${skillDescriptions}
 
-Skills are more powerful than individual tools - they can execute multi-step workflows and maintain state across operations. Use skills when you need to perform complex tasks that involve multiple steps.
+To use a skill, call its corresponding tool (e.g., \`skills_data_analysis\`) with a description of what you need.
 `;
+}
+
+// Re-export for backward compatibility
+export type { LoadedSkill as SkillInfo };
+export function getBuiltinSkills(): LoadedSkill[] {
+  return useSkillStore.getState().skills;
 }

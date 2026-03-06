@@ -1,6 +1,6 @@
 export { createProvider, createModel, testConnection } from './provider';
 export { builtinTools, getEnabledTools } from './tools';
-export { generateSkillsSystemPrompt, getBuiltinSkills } from './skills';
+export { generateSkillsSystemPrompt, getBuiltinSkills, getSkillTools } from './skills';
 export type { SkillInfo } from './skills';
 export { connectMCPServer } from './mcp';
 export type { MCPClient } from './mcp';

@@ -22,6 +22,7 @@ const toolDisplayInfo: Record<string, { name: string; icon: string }> = {
   file_manager: { name: 'File Manager', icon: 'folder' },
   memory: { name: 'Memory', icon: 'brain' },
   exec: { name: 'Shell Exec', icon: 'terminal' },
+  cron: { name: 'Cron', icon: 'clock' },
 };
 
 function ToolRow({ toolId, enabled, onToggle }: {

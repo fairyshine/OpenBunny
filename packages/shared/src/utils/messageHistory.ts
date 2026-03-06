@@ -1,6 +1,14 @@
 // 消息历史管理工具
 import { Message } from '../types';
+import type { Tool } from 'ai';
 import i18n from '../i18n';
+
+export interface ExportOptions {
+  systemPrompt?: string;
+  sessionId?: string;
+  sessionName?: string;
+  tools?: Record<string, Tool>;
+}
 
 /**
  * 消息历史管理器
@@ -159,11 +167,19 @@ export class MessageHistoryManager {
   /**
    * 导出消息为 JSON
    */
-  static exportToJSON(messages: Message[], systemPrompt?: string, sessionId?: string, sessionName?: string): string {
+  static exportToJSON(messages: Message[], opts: ExportOptions = {}): string {
+    const toolsList = opts.tools
+      ? Object.entries(opts.tools).map(([name, tool]) => ({
+          name,
+          description: (tool as any).description || '',
+        }))
+      : [];
+
     const exportData = {
-      sessionId: sessionId || null,
-      sessionName: sessionName || null,
-      systemPrompt: systemPrompt || null,
+      sessionId: opts.sessionId || null,
+      sessionName: opts.sessionName || null,
+      systemPrompt: opts.systemPrompt || null,
+      tools: toolsList.length > 0 ? toolsList : undefined,
       messages,
       exportedAt: new Date().toISOString(),
     };
@@ -173,30 +189,40 @@ export class MessageHistoryManager {
   /**
    * 导出消息为 Markdown
    */
-  static exportToMarkdown(messages: Message[], systemPrompt?: string, sessionId?: string, sessionName?: string): string {
+  static exportToMarkdown(messages: Message[], opts: ExportOptions = {}): string {
     const t = i18n.t.bind(i18n);
     const lines: string[] = [];
     lines.push(t('history.title') + '\n');
 
     // Add session metadata if available
-    if (sessionId || sessionName) {
+    if (opts.sessionId || opts.sessionName) {
       lines.push('## Session Info\n');
-      if (sessionName) {
-        lines.push(`**Name:** ${sessionName}\n`);
+      if (opts.sessionName) {
+        lines.push(`**Name:** ${opts.sessionName}\n`);
       }
-      if (sessionId) {
-        lines.push(`**ID:** ${sessionId}\n`);
+      if (opts.sessionId) {
+        lines.push(`**ID:** ${opts.sessionId}\n`);
       }
       lines.push('');
     }
 
     // Add system prompt if available
-    if (systemPrompt) {
+    if (opts.systemPrompt) {
       lines.push('## System Prompt\n');
       lines.push('```');
-      lines.push(systemPrompt);
+      lines.push(opts.systemPrompt);
       lines.push('```\n');
       lines.push('---\n');
+    }
+
+    // Add enabled tools info
+    if (opts.tools && Object.keys(opts.tools).length > 0) {
+      lines.push('## Tools\n');
+      for (const [name, tool] of Object.entries(opts.tools)) {
+        const desc = (tool as any).description || '';
+        lines.push(`- **${name}**: ${desc}`);
+      }
+      lines.push('\n---\n');
     }
 
     const turns = this.getConversationTurns(messages);
@@ -246,30 +272,41 @@ export class MessageHistoryManager {
   /**
    * 导出消息为纯文本
    */
-  static exportToText(messages: Message[], systemPrompt?: string, sessionId?: string, sessionName?: string): string {
+  static exportToText(messages: Message[], opts: ExportOptions = {}): string {
     const t = i18n.t.bind(i18n);
     const lines: string[] = [];
 
     // Add session metadata if available
-    if (sessionId || sessionName) {
+    if (opts.sessionId || opts.sessionName) {
       lines.push('=== SESSION INFO ===');
-      if (sessionName) {
-        lines.push(`Name: ${sessionName}`);
+      if (opts.sessionName) {
+        lines.push(`Name: ${opts.sessionName}`);
       }
-      if (sessionId) {
-        lines.push(`ID: ${sessionId}`);
+      if (opts.sessionId) {
+        lines.push(`ID: ${opts.sessionId}`);
       }
       lines.push('');
     }
 
     // Add system prompt if available
-    if (systemPrompt) {
+    if (opts.systemPrompt) {
       lines.push('=== SYSTEM PROMPT ===');
-      lines.push(systemPrompt);
-      lines.push('');
-      lines.push('=== CONVERSATION ===');
+      lines.push(opts.systemPrompt);
       lines.push('');
     }
+
+    // Add enabled tools info
+    if (opts.tools && Object.keys(opts.tools).length > 0) {
+      lines.push('=== TOOLS ===');
+      for (const [name, tool] of Object.entries(opts.tools)) {
+        const desc = (tool as any).description || '';
+        lines.push(`  ${name}: ${desc}`);
+      }
+      lines.push('');
+    }
+
+    lines.push('=== CONVERSATION ===');
+    lines.push('');
 
     const turns = this.getConversationTurns(messages);
 

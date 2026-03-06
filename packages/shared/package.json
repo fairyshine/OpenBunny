@@ -30,6 +30,7 @@
     "@ai-sdk/openai": "catalog:",
     "ai": "catalog:",
     "clsx": "catalog:",
+    "croner": "^10.0.1",
     "i18next": "catalog:",
     "i18next-browser-languagedetector": "catalog:",
     "idb": "catalog:",

@@ -1,8 +1,11 @@
 // 消息导出功能组件
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Message } from '@shared/types';
 import { MessageHistoryManager } from '@shared/utils/messageHistory';
+import type { ExportOptions } from '@shared/utils/messageHistory';
+import { getEnabledTools } from '@shared/services/ai/tools';
+import { useSettingsStore } from '@shared/stores/settings';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
@@ -20,6 +23,14 @@ interface ExportDialogProps {
 export default function ExportDialog({ messages, systemPrompt, sessionId, sessionName, isOpen, onClose }: ExportDialogProps) {
   const { t } = useTranslation();
   const [format, setFormat] = useState<'json' | 'markdown' | 'text'>('markdown');
+  const enabledToolIds = useSettingsStore((s) => s.enabledTools);
+
+  const exportOpts = useMemo((): ExportOptions => ({
+    systemPrompt,
+    sessionId,
+    sessionName,
+    tools: getEnabledTools(enabledToolIds),
+  }), [systemPrompt, sessionId, sessionName, enabledToolIds]);
 
   const handleExport = () => {
     let content: string;
@@ -28,17 +39,17 @@ export default function ExportDialog({ messages, systemPrompt, sessionId, sessio
 
     switch (format) {
       case 'json':
-        content = MessageHistoryManager.exportToJSON(messages, systemPrompt, sessionId, sessionName);
+        content = MessageHistoryManager.exportToJSON(messages, exportOpts);
         filename = `conversation-${Date.now()}.json`;
         mimeType = 'application/json';
         break;
       case 'markdown':
-        content = MessageHistoryManager.exportToMarkdown(messages, systemPrompt, sessionId, sessionName);
+        content = MessageHistoryManager.exportToMarkdown(messages, exportOpts);
         filename = `conversation-${Date.now()}.md`;
         mimeType = 'text/markdown';
         break;
       case 'text':
-        content = MessageHistoryManager.exportToText(messages, systemPrompt, sessionId, sessionName);
+        content = MessageHistoryManager.exportToText(messages, exportOpts);
         filename = `conversation-${Date.now()}.txt`;
         mimeType = 'text/plain';
         break;
@@ -58,11 +69,11 @@ export default function ExportDialog({ messages, systemPrompt, sessionId, sessio
   const getPreview = () => {
     switch (format) {
       case 'json':
-        return MessageHistoryManager.exportToJSON(messages, systemPrompt, sessionId, sessionName).slice(0, 500);
+        return MessageHistoryManager.exportToJSON(messages, exportOpts).slice(0, 500);
       case 'markdown':
-        return MessageHistoryManager.exportToMarkdown(messages, systemPrompt, sessionId, sessionName).slice(0, 500);
+        return MessageHistoryManager.exportToMarkdown(messages, exportOpts).slice(0, 500);
       case 'text':
-        return MessageHistoryManager.exportToText(messages, systemPrompt, sessionId, sessionName).slice(0, 500);
+        return MessageHistoryManager.exportToText(messages, exportOpts).slice(0, 500);
     }
   };
 

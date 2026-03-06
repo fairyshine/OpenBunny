@@ -27,17 +27,18 @@ export default function ExportSheet({ messages, systemPrompt, sessionId, session
     let content: string;
     let title: string;
 
+    const opts = { systemPrompt, sessionId, sessionName };
     switch (format) {
       case 'json':
-        content = MessageHistoryManager.exportToJSON(messages, systemPrompt, sessionId, sessionName);
+        content = MessageHistoryManager.exportToJSON(messages, opts);
         title = 'conversation.json';
         break;
       case 'markdown':
-        content = MessageHistoryManager.exportToMarkdown(messages, systemPrompt, sessionId, sessionName);
+        content = MessageHistoryManager.exportToMarkdown(messages, opts);
         title = 'conversation.md';
         break;
       case 'text':
-        content = MessageHistoryManager.exportToText(messages, systemPrompt, sessionId, sessionName);
+        content = MessageHistoryManager.exportToText(messages, opts);
         title = 'conversation.txt';
         break;
     }

@@ -5,7 +5,7 @@
 import { streamText, stepCountIs, type ToolSet } from 'ai';
 import { createModel } from './provider';
 import { getEnabledTools } from './tools';
-import { generateSkillsSystemPrompt } from './skills';
+import { generateSkillsSystemPrompt, getSkillTools } from './skills';
 import { logLLM, logTool } from '../console/logger';
 import type { Message, LLMConfig } from '../../types';
 import type { TFunction } from 'i18next';
@@ -58,7 +58,9 @@ export async function runAgentLoop(
   const timeout = toolTimeout || 300000; // Default 5 minutes
   const groupId = callbacks.generateId();
   const model = createModel(llmConfig, proxyUrl);
-  const tools = getEnabledTools(enabledTools);
+  const builtinToolSet = getEnabledTools(enabledTools);
+  const skillToolSet = getSkillTools();
+  const tools = { ...builtinToolSet, ...skillToolSet };
 
   const toolCount = Object.keys(tools).length;
   logTool('info', `${toolCount} tools enabled (timeout: ${timeout}ms)`, {
@@ -66,17 +68,8 @@ export async function runAgentLoop(
     tools: Object.keys(tools).join(', '),
   });
 
-  // Build system prompt
-  const systemPromptBase = t('systemPrompt.assistant');
-  let systemPrompt = systemPromptBase;
-
-  if (toolCount > 0) {
-    const toolDescriptions = Object.entries(tools).map(([name, tool]) => {
-      return `### ${name}\n${(tool as any).description}`;
-    }).join('\n\n');
-    systemPrompt = t('systemPrompt.withTools', { toolDescriptions });
-  }
-
+  // Build system prompt (tool schemas are passed via the tools parameter, no need to duplicate in prompt)
+  let systemPrompt = t('systemPrompt.assistant');
   systemPrompt += generateSkillsSystemPrompt();
 
   console.log('[Agent] Starting agent loop with config:', {

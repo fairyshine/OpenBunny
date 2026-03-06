@@ -2,35 +2,20 @@ import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
-import { TextInput, SegmentedButtons, Button, Text } from 'react-native-paper';
+import { TextInput, Button, Text } from 'react-native-paper';
 import { useSkillStore } from '@shared/stores/skills';
-
-type AddMode = 'folder' | 'url' | 'create';
-
-const SKILL_TEMPLATE = `# My Skill
-
-## Description
-Describe what this skill does.
-
-## Steps
-1. Step one
-2. Step two
-
-## Parameters
-- input (string, required): The input to process
-`;
+import { generateSkillTemplate } from '@shared/services/skills';
 
 export default function AddSkillScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
-  const { addSource } = useSkillStore();
+  const { createSkill, updateSkill } = useSkillStore();
 
-  const [mode, setMode] = useState<AddMode>('create');
   const [name, setName] = useState('');
-  const [url, setUrl] = useState('');
-  const [folderPath, setFolderPath] = useState('');
-  const [content, setContent] = useState(SKILL_TEMPLATE);
+  const [description, setDescription] = useState('');
+  const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
+  const [useTemplate, setUseTemplate] = useState(true);
 
   const handleAdd = async () => {
     if (!name.trim()) {
@@ -38,34 +23,28 @@ export default function AddSkillScreen() {
       return;
     }
 
+    // Validate name format
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(name.trim()) || name.includes('--')) {
+      Alert.alert('Error', t('skills.invalidName'));
+      return;
+    }
+
     setLoading(true);
     try {
-      switch (mode) {
-        case 'folder':
-          await addSource({
-            type: 'file',
-            name: name.trim(),
-            source: folderPath.trim(),
-            enabled: true,
-          });
-          break;
-        case 'url':
-          await addSource({
-            type: 'http',
-            name: name.trim(),
-            source: url.trim(),
-            enabled: true,
-          });
-          break;
-        case 'create':
-          await addSource({
-            type: 'code',
-            name: name.trim(),
-            source: '',
-            enabled: true,
-            metadata: { code: content.trim() },
-          });
-          break;
+      if (useTemplate) {
+        if (!description.trim()) {
+          Alert.alert('Error', 'Description is required');
+          setLoading(false);
+          return;
+        }
+        await createSkill(name.trim(), description.trim());
+      } else {
+        if (!content.trim()) {
+          Alert.alert('Error', 'SKILL.md content is required');
+          setLoading(false);
+          return;
+        }
+        await updateSkill(name.trim(), content.trim());
       }
       navigation.goBack();
     } catch (error) {
@@ -75,50 +54,37 @@ export default function AddSkillScreen() {
     }
   };
 
+  // Generate preview when name/description change
+  const templatePreview = name && description
+    ? generateSkillTemplate(name.trim(), description.trim())
+    : '';
+
   return (
     <ScrollView style={styles.container}>
-      <SegmentedButtons
-        value={mode}
-        onValueChange={(v) => setMode(v as AddMode)}
-        buttons={[
-          { value: 'folder', label: 'Folder' },
-          { value: 'url', label: 'URL' },
-          { value: 'create', label: 'Create' },
-        ]}
-        style={styles.segmented}
-      />
-
       <TextInput
-        label={t('skills.name') || 'Skill Name'}
+        label={t('skills.name')}
         value={name}
         onChangeText={setName}
         mode="outlined"
         style={styles.input}
+        placeholder="my-skill"
+      />
+      <Text variant="bodySmall" style={styles.hint}>
+        {t('skills.nameHint')}
+      </Text>
+
+      <TextInput
+        label={t('skills.description')}
+        value={description}
+        onChangeText={setDescription}
+        mode="outlined"
+        style={styles.input}
+        placeholder="What this skill does..."
+        multiline
+        numberOfLines={3}
       />
 
-      {mode === 'folder' && (
-        <TextInput
-          label={t('skills.folderPath') || 'Folder Path'}
-          value={folderPath}
-          onChangeText={setFolderPath}
-          mode="outlined"
-          style={styles.input}
-          placeholder="/root/skills/my-skill"
-        />
-      )}
-
-      {mode === 'url' && (
-        <TextInput
-          label="URL"
-          value={url}
-          onChangeText={setUrl}
-          mode="outlined"
-          style={styles.input}
-          placeholder="https://example.com/skill.md"
-        />
-      )}
-
-      {mode === 'create' && (
+      {!useTemplate && (
         <TextInput
           label="SKILL.md"
           value={content}
@@ -131,6 +97,17 @@ export default function AddSkillScreen() {
         />
       )}
 
+      {useTemplate && templatePreview ? (
+        <View style={styles.previewBox}>
+          <Text variant="labelSmall" style={styles.previewLabel}>
+            {t('skills.preview')}
+          </Text>
+          <Text variant="bodySmall" style={styles.previewText}>
+            {templatePreview}
+          </Text>
+        </View>
+      ) : null}
+
       <Button
         mode="contained"
         onPress={handleAdd}
@@ -138,7 +115,7 @@ export default function AddSkillScreen() {
         disabled={loading || !name.trim()}
         style={styles.button}
       >
-        {t('skills.add') || 'Add Skill'}
+        {t('skills.create')}
       </Button>
     </ScrollView>
   );
@@ -149,14 +126,30 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  segmented: {
-    marginBottom: 16,
-  },
   input: {
     marginVertical: 8,
+  },
+  hint: {
+    marginHorizontal: 4,
+    opacity: 0.6,
   },
   button: {
     marginTop: 16,
     marginBottom: 32,
+  },
+  previewBox: {
+    marginVertical: 8,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+  },
+  previewLabel: {
+    marginBottom: 8,
+    opacity: 0.6,
+  },
+  previewText: {
+    fontFamily: 'monospace',
+    fontSize: 11,
+    lineHeight: 16,
   },
 });

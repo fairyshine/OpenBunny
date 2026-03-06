@@ -1,10 +1,11 @@
 import { useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Settings, Menu, Brain, Languages, CheckIcon, Keyboard } from '../icons';
-import { SquareTerminal } from 'lucide-react';
+import { SquareTerminal, Clock } from 'lucide-react';
 import { useSettingsStore } from '@shared/stores/settings';
 import type { Language } from '@shared/stores/settings';
 import { MemoryViewer } from '../memory/MemoryViewer';
+import { CronViewer } from '../cron/CronViewer';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -28,9 +29,11 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
   const { t } = useTranslation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+  const [isCronOpen, setIsCronOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const { enabledTools, language, setLanguage } = useSettingsStore();
   const isMemoryEnabled = enabledTools.includes('memory');
+  const isCronEnabled = enabledTools.includes('cron');
 
   const languageOptions: { value: Language; label: string }[] = [
     { value: 'system', label: t('settings.language.system') },
@@ -78,6 +81,21 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>{t('tools.memory.name')}</TooltipContent>
+              </Tooltip>
+            )}
+
+            {isCronEnabled && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => setIsCronOpen(true)}
+                    variant="ghost"
+                    size="icon"
+                  >
+                    <Clock className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('tools.cron.name')}</TooltipContent>
               </Tooltip>
             )}
 
@@ -164,6 +182,7 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
         <ShortcutsHelp isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
       </Suspense>
       <MemoryViewer isOpen={isMemoryOpen} onClose={() => setIsMemoryOpen(false)} />
+      <CronViewer isOpen={isCronOpen} onClose={() => setIsCronOpen(false)} />
     </>
   );
 }

@@ -6,6 +6,7 @@ import {
   Wrench,
   Brain,
   Terminal,
+  Clock,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -16,6 +17,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   plug: Plug,
   brain: Brain,
   terminal: Terminal,
+  clock: Clock,
 };
 
 interface ToolIconProps {

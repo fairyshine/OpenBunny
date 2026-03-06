@@ -13,6 +13,7 @@ const toolDisplayInfo: Record<string, { name: string; description: string; icon:
   file_manager: { name: 'File Manager', description: 'Manage files', icon: 'folder' },
   memory: { name: 'Memory', description: 'Persistent memory', icon: 'brain' },
   exec: { name: 'Shell Exec', description: 'Execute shell commands (Desktop only)', icon: 'terminal' },
+  cron: { name: 'Cron', description: 'Schedule periodic tasks', icon: 'clock' },
 };
 
 const platform = detectPlatform();

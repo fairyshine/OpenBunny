@@ -28,8 +28,12 @@ export { pythonExecutor } from './services/python/executor';
 // Services - AI (new unified AI service)
 export { createProvider, createModel, testConnection } from './services/ai/provider';
 export { builtinTools, getEnabledTools } from './services/ai/tools';
-export { generateSkillsSystemPrompt, getBuiltinSkills } from './services/ai/skills';
+export { cronManager } from './services/cron';
+export type { CronJob } from './services/cron';
+export { generateSkillsSystemPrompt, getBuiltinSkills, getSkillTools } from './services/ai/skills';
 export type { SkillInfo } from './services/ai/skills';
+export { loadAllSkills, saveSkill, deleteSkill, readSkillMd, ensureSkillsDir, SKILLS_DIR, generateSkillTemplate } from './services/skills';
+export type { LoadedSkill } from './services/skills';
 export { connectMCPServer } from './services/ai/mcp';
 export type { MCPClient } from './services/ai/mcp';
 export { runAgentLoop } from './services/ai/agent';

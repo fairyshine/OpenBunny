@@ -202,6 +202,56 @@ const zhCN = {
   'tools.exec.diariesListed': '📅 日记列表 ({{count}} 篇):\n\n{{list}}',
   'tools.exec.desktopOnly': 'Shell 执行仅在桌面端（macOS / Linux）可用',
 
+  // Cron tool
+  'tools.exec.cronNeedExpression': '[错误] add 操作需要 expression 参数',
+  'tools.exec.cronNeedDescription': '[错误] add 操作需要 description 参数',
+  'tools.exec.cronNeedId': '[错误] remove 操作需要 id 参数',
+  'tools.exec.cronNotFound': '[错误] 定时任务不存在: {{id}}',
+  'tools.exec.cronAdded': '添加定时任务: {{description}} ({{expression}})',
+  'tools.exec.cronAddedResult': '[完成] 定时任务已创建\nID: `{{id}}`\n计划: `{{expression}}`\n描述: {{description}}\n下次执行: {{nextRun}}',
+  'tools.exec.cronRemoved': '移除定时任务: {{id}}',
+  'tools.exec.cronRemovedResult': '[完成] 定时任务已移除: {{id}}',
+  'tools.exec.cronEmpty': '当前没有定时任务。',
+  'tools.exec.cronListResult': '定时任务列表 ({{count}} 个):\n\n{{list}}',
+  'tools.exec.cronCleared': '清空所有定时任务',
+  'tools.exec.cronClearedResult': '[完成] 所有定时任务已清空。',
+  'tools.exec.cronFailed': '定时任务操作失败',
+  'tools.exec.cronFailedResult': '[错误] 定时任务操作失败: {{error}}',
+
+  // Cron viewer
+  'tools.cron.name': '定时任务',
+  'tools.cron.title': '定时任务',
+  'tools.cron.empty': '暂无定时任务',
+  'tools.cron.emptyHint': '通过对话让 AI 创建定时任务',
+  'tools.cron.schedule': '计划',
+  'tools.cron.nextRun': '下次执行',
+  'tools.cron.lastRun': '上次执行',
+  'tools.cron.runCount': '执行次数',
+  'tools.cron.remove': '移除',
+  'tools.cron.clearAll': '全部清空',
+  'tools.cron.add': '添加',
+  'tools.cron.addErrorDesc': '请填写任务描述',
+  'tools.cron.addErrorExpr': '请设置执行计划',
+  'tools.cron.descriptionPlaceholder': '任务描述，如: 提醒我喝水',
+  'tools.cron.advanced': '自定义表达式',
+  'tools.cron.every': '每',
+  'tools.cron.minutesUnit': '分钟',
+  'tools.cron.everyHourAt': '每小时的第',
+  'tools.cron.dailyAt': '每天',
+  'tools.cron.weeklyOn': '每周',
+  'tools.cron.at': ' ',
+  'tools.cron.type.minutes': '每隔几分钟',
+  'tools.cron.type.hourly': '每小时',
+  'tools.cron.type.daily': '每天',
+  'tools.cron.type.weekly': '每周',
+  'tools.cron.weekday.MON': '周一',
+  'tools.cron.weekday.TUE': '周二',
+  'tools.cron.weekday.WED': '周三',
+  'tools.cron.weekday.THU': '周四',
+  'tools.cron.weekday.FRI': '周五',
+  'tools.cron.weekday.SAT': '周六',
+  'tools.cron.weekday.SUN': '周日',
+
   // Connection Test
   'connTest.configInfo': '=== 配置信息 ===',
   'connTest.baseUrlDefault': '(默认)',
@@ -344,11 +394,6 @@ const zhCN = {
 
   // System Prompt
   'systemPrompt.assistant': '你是一个智能助手。',
-  'systemPrompt.withTools': `你是一个智能助手，可以调用工具来完成任务。
-
-## 可用工具
-
-{{toolDescriptions}}`,
 
   // Logger
   'logger.startup': 'CyberBunny 启动',
@@ -365,14 +410,37 @@ const zhCN = {
   'memory.entries': '{{count}} 条记录',
   'memory.selectEntry': '选择一条记录查看',
 
-  // Skills (Mobile)
+  // Skills
   'skills.title': '技能',
-  'skills.desc': '管理和配置技能',
+  'skills.desc': '管理和配置技能。技能以文件夹形式存储，包含 SKILL.md 文件。',
   'skills.add': '添加技能',
+  'skills.create': '创建技能',
   'skills.empty': '暂无已加载技能',
   'skills.name': '技能名称',
+  'skills.nameHint': '小写字母、数字和连字符（如 my-skill）',
+  'skills.description': '描述',
   'skills.folderPath': '文件夹路径',
   'skills.notFound': '技能不存在',
+  'skills.builtin': '内置',
+  'skills.user': '用户',
+  'skills.edit': '编辑',
+  'skills.delete': '删除',
+  'skills.deleteConfirm': '确定要删除技能 "{{name}}" 吗？',
+  'skills.save': '保存',
+  'skills.saving': '保存中...',
+  'skills.saved': '技能保存成功',
+  'skills.createNew': '创建新技能',
+  'skills.editSkill': '编辑技能',
+  'skills.editor': 'SKILL.md 编辑器',
+  'skills.preview': '预览',
+  'skills.files': '文件',
+  'skills.cannotDeleteBuiltin': '内置技能无法删除',
+  'skills.invalidName': '名称无效：仅允许小写字母、数字和连字符',
+  'skills.loadError': '加载技能失败',
+  'skills.saveError': '保存技能失败',
+  'skills.deleteError': '删除技能失败',
+  'skills.totalCount': '共 {{count}} 个技能可用',
+  'skills.toolName': '工具名: skills_{{name}}',
 
   // Welcome (Mobile)
   'welcome.subtitle': '浏览器端智能代理系统',
