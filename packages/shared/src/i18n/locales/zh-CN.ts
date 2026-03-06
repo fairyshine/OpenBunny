@@ -56,6 +56,16 @@ const zhCN = {
   'status.badge.search': '网页搜索',
   'status.badge.calc': '数学计算',
   'status.badge.file': '文件操作',
+  'status.system.cpu': 'CPU',
+  'status.system.memory': '内存',
+  'status.system.load': '系统负载',
+  'status.system.info': '系统',
+  'status.system.usage': '使用率',
+  'status.system.cores': '核心',
+  'status.system.uptime': '运行时间',
+  'status.system.load1m': '1分钟',
+  'status.system.load5m': '5分钟',
+  'status.system.load15m': '15分钟',
 
   // Settings
   'settings.title': '设置',

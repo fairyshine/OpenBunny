@@ -56,6 +56,16 @@ const enUS = {
   'status.badge.search': 'Web Search',
   'status.badge.calc': 'Math Calculation',
   'status.badge.file': 'File Operations',
+  'status.system.cpu': 'CPU',
+  'status.system.memory': 'Memory',
+  'status.system.load': 'Load Average',
+  'status.system.info': 'System',
+  'status.system.usage': 'Usage',
+  'status.system.cores': 'cores',
+  'status.system.uptime': 'Uptime',
+  'status.system.load1m': '1 min',
+  'status.system.load5m': '5 min',
+  'status.system.load15m': '15 min',
 
   // Settings
   'settings.title': 'Settings',

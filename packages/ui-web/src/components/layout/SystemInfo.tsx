@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Cpu, HardDrive, Activity, Monitor } from 'lucide-react';
 
@@ -20,6 +21,7 @@ interface SystemInfoData {
 }
 
 export default function SystemInfo() {
+  const { t } = useTranslation();
   const [systemInfo, setSystemInfo] = useState<SystemInfoData | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -89,17 +91,17 @@ export default function SystemInfo() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Cpu className="w-4 h-4 text-blue-500" />
-            CPU
+            {t('status.system.cpu')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold">{systemInfo.cpuUsage.toFixed(1)}%</span>
-              <span className="text-xs text-muted-foreground">使用率</span>
+              <span className="text-xs text-muted-foreground">{t('status.system.usage')}</span>
             </div>
             <p className="text-xs text-muted-foreground truncate" title={systemInfo.cpuModel}>
-              {systemInfo.cpus} 核心
+              {systemInfo.cpus} {t('status.system.cores')}
             </p>
             <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
               <div
@@ -116,14 +118,14 @@ export default function SystemInfo() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <HardDrive className="w-4 h-4 text-purple-500" />
-            内存
+            {t('status.system.memory')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold">{systemInfo.memUsagePercent.toFixed(1)}%</span>
-              <span className="text-xs text-muted-foreground">使用率</span>
+              <span className="text-xs text-muted-foreground">{t('status.system.usage')}</span>
             </div>
             <p className="text-xs text-muted-foreground">
               {formatBytes(systemInfo.usedMemory)} / {formatBytes(systemInfo.totalMemory)}
@@ -143,17 +145,17 @@ export default function SystemInfo() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Activity className="w-4 h-4 text-orange-500" />
-            系统负载
+            {t('status.system.load')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold">{systemInfo.loadAverage[0].toFixed(2)}</span>
-              <span className="text-xs text-muted-foreground">1分钟</span>
+              <span className="text-xs text-muted-foreground">{t('status.system.load1m')}</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              5分钟: {systemInfo.loadAverage[1].toFixed(2)} · 15分钟: {systemInfo.loadAverage[2].toFixed(2)}
+              {t('status.system.load5m')}: {systemInfo.loadAverage[1].toFixed(2)} · {t('status.system.load15m')}: {systemInfo.loadAverage[2].toFixed(2)}
             </p>
           </div>
         </CardContent>
@@ -164,7 +166,7 @@ export default function SystemInfo() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Monitor className="w-4 h-4 text-green-500" />
-            系统
+            {t('status.system.info')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -174,7 +176,7 @@ export default function SystemInfo() {
               <span className="text-xs text-muted-foreground">{systemInfo.arch}</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              运行时间: {formatUptime(systemInfo.uptime)}
+              {t('status.system.uptime')}: {formatUptime(systemInfo.uptime)}
             </p>
             <p className="text-xs text-muted-foreground truncate" title={systemInfo.hostname}>
               {systemInfo.hostname}
