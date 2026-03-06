@@ -276,7 +276,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                                   ({projectSessions.filter(s => sessionTypeFilter === 'all' || (s.sessionType || 'user') === sessionTypeFilter).length})
                                 </span>
                               </div>
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+                              <div className="flex items-center gap-0.5">
                                 <Button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -377,8 +377,8 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                                       </p>
                                     </div>
 
-                                    {!readOnly && (
-                                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {!readOnly && editingId !== session.id && (
+                                      <div className="flex items-center gap-0.5">
                                         <Button
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -504,8 +504,8 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                                     </p>
                                   </div>
 
-                                  {!readOnly && (
-                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {!readOnly && editingId !== session.id && (
+                                    <div className="flex items-center gap-0.5">
                                       <Button
                                         onClick={(e) => {
                                           e.stopPropagation();
