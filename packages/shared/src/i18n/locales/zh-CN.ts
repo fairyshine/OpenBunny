@@ -334,12 +334,15 @@ const zhCN = {
   'fileManager.moveFailed': '移动失败: {{error}}',
   'fileManager.confirmDelete': '确定要删除 "{{name}}" 吗？',
   'fileManager.searchFiles': '搜索文件...',
+  'fileManager.noResults': '未找到文件',
 
   // File Tree
   'fileTree.newFolder': '新建文件夹',
   'fileTree.newFile': '新建文件',
   'fileTree.upload': '上传文件',
   'fileTree.refresh': '刷新',
+  'fileTree.listView': '列表视图',
+  'fileTree.gridView': '图标视图',
 
   // Export Dialog
   'export.title': '导出对话历史',

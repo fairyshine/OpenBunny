@@ -334,12 +334,15 @@ const enUS = {
   'fileManager.moveFailed': 'Move failed: {{error}}',
   'fileManager.confirmDelete': 'Are you sure you want to delete "{{name}}"?',
   'fileManager.searchFiles': 'Search files...',
+  'fileManager.noResults': 'No files found',
 
   // File Tree
   'fileTree.newFolder': 'New Folder',
   'fileTree.newFile': 'New File',
   'fileTree.upload': 'Upload File',
   'fileTree.refresh': 'Refresh',
+  'fileTree.listView': 'List View',
+  'fileTree.gridView': 'Grid View',
 
   // Export Dialog
   'export.title': 'Export Conversation History',
