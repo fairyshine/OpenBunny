@@ -104,6 +104,10 @@ const enUS = {
   // Chat
   'chat.input.placeholder': 'Type a message (Enter to send, Shift+Enter for new line)',
   'chat.input.insertCode': 'Insert code block',
+  'chat.input.toolsAndSkills': 'Tools & Skills',
+  'chat.input.tools': 'Tools',
+  'chat.input.skills': 'Skills',
+  'chat.input.noSkills': 'No skills available',
   'chat.input.processing': 'Processing...',
   'chat.input.stop': 'Stop',
   'chat.stopped': 'Generation stopped',

@@ -71,7 +71,7 @@ export default function ToolBar() {
                       transition-all duration-200 select-none flex-shrink-0
                       ${isEnabled
                         ? 'text-foreground bg-muted/80 shadow-sm'
-                        : 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40'
+                        : 'text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/40'
                       }
                       ${isExecDisabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
                     `}

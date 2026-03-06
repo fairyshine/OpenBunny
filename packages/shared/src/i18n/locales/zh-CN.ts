@@ -104,6 +104,10 @@ const zhCN = {
   // Chat
   'chat.input.placeholder': '输入消息 (Enter 发送，Shift+Enter 换行)',
   'chat.input.insertCode': '插入代码块',
+  'chat.input.toolsAndSkills': '工具与技能',
+  'chat.input.tools': '工具',
+  'chat.input.skills': '技能',
+  'chat.input.noSkills': '暂无可用技能',
   'chat.input.processing': '处理中...',
   'chat.input.stop': '停止',
   'chat.stopped': '已停止生成',

@@ -133,8 +133,8 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <div className="flex-1 overflow-y-auto relative">
+    <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+      <div className="flex-1 overflow-y-auto">
         <div className="sticky top-0 z-10 flex items-center justify-end gap-2 px-3 py-1.5 pointer-events-none">
           {currentStatus && (
             <Badge variant="secondary" className="animate-pulse pointer-events-auto shadow-sm">
@@ -158,19 +158,23 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
           </TooltipProvider>
         </div>
         <MessageList messages={session.messages} />
+        {/* Bottom padding to prevent messages from being hidden behind floating input */}
+        <div className="h-36" />
         <div ref={messagesEndRef} />
       </div>
 
       {session.sessionType === 'agent' ? (
-        <div className="border-t px-4 py-3 text-center text-xs text-muted-foreground bg-muted/30">
+        <div className="absolute bottom-0 left-0 right-0 px-4 py-3 text-center text-xs text-muted-foreground">
           {t('sidebar.readOnly')}
         </div>
       ) : (
-        <ChatInput
-          onSend={handleSendMessage}
-          isLoading={isLoading}
-          onStop={handleStop}
-        />
+        <div className="absolute bottom-0 left-0 right-0 z-20">
+          <ChatInput
+            onSend={handleSendMessage}
+            isLoading={isLoading}
+            onStop={handleStop}
+          />
+        </div>
       )}
 
       <ExportDialog
