@@ -154,6 +154,7 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const isStreaming = message.metadata?.streaming === true;
+  const isToolCall = message.type === 'tool_call';
 
   if (!message.content && !message.toolInput) {
     return (
@@ -189,9 +190,9 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
             {expanded ? '▼' : '▶'}
           </span>
           <span className="text-xs text-muted-foreground font-medium">
-            {message.type === 'tool_call' ? t('chat.toolCall') : t('chat.processStep')}
+            {isToolCall ? t('chat.toolCall') : t('chat.processStep')}
           </span>
-          {message.type === 'tool_call' && message.toolName && (
+          {isToolCall && message.toolName && (
             <>
               <code className="text-xs font-mono text-foreground/50">{message.toolName}</code>
               {isStreaming && (
@@ -206,7 +207,7 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
         </button>
         {expanded && (
           <div className="mt-2 rounded-2xl bg-muted/50 border-elegant animate-slide-in overflow-hidden">
-            {message.type === 'tool_call' && message.toolName && (
+            {isToolCall && message.toolName && !isStreaming && (
               <div className="px-4 py-3 border-b border-border/30 bg-muted/30">
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0">
@@ -215,16 +216,9 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <code className="text-sm font-mono font-semibold text-foreground">{message.toolName}</code>
-                      {isStreaming && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 animate-pulse">
-                          {t('chat.streaming')}
-                        </Badge>
-                      )}
-                    </div>
+                    <code className="text-sm font-mono font-semibold text-foreground">{message.toolName}</code>
                     {typeof message.metadata?.toolDescription === 'string' && (
-                      <p className="text-xs text-muted-foreground leading-relaxed">
+                      <p className="text-xs text-muted-foreground leading-relaxed mt-1">
                         {message.metadata.toolDescription}
                       </p>
                     )}
@@ -233,11 +227,17 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
               </div>
             )}
             <div className="px-4 py-3">
-              {message.type === 'tool_call' && message.toolInput ? (
-                <>
-                  <div className="text-xs font-semibold text-muted-foreground mb-2">Parameters:</div>
-                  <ToolInputDisplay input={message.toolInput} isStreaming={isStreaming} />
-                </>
+              {isToolCall && message.toolInput ? (
+                isStreaming ? (
+                  <pre className="text-xs bg-background/50 rounded-md p-3 font-mono text-foreground/80 whitespace-pre-wrap break-all max-h-48 overflow-y-auto border-elegant">
+                    {message.toolInput}<span className="animate-pulse">|</span>
+                  </pre>
+                ) : (
+                  <>
+                    <div className="text-xs font-semibold text-muted-foreground mb-2">Parameters:</div>
+                    <ToolInputDisplay input={message.toolInput} />
+                  </>
+                )
               ) : message.content ? (
                 <ReactMarkdown content={message.content} />
               ) : null}
@@ -320,7 +320,7 @@ const Timestamp = memo(function Timestamp({ time, align = 'left' }: { time: numb
   );
 });
 
-const ToolInputDisplay = memo(function ToolInputDisplay({ input, isStreaming }: { input: string; isStreaming?: boolean }) {
+const ToolInputDisplay = memo(function ToolInputDisplay({ input }: { input: string }) {
   try {
     const params = JSON.parse(input);
     return (
@@ -358,10 +358,10 @@ const ToolInputDisplay = memo(function ToolInputDisplay({ input, isStreaming }: 
       </div>
     );
   } catch {
-    // Fallback to raw text if parsing fails (streaming or incomplete JSON)
+    // Fallback to raw text if parsing fails
     return (
-      <pre className={`text-xs bg-background/50 rounded-md p-3 overflow-x-auto font-mono text-foreground/80 whitespace-pre-wrap break-all max-h-48 overflow-y-auto border-elegant ${isStreaming ? 'animate-pulse' : ''}`}>
-        {input || (isStreaming ? '...' : '')}
+      <pre className="text-xs bg-background/50 rounded-md p-3 overflow-x-auto font-mono text-foreground/80 whitespace-pre-wrap break-all max-h-48 overflow-y-auto border-elegant">
+        {input}
       </pre>
     );
   }

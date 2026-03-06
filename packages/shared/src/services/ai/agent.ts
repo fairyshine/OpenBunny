@@ -97,7 +97,8 @@ export async function runAgentLoop(
 
   // Track tool calls for streaming display
   const toolCallMessages = new Map<string, string>(); // toolCallId -> messageId
-  const toolCallInputs = new Map<string, string>(); // toolCallId -> accumulated input
+  const toolCallInputs = new Map<string, string>(); // toolCallId -> accumulated raw input text
+  const toolCallNames = new Map<string, string>(); // toolCallId -> toolName (from delta)
   const toolResultMessages = new Map<string, string>(); // toolCallId -> result messageId
 
   try {
@@ -130,20 +131,18 @@ export async function runAgentLoop(
           lastChunkLogTime = now;
         }
 
-        // Handle tool-call chunks - create tool call message immediately
-        if (chunk.type === 'tool-call') {
-          console.log('[Agent] Tool call chunk received:', {
-            toolCallId: chunk.toolCallId,
-            toolName: chunk.toolName,
-          });
+        // Handle tool-call-delta chunks — create message on first delta, then stream raw text
+        if (chunk.type === 'tool-call-delta') {
+          const toolCallId = chunk.toolCallId;
 
-          // Create tool call message immediately when we first see it
-          if (!toolCallMessages.has(chunk.toolCallId)) {
+          // Create tool_call message on first delta
+          if (!toolCallMessages.has(toolCallId)) {
             const toolCallMsgId = callbacks.generateId();
-            toolCallMessages.set(chunk.toolCallId, toolCallMsgId);
-            toolCallInputs.set(chunk.toolCallId, '');
-
+            toolCallMessages.set(toolCallId, toolCallMsgId);
+            toolCallInputs.set(toolCallId, '');
             const toolName = chunk.toolName || 'unknown';
+            toolCallNames.set(toolCallId, toolName);
+
             const toolDescription = (tools[toolName] as any)?.description || '';
             callbacks.addMessage(sessionId, {
               id: toolCallMsgId,
@@ -153,45 +152,72 @@ export async function runAgentLoop(
               type: 'tool_call',
               toolName,
               toolInput: '',
-              toolCallId: chunk.toolCallId,
+              toolCallId,
               groupId,
               metadata: { toolDescription, streaming: true },
             });
 
-            logTool('info', `Tool call started: ${toolName}`, {
-              toolCallId: chunk.toolCallId,
-            });
+            callbacks.setStatus(t('chat.executing', { toolName }));
+            logTool('info', `Tool call started: ${toolName}`, { toolCallId });
           }
-        }
 
-        // Handle tool-call-delta chunks - stream tool input parameters
-        if (chunk.type === 'tool-call-delta') {
-          const currentInput = toolCallInputs.get(chunk.toolCallId) || '';
-          const newInput = currentInput + (chunk.argsTextDelta || '');
-          toolCallInputs.set(chunk.toolCallId, newInput);
+          // Accumulate raw args text and push to UI
+          const prev = toolCallInputs.get(toolCallId) || '';
+          const next = prev + (chunk.argsTextDelta || '');
+          toolCallInputs.set(toolCallId, next);
 
-          const toolCallMsgId = toolCallMessages.get(chunk.toolCallId);
-          if (toolCallMsgId) {
-            callbacks.updateMessage(sessionId, toolCallMsgId, {
-              toolInput: newInput,
-            });
-          }
-        }
-
-        // Handle tool-result chunks - stream tool output
-        if (chunk.type === 'tool-result') {
-          console.log('[Agent] Tool result chunk received:', {
-            toolCallId: chunk.toolCallId,
-            toolName: chunk.toolName,
-            hasOutput: 'output' in chunk,
+          const toolCallMsgId = toolCallMessages.get(toolCallId)!;
+          callbacks.updateMessage(sessionId, toolCallMsgId, {
+            toolInput: next,
           });
+        }
 
-          // Skip if already created for this toolCallId
-          if (!toolResultMessages.has(chunk.toolCallId)) {
+        // Handle tool-call chunk — args are now complete, finalize with formatted JSON
+        if (chunk.type === 'tool-call') {
+          const toolCallId = chunk.toolCallId;
+          const toolName = chunk.toolName || toolCallNames.get(toolCallId) || 'unknown';
+
+          // If no delta was received (provider skipped deltas), create the message now
+          if (!toolCallMessages.has(toolCallId)) {
+            const toolCallMsgId = callbacks.generateId();
+            toolCallMessages.set(toolCallId, toolCallMsgId);
+            toolCallNames.set(toolCallId, toolName);
+
+            const toolDescription = (tools[toolName] as any)?.description || '';
+            callbacks.addMessage(sessionId, {
+              id: toolCallMsgId,
+              role: 'assistant',
+              content: t('chat.callTool', { toolName }),
+              timestamp: Date.now(),
+              type: 'tool_call',
+              toolName,
+              toolInput: JSON.stringify(chunk.args, null, 2),
+              toolCallId,
+              groupId,
+              metadata: { toolDescription, streaming: false },
+            });
+
+            callbacks.setStatus(t('chat.executing', { toolName }));
+            logTool('info', `Tool call: ${toolName}`, { toolCallId });
+          } else {
+            // Finalize: replace raw streamed text with formatted JSON
+            const toolCallMsgId = toolCallMessages.get(toolCallId)!;
+            callbacks.updateMessage(sessionId, toolCallMsgId, {
+              toolInput: JSON.stringify(chunk.args, null, 2),
+              metadata: { streaming: false },
+            });
+          }
+        }
+
+        // Handle tool-result chunks
+        if (chunk.type === 'tool-result') {
+          const toolCallId = chunk.toolCallId;
+
+          if (!toolResultMessages.has(toolCallId)) {
             const output = (chunk as any).output;
             const resultContent = typeof output === 'string' ? output : (output != null ? JSON.stringify(output) : '');
             const toolResultMsgId = callbacks.generateId();
-            toolResultMessages.set(chunk.toolCallId, toolResultMsgId);
+            toolResultMessages.set(toolCallId, toolResultMsgId);
 
             callbacks.addMessage(sessionId, {
               id: toolResultMsgId,
@@ -199,21 +225,13 @@ export async function runAgentLoop(
               content: resultContent,
               timestamp: Date.now(),
               type: 'tool_result',
-              toolName: chunk.toolName || '',
+              toolName: chunk.toolName || toolCallNames.get(toolCallId) || '',
               toolOutput: resultContent,
-              toolCallId: chunk.toolCallId,
+              toolCallId,
               groupId,
-              metadata: { streaming: false },
             });
 
-            // Mark tool call message as complete
-            const toolCallMsgId = toolCallMessages.get(chunk.toolCallId);
-            if (toolCallMsgId) {
-              callbacks.updateMessage(sessionId, toolCallMsgId, {
-                metadata: { streaming: false },
-              });
-            }
-
+            callbacks.setStatus('');
             logTool('success', `Tool ${chunk.toolName || 'unknown'} completed`, { resultLength: resultContent.length });
           }
         }
@@ -324,8 +342,8 @@ export async function runAgentLoop(
         currentStepContent = '';
         toolCallMessages.clear();
         toolCallInputs.clear();
+        toolCallNames.clear();
         toolResultMessages.clear();
-        console.log('[Agent] Step finished, reset for next step');
       },
     });
 
