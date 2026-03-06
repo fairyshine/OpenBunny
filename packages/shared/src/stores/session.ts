@@ -156,7 +156,16 @@ export const useSessionStore = create<SessionState>()(
               ? {
                   ...session,
                   messages: session.messages.map((msg) =>
-                    msg.id === messageId ? { ...msg, ...updates } : msg
+                    msg.id === messageId
+                      ? {
+                          ...msg,
+                          ...updates,
+                          // Merge metadata instead of replacing it
+                          metadata: updates.metadata
+                            ? { ...msg.metadata, ...updates.metadata }
+                            : msg.metadata
+                        }
+                      : msg
                   ),
                 }
               : session
