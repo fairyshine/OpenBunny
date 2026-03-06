@@ -12,8 +12,8 @@ export default function StatusScreen({ onStart, showStartButton = true }: Status
     <DashboardContext.Provider value={{ onStart, showStartButton }}>
       <div className="flex-1 overflow-y-auto">
         <div className="min-h-full p-4 sm:p-6 gradient-bg">
-          <DashboardToolbar />
-          <div className="max-w-6xl mx-auto animate-fade-in">
+          <div className="max-w-6xl mx-auto animate-fade-in relative">
+            <DashboardToolbar />
             <Dashboard />
           </div>
         </div>

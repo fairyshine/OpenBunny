@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { logSettings } from '../services/console/logger';
+import type { UserProfile, AgentProfile } from '../types';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'zh-CN' | 'en-US' | 'system';
@@ -79,6 +80,17 @@ interface SettingsState {
   setDashboardVisibleCards: (cards: string[]) => void;
   toggleDashboardCard: (cardId: string) => void;
   resetDashboardLayout: () => void;
+
+  // User profile
+  userProfile: UserProfile;
+  setUserProfile: (profile: Partial<UserProfile>) => void;
+
+  // Agent profiles
+  agentProfiles: AgentProfile[];
+  addAgentProfile: (profile: Omit<AgentProfile, 'id' | 'createdAt'>) => void;
+  updateAgentProfile: (id: string, updates: Partial<AgentProfile>) => void;
+  removeAgentProfile: (id: string) => void;
+  setActiveAgentProfile: (id: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -175,6 +187,36 @@ export const useSettingsStore = create<SettingsState>()(
         })),
       resetDashboardLayout: () =>
         set({ dashboardCardOrder: [], dashboardVisibleCards: [] }),
+
+      userProfile: { nickname: '', bio: '', avatar: '🐰', email: '', location: '' },
+      setUserProfile: (profile) =>
+        set((state) => ({ userProfile: { ...state.userProfile, ...profile } })),
+
+      agentProfiles: [],
+      addAgentProfile: (profile) =>
+        set((state) => ({
+          agentProfiles: [
+            ...state.agentProfiles,
+            { ...profile, id: crypto.randomUUID(), createdAt: Date.now() },
+          ],
+        })),
+      updateAgentProfile: (id, updates) =>
+        set((state) => ({
+          agentProfiles: state.agentProfiles.map((p) =>
+            p.id === id ? { ...p, ...updates } : p
+          ),
+        })),
+      removeAgentProfile: (id) =>
+        set((state) => ({
+          agentProfiles: state.agentProfiles.filter((p) => p.id !== id),
+        })),
+      setActiveAgentProfile: (id) =>
+        set((state) => ({
+          agentProfiles: state.agentProfiles.map((p) => ({
+            ...p,
+            isActive: p.id === id,
+          })),
+        })),
     }),
     {
       name: 'webagent-settings',

@@ -135,7 +135,7 @@ export default function Dashboard() {
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={visibleCards} strategy={rectSortingStrategy}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-[11rem]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-[11rem] grid-flow-row-dense">
           {visibleCards.map((id) => (
             <SortableCard key={id} id={id} />
           ))}

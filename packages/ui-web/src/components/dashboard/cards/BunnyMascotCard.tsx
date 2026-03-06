@@ -173,7 +173,7 @@ export default function BunnyMascotCard() {
         {/* Chat bubble */}
         {bubble && (
           <div
-            className="absolute -top-1 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-xl bg-foreground text-background text-xs font-medium whitespace-nowrap shadow-lg"
+            className="absolute top-6 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-xl bg-foreground text-background text-xs font-medium whitespace-nowrap shadow-lg"
             style={{ animation: 'bubble-in 0.25s ease-out' }}
           >
             {bubble}

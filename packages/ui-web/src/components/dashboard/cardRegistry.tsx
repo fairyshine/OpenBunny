@@ -21,16 +21,6 @@ export const cardRegistry: Record<DashboardCardId, DashboardCardDef> = {
     rowSpan: 2,
     component: WelcomeCard,
   },
-  'system-info': {
-    id: 'system-info',
-    titleKey: 'dashboard.systemInfo',
-    icon: <Monitor className="w-4 h-4" />,
-    colSpan: 4,
-    rowSpan: 2,
-    component: SystemInfoCard,
-    isAvailable: () =>
-      typeof window !== 'undefined' && !!(window as any).electronAPI,
-  },
   'bunny-mascot': {
     id: 'bunny-mascot',
     titleKey: 'dashboard.bunnyMascot',
@@ -39,13 +29,15 @@ export const cardRegistry: Record<DashboardCardId, DashboardCardDef> = {
     rowSpan: 2,
     component: BunnyMascotCard,
   },
-  'session-stats': {
-    id: 'session-stats',
-    titleKey: 'dashboard.sessionStats',
-    icon: <MessageSquare className="w-4 h-4" />,
-    colSpan: 1,
+  'system-info': {
+    id: 'system-info',
+    titleKey: 'dashboard.systemInfo',
+    icon: <Monitor className="w-4 h-4" />,
+    colSpan: 4,
     rowSpan: 1,
-    component: SessionStatsCard,
+    component: SystemInfoCard,
+    isAvailable: () =>
+      typeof window !== 'undefined' && !!(window as any).electronAPI,
   },
   'llm-config': {
     id: 'llm-config',
@@ -54,6 +46,14 @@ export const cardRegistry: Record<DashboardCardId, DashboardCardDef> = {
     colSpan: 1,
     rowSpan: 1,
     component: LLMConfigCard,
+  },
+  'session-stats': {
+    id: 'session-stats',
+    titleKey: 'dashboard.sessionStats',
+    icon: <MessageSquare className="w-4 h-4" />,
+    colSpan: 1,
+    rowSpan: 1,
+    component: SessionStatsCard,
   },
   'tool-status': {
     id: 'tool-status',

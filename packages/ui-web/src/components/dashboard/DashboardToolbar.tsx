@@ -49,7 +49,7 @@ export default function DashboardToolbar() {
   };
 
   return (
-    <div className="flex justify-end mb-4">
+    <div className="absolute right-0 top-0 z-10">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="h-8 w-8">

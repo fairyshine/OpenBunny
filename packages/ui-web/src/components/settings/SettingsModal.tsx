@@ -6,6 +6,7 @@ import { ToolManager } from './ToolManager';
 import { SkillManager } from './SkillManager';
 import ConnectionTest from './ConnectionTest';
 import ProviderPicker from './ProviderPicker';
+import ProfileSettings from './ProfileSettings';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Label } from '../ui/label';
@@ -47,10 +48,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         <Tabs defaultValue="llm" className="flex-1 flex flex-col overflow-hidden">
           <div className="px-6 pt-4 shrink-0">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="llm">{t('settings.tabs.llm')}</TabsTrigger>
               <TabsTrigger value="tools">{t('settings.tabs.tools')}</TabsTrigger>
               <TabsTrigger value="skills">{t('settings.tabs.skills')}</TabsTrigger>
+              <TabsTrigger value="profile">{t('settings.tabs.profile')}</TabsTrigger>
               <TabsTrigger value="general">{t('settings.tabs.general')}</TabsTrigger>
             </TabsList>
           </div>
@@ -190,6 +192,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             <div className="px-6 py-5">
               <SkillManager />
             </div>
+          </TabsContent>
+
+          <TabsContent value="profile" className="flex-1 overflow-y-auto mt-0">
+            <ProfileSettings />
           </TabsContent>
 
           <TabsContent value="general" className="flex-1 overflow-y-auto mt-0">

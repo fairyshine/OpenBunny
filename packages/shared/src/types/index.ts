@@ -1,3 +1,23 @@
+// 用户身份信息
+export interface UserProfile {
+  nickname: string;
+  bio: string;
+  avatar: string; // emoji or URL
+  email: string;
+  location: string;
+}
+
+// Agent 身份配置
+export interface AgentProfile {
+  id: string;
+  name: string;
+  avatar: string; // emoji
+  description: string;
+  systemPrompt: string;
+  isActive: boolean;
+  createdAt: number;
+}
+
 // Agent 消息类型 (UI layer)
 export interface Message {
   id: string;
