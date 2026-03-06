@@ -185,7 +185,7 @@ export default function ConsoleScreen() {
         )}
         ListEmptyComponent={
           <Text variant="bodyMedium" style={styles.emptyText}>
-            {t('console.empty') || 'No log entries'}
+            {t('console.noLogs') || 'No log entries'}
           </Text>
         }
       />

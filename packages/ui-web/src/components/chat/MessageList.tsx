@@ -62,16 +62,16 @@ const EmptyState = memo(function EmptyState() {
       </p>
       <div className="flex flex-wrap gap-2 justify-center max-w-lg mx-auto">
         <Badge variant="outline" className="text-xs font-normal border-elegant">
-          {t('welcome.badge.python')}
+          {t('status.badge.python')}
         </Badge>
         <Badge variant="outline" className="text-xs font-normal border-elegant">
-          {t('welcome.badge.search')}
+          {t('status.badge.search')}
         </Badge>
         <Badge variant="outline" className="text-xs font-normal border-elegant">
-          {t('welcome.badge.calc')}
+          {t('status.badge.calc')}
         </Badge>
         <Badge variant="outline" className="text-xs font-normal border-elegant">
-          {t('welcome.badge.file')}
+          {t('status.badge.file')}
         </Badge>
       </div>
     </div>

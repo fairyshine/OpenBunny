@@ -71,6 +71,14 @@ interface SettingsState {
   setExaApiKey: (key: string) => void;
   braveApiKey: string;
   setBraveApiKey: (key: string) => void;
+
+  // Dashboard settings
+  dashboardCardOrder: string[];
+  dashboardVisibleCards: string[];
+  setDashboardCardOrder: (order: string[]) => void;
+  setDashboardVisibleCards: (cards: string[]) => void;
+  toggleDashboardCard: (cardId: string) => void;
+  resetDashboardLayout: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -154,6 +162,19 @@ export const useSettingsStore = create<SettingsState>()(
         logSettings('info', `Search provider: ${provider}`);
         set({ searchProvider: provider });
       },
+
+      dashboardCardOrder: [],
+      dashboardVisibleCards: [],
+      setDashboardCardOrder: (order) => set({ dashboardCardOrder: order }),
+      setDashboardVisibleCards: (cards) => set({ dashboardVisibleCards: cards }),
+      toggleDashboardCard: (cardId) =>
+        set((state) => ({
+          dashboardVisibleCards: state.dashboardVisibleCards.includes(cardId)
+            ? state.dashboardVisibleCards.filter((id) => id !== cardId)
+            : [...state.dashboardVisibleCards, cardId],
+        })),
+      resetDashboardLayout: () =>
+        set({ dashboardCardOrder: [], dashboardVisibleCards: [] }),
     }),
     {
       name: 'webagent-settings',

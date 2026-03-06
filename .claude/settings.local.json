@@ -84,7 +84,13 @@
       "Bash(/tmp/test-minimal-agent.js:*)",
       "Bash(/tmp/test-electron-storage.js:*)",
       "Bash(/tmp/diagnose-zero-chunks.js:*)",
-      "Bash(/tmp/system-info-design.md:*)"
+      "Bash(/tmp/system-info-design.md:*)",
+      "Bash(/tmp/final-summary.md:*)",
+      "Bash(/tmp/testing-guide.md:*)",
+      "Bash(/tmp/feature-complete-summary.md:*)",
+      "Bash(/tmp/SYSTEM_INFO_README.md:*)",
+      "Bash(/tmp/session-final-summary.md:*)",
+      "Bash(/tmp/streaming_summary.md:*)"
     ]
   }
 }

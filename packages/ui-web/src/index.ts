@@ -27,6 +27,12 @@ export { default as ConsolePanel } from './components/layout/ConsolePanel';
 export { default as StatusScreen } from './components/layout/StatusScreen';
 export { ThemeToggle } from './components/layout/ThemeToggle';
 
+// Components - Dashboard
+export { default as Dashboard } from './components/dashboard/Dashboard';
+export { default as DashboardToolbar } from './components/dashboard/DashboardToolbar';
+export { cardRegistry, allCardIds } from './components/dashboard/cardRegistry';
+export type { DashboardCardId, DashboardCardDef } from './components/dashboard/types';
+
 // Components - Memory
 export { MemoryViewer } from './components/memory/MemoryViewer';
 

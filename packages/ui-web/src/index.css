@@ -331,3 +331,12 @@ code {
   background-size: 200% 100%;
   animation: shimmer 2s linear infinite;
 }
+
+/* Dashboard drag overlay */
+.dashboard-drag-overlay {
+  opacity: 0.85;
+  box-shadow:
+    0 8px 24px hsl(var(--foreground) / 0.12),
+    0 2px 8px hsl(var(--foreground) / 0.08);
+  border-radius: var(--radius);
+}
