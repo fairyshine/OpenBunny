@@ -205,9 +205,12 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
   const handleDragStart = (e: React.DragEvent, path: string) => {
     e.dataTransfer.effectAllowed = 'copyMove';
     e.dataTransfer.setData('text/plain', path);
-    setDraggedPath(path);
     isDraggingRef.current = true;
     dragStartTimeRef.current = Date.now();
+    // Delay state update to avoid re-render interrupting drag start
+    requestAnimationFrame(() => {
+      setDraggedPath(path);
+    });
   };
 
   const handleDragEnd = () => {
