@@ -253,9 +253,10 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
 const ToolResultBubble = memo(function ToolResultBubble({ message }: { message: Message }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
-  const isError = message.content.startsWith('工具执行错误') || message.content.startsWith('工具 "') || message.content.startsWith('Tool execution error') || message.content.startsWith('Tool "');
+  const content = message.content || '';
+  const isError = content.startsWith('工具执行错误') || content.startsWith('工具 "') || content.startsWith('Tool execution error') || content.startsWith('Tool "');
   const isStreaming = message.metadata?.streaming === true;
-  const previewText = message.content.split('\n')[0].slice(0, 80);
+  const previewText = content.split('\n')[0].slice(0, 80);
 
   return (
     <div className="flex gap-3 md:gap-4 animate-fade-in">
@@ -301,7 +302,7 @@ const ToolResultBubble = memo(function ToolResultBubble({ message }: { message: 
           {expanded && (
             <div className="px-4 pb-3 border-t border-border/30 animate-slide-in">
               <pre className="mt-3 text-xs bg-background/50 rounded-md p-3 overflow-x-auto font-mono text-foreground/80 whitespace-pre-wrap break-all max-h-64 overflow-y-auto border-elegant">
-                {message.content}
+                {content}
               </pre>
             </div>
           )}
