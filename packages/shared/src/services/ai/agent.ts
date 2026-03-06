@@ -95,6 +95,10 @@ export async function runAgentLoop(
   let lastChunkLogTime = 0;
   let totalChunks = 0;
 
+  // Track tool calls for streaming display
+  const toolCallMessages = new Map<string, string>(); // toolCallId -> messageId
+  const toolCallInputs = new Map<string, string>(); // toolCallId -> accumulated input
+
   try {
     console.log('[Agent] Creating streamText with:', {
       hasModel: !!model,
@@ -125,12 +129,86 @@ export async function runAgentLoop(
           lastChunkLogTime = now;
         }
 
-        // Log tool-call chunks for debugging
+        // Handle tool-call chunks - create tool call message immediately
         if (chunk.type === 'tool-call') {
           console.log('[Agent] Tool call chunk received:', {
             toolCallId: chunk.toolCallId,
             toolName: chunk.toolName,
           });
+
+          // Create tool call message immediately when we first see it
+          if (!toolCallMessages.has(chunk.toolCallId)) {
+            const toolCallMsgId = callbacks.generateId();
+            toolCallMessages.set(chunk.toolCallId, toolCallMsgId);
+            toolCallInputs.set(chunk.toolCallId, '');
+
+            const toolDescription = (tools[chunk.toolName] as any)?.description || '';
+            callbacks.addMessage(sessionId, {
+              id: toolCallMsgId,
+              role: 'assistant',
+              content: t('chat.callTool', { toolName: chunk.toolName }),
+              timestamp: Date.now(),
+              type: 'tool_call',
+              toolName: chunk.toolName,
+              toolInput: '',
+              toolCallId: chunk.toolCallId,
+              groupId,
+              metadata: { toolDescription, streaming: true },
+            });
+
+            logTool('info', `Tool call started: ${chunk.toolName}`, {
+              toolCallId: chunk.toolCallId,
+            });
+          }
+        }
+
+        // Handle tool-call-delta chunks - stream tool input parameters
+        if (chunk.type === 'tool-call-delta') {
+          const currentInput = toolCallInputs.get(chunk.toolCallId) || '';
+          const newInput = currentInput + chunk.argsTextDelta;
+          toolCallInputs.set(chunk.toolCallId, newInput);
+
+          const toolCallMsgId = toolCallMessages.get(chunk.toolCallId);
+          if (toolCallMsgId) {
+            callbacks.updateMessage(sessionId, toolCallMsgId, {
+              toolInput: newInput,
+            });
+          }
+        }
+
+        // Handle tool-result chunks - stream tool output
+        if (chunk.type === 'tool-result') {
+          console.log('[Agent] Tool result chunk received:', {
+            toolCallId: chunk.toolCallId,
+            toolName: chunk.toolName,
+          });
+
+          const resultContent = typeof chunk.result === 'string' ? chunk.result : JSON.stringify(chunk.result);
+          const toolResultMsgId = callbacks.generateId();
+
+          // Create tool result message immediately
+          callbacks.addMessage(sessionId, {
+            id: toolResultMsgId,
+            role: 'tool',
+            content: resultContent,
+            timestamp: Date.now(),
+            type: 'tool_result',
+            toolName: chunk.toolName,
+            toolOutput: resultContent,
+            toolCallId: chunk.toolCallId,
+            groupId,
+            metadata: { streaming: false },
+          });
+
+          // Mark tool call message as complete
+          const toolCallMsgId = toolCallMessages.get(chunk.toolCallId);
+          if (toolCallMsgId) {
+            callbacks.updateMessage(sessionId, toolCallMsgId, {
+              metadata: { streaming: false },
+            });
+          }
+
+          logTool('success', `Tool ${chunk.toolName} completed`, { resultLength: resultContent.length });
         }
 
         // Create step message on first text-delta if not yet created
@@ -174,77 +252,71 @@ export async function runAgentLoop(
           });
         }
 
+        // Tool calls and results are now handled in onChunk for streaming
+        // This section is kept as a fallback for any missed tool calls
         if (toolCalls && toolCalls.length > 0) {
-          console.log('[Agent] Processing tool calls:', toolCalls.length);
-
-          if (!toolResults || toolResults.length === 0) {
-            console.warn('[Agent] WARNING: toolCalls present but no toolResults!');
-            logLLM('warning', 'Tool calls present but no tool results');
-          }
+          console.log('[Agent] Verifying tool calls in onStepFinish:', toolCalls.length);
 
           for (let i = 0; i < toolCalls.length; i++) {
             const tc = toolCalls[i];
             const tr = toolResults?.[i];
 
-            console.log(`[Agent] Processing tool call ${i + 1}/${toolCalls.length}:`, {
-              toolName: tc.toolName,
-              toolCallId: tc.toolCallId,
-              hasResult: !!tr,
-            });
+            // Only add if not already added via streaming
+            if (!toolCallMessages.has(tc.toolCallId)) {
+              console.log(`[Agent] Adding missed tool call ${tc.toolName} in onStepFinish`);
 
-            logTool('info', `Tool call: ${tc.toolName}`, {
-              input: JSON.stringify(tc.input).slice(0, 200),
-            });
-
-            const toolCallMsgId = callbacks.generateId();
-            const toolDescription = (tools[tc.toolName] as any)?.description || '';
-            callbacks.addMessage(sessionId, {
-              id: toolCallMsgId,
-              role: 'assistant',
-              content: t('chat.callTool', { toolName: tc.toolName }),
-              timestamp: Date.now(),
-              type: 'tool_call',
-              toolName: tc.toolName,
-              toolInput: JSON.stringify(tc.input, null, 2),
-              toolCallId: tc.toolCallId,
-              groupId,
-              metadata: { toolDescription },
-            });
-
-            callbacks.setStatus(t('chat.executing', { toolName: tc.toolName }));
-
-            if (tr) {
-              const resultContent = typeof tr.output === 'string' ? tr.output : JSON.stringify(tr.output);
-              const toolResultMsgId = callbacks.generateId();
-
-              console.log(`[Agent] Adding tool result for ${tc.toolName}, length:`, resultContent.length);
-
-              // Display tool result immediately (no streaming delay)
+              const toolCallMsgId = callbacks.generateId();
+              const toolDescription = (tools[tc.toolName] as any)?.description || '';
               callbacks.addMessage(sessionId, {
-                id: toolResultMsgId,
-                role: 'tool',
-                content: resultContent,
+                id: toolCallMsgId,
+                role: 'assistant',
+                content: t('chat.callTool', { toolName: tc.toolName }),
                 timestamp: Date.now(),
-                type: 'tool_result',
+                type: 'tool_call',
                 toolName: tc.toolName,
-                toolOutput: resultContent,
+                toolInput: JSON.stringify(tc.input, null, 2),
                 toolCallId: tc.toolCallId,
                 groupId,
+                metadata: { toolDescription, streaming: false },
               });
 
-              logTool('success', `Tool ${tc.toolName} completed`, { resultLength: resultContent.length });
+              if (tr) {
+                const resultContent = typeof tr.output === 'string' ? tr.output : JSON.stringify(tr.output);
+                const toolResultMsgId = callbacks.generateId();
+
+                callbacks.addMessage(sessionId, {
+                  id: toolResultMsgId,
+                  role: 'tool',
+                  content: resultContent,
+                  timestamp: Date.now(),
+                  type: 'tool_result',
+                  toolName: tc.toolName,
+                  toolOutput: resultContent,
+                  toolCallId: tc.toolCallId,
+                  groupId,
+                  metadata: { streaming: false },
+                });
+              }
             } else {
-              console.error(`[Agent] No result for tool call ${tc.toolName}`);
+              // Ensure tool call input is finalized with proper formatting
+              const toolCallMsgId = toolCallMessages.get(tc.toolCallId);
+              if (toolCallMsgId) {
+                callbacks.updateMessage(sessionId, toolCallMsgId, {
+                  toolInput: JSON.stringify(tc.input, null, 2),
+                  metadata: { streaming: false },
+                });
+              }
             }
           }
 
           callbacks.setStatus('');
-          console.log('[Agent] Finished processing all tool calls');
         }
 
         // Reset for next step
         currentStepMessageId = null;
         currentStepContent = '';
+        toolCallMessages.clear();
+        toolCallInputs.clear();
         console.log('[Agent] Step finished, reset for next step');
       },
     });

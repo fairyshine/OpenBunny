@@ -153,8 +153,9 @@ const ResponseBubble = memo(function ResponseBubble({ message }: { message: Mess
 const ProcessBubble = memo(function ProcessBubble({ message }: { message: Message }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
+  const isStreaming = message.metadata?.streaming === true;
 
-  if (!message.content) {
+  if (!message.content && !message.toolInput) {
     return (
       <div className="flex gap-3 md:gap-4 animate-fade-in">
         <div className="flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-full bg-muted flex items-center justify-center text-sm shadow-elegant">
@@ -191,7 +192,16 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
             {message.type === 'tool_call' ? t('chat.toolCall') : t('chat.processStep')}
           </span>
           {message.type === 'tool_call' && message.toolName && (
-            <code className="text-xs font-mono text-foreground/50">{message.toolName}</code>
+            <>
+              <code className="text-xs font-mono text-foreground/50">{message.toolName}</code>
+              {isStreaming && (
+                <div className="flex gap-1 ml-1">
+                  <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              )}
+            </>
           )}
         </button>
         {expanded && (
@@ -207,6 +217,11 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <code className="text-sm font-mono font-semibold text-foreground">{message.toolName}</code>
+                      {isStreaming && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 animate-pulse">
+                          {t('chat.streaming')}
+                        </Badge>
+                      )}
                     </div>
                     {typeof message.metadata?.toolDescription === 'string' && (
                       <p className="text-xs text-muted-foreground leading-relaxed">
@@ -221,7 +236,7 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
               {message.type === 'tool_call' && message.toolInput ? (
                 <>
                   <div className="text-xs font-semibold text-muted-foreground mb-2">Parameters:</div>
-                  <ToolInputDisplay input={message.toolInput} />
+                  <ToolInputDisplay input={message.toolInput} isStreaming={isStreaming} />
                 </>
               ) : (
                 <ReactMarkdown content={message.content} />
@@ -304,7 +319,7 @@ const Timestamp = memo(function Timestamp({ time, align = 'left' }: { time: numb
   );
 });
 
-const ToolInputDisplay = memo(function ToolInputDisplay({ input }: { input: string }) {
+const ToolInputDisplay = memo(function ToolInputDisplay({ input, isStreaming }: { input: string; isStreaming?: boolean }) {
   try {
     const params = JSON.parse(input);
     return (
@@ -342,10 +357,10 @@ const ToolInputDisplay = memo(function ToolInputDisplay({ input }: { input: stri
       </div>
     );
   } catch {
-    // Fallback to raw JSON if parsing fails
+    // Fallback to raw text if parsing fails (streaming or incomplete JSON)
     return (
-      <pre className="text-xs bg-background/50 rounded-md p-3 overflow-x-auto font-mono text-foreground/80 whitespace-pre-wrap break-all max-h-48 overflow-y-auto border-elegant">
-        {input}
+      <pre className={`text-xs bg-background/50 rounded-md p-3 overflow-x-auto font-mono text-foreground/80 whitespace-pre-wrap break-all max-h-48 overflow-y-auto border-elegant ${isStreaming ? 'animate-pulse' : ''}`}>
+        {input || (isStreaming ? '...' : '')}
       </pre>
     );
   }

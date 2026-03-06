@@ -145,6 +145,7 @@ const enUS = {
   'chat.toolResult.error': 'Error',
   'chat.toolResult.result': 'Result',
   'chat.callTool': 'Calling tool: {{toolName}}',
+  'chat.streaming': 'Streaming',
   'chat.export': 'Export',
   'chat.noResults': 'No results',
   'chat.plainText': 'Plain Text',

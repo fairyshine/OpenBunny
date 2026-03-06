@@ -27,6 +27,7 @@ export interface Message {
     tokens?: number;
     duration?: number;
     streaming?: boolean;
+    toolDescription?: string;
     [key: string]: unknown;
   };
 }

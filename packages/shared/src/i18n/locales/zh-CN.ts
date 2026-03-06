@@ -145,6 +145,7 @@ const zhCN = {
   'chat.toolResult.error': '错误',
   'chat.toolResult.result': '结果',
   'chat.callTool': '调用工具: {{toolName}}',
+  'chat.streaming': '流式输出',
   'chat.export': '导出',
   'chat.noResults': '无结果',
   'chat.plainText': '纯文本',

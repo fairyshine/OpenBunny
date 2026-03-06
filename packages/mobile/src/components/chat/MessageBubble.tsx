@@ -15,6 +15,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
   // Tool call message
   if (message.type === 'tool_call') {
+    const isStreaming = message.metadata?.streaming === true;
     return (
       <View style={[styles.container, styles.assistantContainer]}>
         <View style={[styles.toolBubble, { backgroundColor: theme.colors.secondaryContainer }]}>
@@ -22,6 +23,11 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             title={message.toolName || 'Tool'}
             description={message.content}
             left={(props) => <List.Icon {...props} icon="wrench" />}
+            right={(props) => isStreaming ? (
+              <View style={styles.streamingIndicator}>
+                <Text style={{ fontSize: 8, color: theme.colors.primary }}>●</Text>
+              </View>
+            ) : undefined}
             expanded={expanded}
             onPress={() => setExpanded(!expanded)}
             style={{ backgroundColor: 'transparent', padding: 0 }}
@@ -31,14 +37,14 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             {message.toolInput && (
               <View style={[styles.codeBlock, { backgroundColor: theme.colors.surface }]}>
                 <Text variant="labelSmall" style={{ color: theme.colors.primary, marginBottom: 4 }}>
-                  Input
+                  Input {isStreaming && '(streaming...)'}
                 </Text>
                 <Text
                   variant="bodySmall"
                   style={[styles.codeText, { color: theme.colors.onSurface }]}
                   numberOfLines={expanded ? undefined : 10}
                 >
-                  {message.toolInput}
+                  {message.toolInput || (isStreaming ? '...' : '')}
                 </Text>
               </View>
             )}
