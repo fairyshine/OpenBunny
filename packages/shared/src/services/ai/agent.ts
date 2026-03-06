@@ -182,9 +182,11 @@ export async function runAgentLoop(
           console.log('[Agent] Tool result chunk received:', {
             toolCallId: chunk.toolCallId,
             toolName: chunk.toolName,
+            hasOutput: 'output' in chunk,
           });
 
-          const resultContent = typeof chunk.result === 'string' ? chunk.result : (chunk.result ? JSON.stringify(chunk.result) : '');
+          const output = (chunk as any).output;
+          const resultContent = typeof output === 'string' ? output : (output != null ? JSON.stringify(output) : '');
           const toolResultMsgId = callbacks.generateId();
 
           // Create tool result message immediately
