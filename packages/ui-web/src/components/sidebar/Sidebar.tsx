@@ -267,16 +267,30 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                           <div key={project.id} className="space-y-1">
                             {/* Project Header */}
                             <div className="flex items-center justify-between px-2 py-1 group">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
                                 <span className="text-base">{project.icon}</span>
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
                                   {project.name}
                                 </span>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-muted-foreground shrink-0">
                                   ({projectSessions.filter(s => sessionTypeFilter === 'all' || (s.sessionType || 'user') === sessionTypeFilter).length})
                                 </span>
                               </div>
-                              <div className="flex items-center gap-0.5">
+                              <div className="flex items-center gap-0.5 shrink-0">
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const type: SessionType = sessionTypeFilter === 'agent' ? 'user' : (sessionTypeFilter === 'all' ? 'user' : sessionTypeFilter);
+                                    createSession(t('header.newSession'), type, project.id);
+                                    handleItemClick();
+                                  }}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5"
+                                  title={t('sidebar.newSessionInProject')}
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </Button>
                                 <Button
                                   onClick={(e) => {
                                     e.stopPropagation();

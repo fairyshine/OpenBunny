@@ -314,6 +314,7 @@ const zhCN = {
   'sidebar.confirmDeleteProject': '删除项目 "{{name}}"？会话将移至"无项目"。',
   'sidebar.moveToProject': '移动到项目',
   'sidebar.sessionsInProject': '{{count}} 个会话',
+  'sidebar.newSessionInProject': '在此项目中新建会话',
 
   // Files (Mobile)
   'files.delete': '删除',

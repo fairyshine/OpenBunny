@@ -314,6 +314,7 @@ const enUS = {
   'sidebar.confirmDeleteProject': 'Delete project "{{name}}"? Sessions will be moved to "No Project".',
   'sidebar.moveToProject': 'Move to Project',
   'sidebar.sessionsInProject': '{{count}} sessions',
+  'sidebar.newSessionInProject': 'New session in this project',
 
   // Files (Mobile)
   'files.delete': 'Delete',
