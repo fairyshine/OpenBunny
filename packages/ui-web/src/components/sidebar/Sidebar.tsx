@@ -48,8 +48,31 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
   const editInputRef = useRef<HTMLInputElement>(null);
   const [draggedSessionId, setDraggedSessionId] = useState<string | null>(null);
   const [dropTargetProjectId, setDropTargetProjectId] = useState<string | null>(null);
+  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('collapsed-projects');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
 
   const { moveSessionToProject } = useSessionStore();
+
+  const toggleProjectCollapse = (projectId: string) => {
+    const newCollapsed = new Set(collapsedProjects);
+    if (newCollapsed.has(projectId)) {
+      newCollapsed.delete(projectId);
+    } else {
+      newCollapsed.add(projectId);
+    }
+    setCollapsedProjects(newCollapsed);
+    try {
+      localStorage.setItem('collapsed-projects', JSON.stringify([...newCollapsed]));
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -268,13 +291,16 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                           if (filtered.length === 0) return null;
                         }
 
+                        const isCollapsed = collapsedProjects.has(project.id);
+
                         return (
                           <div key={project.id} className="space-y-1">
                             {/* Project Header */}
                             <div
-                              className={`flex items-center justify-between px-2 py-1 group rounded-md transition-colors ${
-                                dropTargetProjectId === project.id ? 'bg-primary/10 ring-2 ring-primary/40' : ''
+                              className={`flex items-center justify-between px-2 py-1 group rounded-md transition-colors cursor-pointer ${
+                                dropTargetProjectId === project.id ? 'bg-primary/10 ring-2 ring-primary/40' : 'hover:bg-muted/30'
                               }`}
+                              onClick={() => toggleProjectCollapse(project.id)}
                               onDragOver={(e) => {
                                 e.preventDefault();
                                 if (draggedSessionId) {
@@ -292,6 +318,9 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                               }}
                             >
                               <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`}>
+                                  <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                                </span>
                                 <span className="text-base">{project.icon}</span>
                                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
                                   {project.name}
@@ -344,7 +373,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                             </div>
 
                             {/* Sessions in this project */}
-                            {projectSessions
+                            {!isCollapsed && projectSessions
                               .filter(s => sessionTypeFilter === 'all' || (s.sessionType || 'user') === sessionTypeFilter)
                               .map((session) => {
                                 const readOnly = isReadOnly(session);
