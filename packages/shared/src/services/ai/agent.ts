@@ -130,16 +130,16 @@ export async function runAgentLoop(
           lastChunkLogTime = now;
         }
 
-        // Stream tool-call-delta: create message on first delta, then append raw text
-        if (chunk.type === 'tool-call-delta') {
+        // Stream tool-input-start: create tool_call message
+        if (chunk.type === 'tool-input-start') {
           const toolCallId = chunk.toolCallId;
+          const toolName = chunk.toolName || 'unknown';
+          toolCallNames.set(toolCallId, toolName);
 
           if (!toolCallMessages.has(toolCallId)) {
             const toolCallMsgId = callbacks.generateId();
             toolCallMessages.set(toolCallId, toolCallMsgId);
             toolCallInputs.set(toolCallId, '');
-            const toolName = chunk.toolName || 'unknown';
-            toolCallNames.set(toolCallId, toolName);
 
             const toolDescription = (tools[toolName] as any)?.description || '';
             callbacks.addMessage(sessionId, {
@@ -158,15 +158,21 @@ export async function runAgentLoop(
             callbacks.setStatus(t('chat.executing', { toolName }));
             logTool('info', `Tool call started: ${toolName}`, { toolCallId });
           }
+        }
 
+        // Stream tool-input-delta: append raw args text
+        if (chunk.type === 'tool-input-delta') {
+          const toolCallId = chunk.toolCallId;
           const prev = toolCallInputs.get(toolCallId) || '';
-          const next = prev + (chunk.argsTextDelta || '');
+          const next = prev + ((chunk as any).inputTextDelta || (chunk as any).delta || '');
           toolCallInputs.set(toolCallId, next);
 
-          const toolCallMsgId = toolCallMessages.get(toolCallId)!;
-          callbacks.updateMessage(sessionId, toolCallMsgId, {
-            toolInput: next,
-          });
+          const toolCallMsgId = toolCallMessages.get(toolCallId);
+          if (toolCallMsgId) {
+            callbacks.updateMessage(sessionId, toolCallMsgId, {
+              toolInput: next,
+            });
+          }
         }
 
         // Record tool-call name for providers that skip deltas
