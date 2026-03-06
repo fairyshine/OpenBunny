@@ -6,6 +6,7 @@ import { SessionType } from '@shared/types';
 import { Trash, ChevronLeft, ChevronRight, MessageSquare, Folder, Edit2, Plus, Undo2, TrashIcon, Globe, Lightbulb, HardDrive } from '../icons';
 import FileTree from './FileTree';
 import { ProjectDialog } from './ProjectDialog';
+import { SessionContextMenu } from './SessionContextMenu';
 import { Button } from '../ui/button';
 
 type TabType = 'sessions' | 'files';
@@ -393,30 +394,25 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
 
                                     {!readOnly && editingId !== session.id && (
                                       <div className="flex items-center gap-0.5">
-                                        <Button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            startRename(session.id, session.name);
-                                          }}
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                          title={t('common.rename')}
+                                        <SessionContextMenu
+                                          session={session}
+                                          onRename={() => startRename(session.id, session.name)}
+                                          onDelete={() => deleteSession(session.id)}
                                         >
-                                          <Edit2 className="w-3 h-3" />
-                                        </Button>
-                                        <Button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            deleteSession(session.id);
-                                          }}
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                          title={t('common.delete')}
-                                        >
-                                          <Trash className="w-3 h-3" />
-                                        </Button>
+                                          <Button
+                                            onClick={(e) => e.stopPropagation()}
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                            title={t('common.more')}
+                                          >
+                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
+                                              <circle cx="8" cy="3" r="1.5" />
+                                              <circle cx="8" cy="8" r="1.5" />
+                                              <circle cx="8" cy="13" r="1.5" />
+                                            </svg>
+                                          </Button>
+                                        </SessionContextMenu>
                                       </div>
                                     )}
                                   </div>
@@ -520,30 +516,25 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
 
                                   {!readOnly && editingId !== session.id && (
                                     <div className="flex items-center gap-0.5">
-                                      <Button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          startRename(session.id, session.name);
-                                        }}
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                        title={t('common.rename')}
+                                      <SessionContextMenu
+                                        session={session}
+                                        onRename={() => startRename(session.id, session.name)}
+                                        onDelete={() => deleteSession(session.id)}
                                       >
-                                        <Edit2 className="w-3 h-3" />
-                                      </Button>
-                                      <Button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          deleteSession(session.id);
-                                        }}
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                        title={t('common.delete')}
-                                      >
-                                        <Trash className="w-3 h-3" />
-                                      </Button>
+                                        <Button
+                                          onClick={(e) => e.stopPropagation()}
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                          title={t('common.more')}
+                                        >
+                                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
+                                            <circle cx="8" cy="3" r="1.5" />
+                                            <circle cx="8" cy="8" r="1.5" />
+                                            <circle cx="8" cy="13" r="1.5" />
+                                          </svg>
+                                        </Button>
+                                      </SessionContextMenu>
                                     </div>
                                   )}
                                 </div>

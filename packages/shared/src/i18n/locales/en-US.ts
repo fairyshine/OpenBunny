@@ -10,6 +10,7 @@ const enUS = {
   'common.upload': 'Upload',
   'common.rename': 'Rename',
   'common.open': 'Open',
+  'common.more': 'More',
   'common.retry': 'Retry',
 
   // Header

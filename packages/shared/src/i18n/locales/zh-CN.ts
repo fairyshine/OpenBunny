@@ -10,6 +10,7 @@ const zhCN = {
   'common.upload': '上传',
   'common.rename': '重命名',
   'common.open': '打开',
+  'common.more': '更多',
   'common.retry': '重试',
 
   // Header

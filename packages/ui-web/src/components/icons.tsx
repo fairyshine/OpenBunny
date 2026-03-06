@@ -11,6 +11,7 @@ export {
   FileCode,
   Globe,
   FolderOpen,
+  FolderInput,
   Keyboard,
   Lightbulb,
   CirclePause,
