@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
+import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
 import { SessionType } from '@shared/types';
 import type { Project } from '@shared/types';
 import { ChevronRight, ChevronLeft, Plus, Edit2, Trash, TrashIcon, MessagesSquare, getProjectIcon } from '../icons';
@@ -19,10 +20,22 @@ interface SessionListProps {
 
 export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessionTypeFilter, onSessionTypeFilterChange }: SessionListProps) {
   const { t } = useTranslation();
+  const currentAgentId = useAgentStore((s) => s.currentAgentId);
+  const agentSessions = useAgentStore((s) => s.agentSessions);
+  const createAgentSession = useAgentStore((s) => s.createAgentSession);
+  const deleteAgentSession = useAgentStore((s) => s.deleteAgentSession);
+  const setAgentCurrentSession = useAgentStore((s) => s.setAgentCurrentSession);
+  const agentCurrentSessionId = useAgentStore((s) => s.agentCurrentSessionId);
+
+  // Fallback to default session store for default agent
   const { deleteSession, createSession, deleteProject, moveSessionToProject, clearTrash } = useSessionStore();
   const currentSession = useSessionStore(selectCurrentSession);
-  const allSessions = useSessionStore(s => s.sessions);
+  const globalSessions = useSessionStore(s => s.sessions);
   const projects = useSessionStore(s => s.projects);
+
+  // Use agent sessions if not default agent, otherwise use global sessions
+  const isDefaultAgent = currentAgentId === DEFAULT_AGENT_ID;
+  const allSessions = isDefaultAgent ? globalSessions : (agentSessions[currentAgentId] || []);
 
   const [showTrash, setShowTrash] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -105,7 +118,11 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
 
   const handleCreateSessionInProject = (projectId: string) => {
     const type: SessionType = sessionTypeFilter === 'agent' ? 'user' : (sessionTypeFilter === 'all' ? 'user' : sessionTypeFilter);
-    createSession(t('header.newSession'), type, projectId);
+    if (isDefaultAgent) {
+      createSession(t('header.newSession'), type, projectId);
+    } else {
+      createAgentSession(currentAgentId, t('header.newSession'));
+    }
     onSessionSelect?.();
     onItemClick();
   };

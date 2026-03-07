@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSessionStore } from '@shared/stores/session';
+import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
 import { SessionType } from '@shared/types';
 import type { Project, Agent } from '@shared/types';
 import FileTree from './file-tree';
@@ -36,6 +37,8 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
 
   const { sidebarWidth, sidebarRef, handleResizeStart } = useResizableSidebar();
   const { createSession } = useSessionStore();
+  const currentAgentId = useAgentStore((s) => s.currentAgentId);
+  const createAgentSession = useAgentStore((s) => s.createAgentSession);
 
   const handleItemClick = () => {
     if (onClose && window.innerWidth < 768) {
@@ -45,7 +48,13 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
 
   const handleCreateSession = () => {
     const type: SessionType = sessionTypeFilter === 'agent' ? 'user' : (sessionTypeFilter === 'all' ? 'user' : sessionTypeFilter);
-    createSession(t('header.newSession'), type);
+    const isDefaultAgent = currentAgentId === DEFAULT_AGENT_ID;
+
+    if (isDefaultAgent) {
+      createSession(t('header.newSession'), type);
+    } else {
+      createAgentSession(currentAgentId, t('header.newSession'));
+    }
     onSessionSelect?.();
     handleItemClick();
   };
