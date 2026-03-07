@@ -4,12 +4,20 @@ import { Session, Message, LLMConfig, SessionType, Project } from '../types';
 import { logSettings } from '../services/console/logger';
 import { messageStorage } from '../services/storage/messageStorage';
 
+/** Cached session statistics — updated incrementally to avoid full recalculation */
+export interface SessionStats {
+  sessionCount: number;
+  totalMessages: number;
+  totalTokens: number;
+}
+
 interface SessionState {
   sessions: Session[];
   projects: Project[];
   currentSessionId: string | null;
   openSessionIds: string[]; // 打开的会话标签页
   llmConfig: LLMConfig;
+  sessionStats: SessionStats;
 
   // Session Actions
   createSession: (name?: string, sessionType?: SessionType, projectId?: string) => Session;
@@ -30,6 +38,8 @@ interface SessionState {
   loadSessionMessages: (sessionId: string) => Promise<void>;
   flushMessages: (sessionId: string) => Promise<void>;
   moveSessionToProject: (sessionId: string, projectId: string | null) => void;
+  /** Recalculate stats from scratch (e.g. after migration or loadSessionMessages) */
+  recalcStats: () => void;
 
   // Project Actions
   createProject: (name: string, description?: string, color?: string, icon?: string) => Project;
@@ -53,6 +63,24 @@ export const selectDeletedSessions = (state: SessionState): Session[] => {
   return state.sessions.filter(s => s.deletedAt).sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0));
 };
 
+/** Compute stats from sessions array (used for initial calc and recalc) */
+function computeStats(sessions: Session[]): SessionStats {
+  const active = sessions.filter(s => !s.deletedAt);
+  return {
+    sessionCount: active.length,
+    totalMessages: active.reduce((sum, s) => sum + s.messages.length, 0),
+    totalTokens: active.reduce(
+      (sum, s) => sum + s.messages.reduce((mSum, m) => mSum + (m.metadata?.tokens ?? 0), 0),
+      0,
+    ),
+  };
+}
+
+/** Get token count from a single message */
+function msgTokens(m: Message): number {
+  return m.metadata?.tokens ?? 0;
+}
+
 export const useSessionStore = create<SessionState>()(
   persist(
     (set, get) => ({
@@ -60,12 +88,17 @@ export const useSessionStore = create<SessionState>()(
       projects: [],
       currentSessionId: null,
       openSessionIds: [],
+      sessionStats: { sessionCount: 0, totalMessages: 0, totalTokens: 0 },
       llmConfig: {
         provider: 'openai',
         apiKey: '',
         model: 'gpt-4o',
         temperature: 0.7,
         maxTokens: 4096,
+      },
+
+      recalcStats: () => {
+        set((state) => ({ sessionStats: computeStats(state.sessions) }));
       },
 
       createSession: (name = '新会话', sessionType: SessionType = 'user', projectId?: string) => {
@@ -83,6 +116,10 @@ export const useSessionStore = create<SessionState>()(
           sessions: [session, ...state.sessions],
           currentSessionId: session.id,
           openSessionIds: [...state.openSessionIds, session.id],
+          sessionStats: {
+            ...state.sessionStats,
+            sessionCount: state.sessionStats.sessionCount + 1,
+          },
         }));
 
         return session;
@@ -100,6 +137,8 @@ export const useSessionStore = create<SessionState>()(
 
       deleteSession: (id: string) => {
         set((state) => {
+          const target = state.sessions.find(s => s.id === id);
+          const wasActive = target && !target.deletedAt;
           const newSessions = state.sessions.map((s) =>
             s.id === id ? { ...s, deletedAt: Date.now() } : s
           );
@@ -112,29 +151,58 @@ export const useSessionStore = create<SessionState>()(
             ? (newOpenIds[newOpenIds.length - 1] || null)
             : state.currentSessionId;
 
+          const sessionStats = wasActive ? {
+            sessionCount: state.sessionStats.sessionCount - 1,
+            totalMessages: state.sessionStats.totalMessages - (target?.messages.length ?? 0),
+            totalTokens: state.sessionStats.totalTokens - (target?.messages.reduce((s, m) => s + msgTokens(m), 0) ?? 0),
+          } : state.sessionStats;
+
           return {
             sessions: newSessions,
             currentSessionId: newCurrentId,
             openSessionIds: newOpenIds,
+            sessionStats,
           };
         });
       },
 
       restoreSession: (id: string) => {
-        set((state) => ({
-          sessions: state.sessions.map((s) =>
+        set((state) => {
+          const target = state.sessions.find(s => s.id === id);
+          const wasDeleted = target?.deletedAt;
+          const newSessions = state.sessions.map((s) =>
             s.id === id ? { ...s, deletedAt: undefined, updatedAt: Date.now() } : s
-          ),
-        }));
+          );
+
+          const sessionStats = wasDeleted ? {
+            sessionCount: state.sessionStats.sessionCount + 1,
+            totalMessages: state.sessionStats.totalMessages + (target?.messages.length ?? 0),
+            totalTokens: state.sessionStats.totalTokens + (target?.messages.reduce((s, m) => s + msgTokens(m), 0) ?? 0),
+          } : state.sessionStats;
+
+          return { sessions: newSessions, sessionStats };
+        });
       },
 
       permanentlyDeleteSession: (id: string) => {
         // Also remove messages from IndexedDB
         messageStorage.delete(id);
-        set((state) => ({
-          sessions: state.sessions.filter((s) => s.id !== id),
-          currentSessionId: state.currentSessionId === id ? null : state.currentSessionId,
-        }));
+        set((state) => {
+          const target = state.sessions.find(s => s.id === id);
+          const wasActive = target && !target.deletedAt;
+          // Only adjust stats if the session was active (not already in trash)
+          const sessionStats = wasActive ? {
+            sessionCount: state.sessionStats.sessionCount - 1,
+            totalMessages: state.sessionStats.totalMessages - (target?.messages.length ?? 0),
+            totalTokens: state.sessionStats.totalTokens - (target?.messages.reduce((s, m) => s + msgTokens(m), 0) ?? 0),
+          } : state.sessionStats;
+
+          return {
+            sessions: state.sessions.filter((s) => s.id !== id),
+            currentSessionId: state.currentSessionId === id ? null : state.currentSessionId,
+            sessionStats,
+          };
+        });
       },
 
       clearTrash: () => {
@@ -143,6 +211,7 @@ export const useSessionStore = create<SessionState>()(
         for (const s of trashed) {
           messageStorage.delete(s.id);
         }
+        // Trashed sessions are already excluded from stats, no stats change needed
         set((state) => ({
           sessions: state.sessions.filter((s) => !s.deletedAt),
         }));
@@ -157,6 +226,8 @@ export const useSessionStore = create<SessionState>()(
 
       addMessage: (sessionId: string, message: Message) => {
         set((state) => {
+          const target = state.sessions.find(s => s.id === sessionId);
+          const isActive = target && !target.deletedAt;
           const newSessions = state.sessions.map((session) =>
             session.id === sessionId && !session.deletedAt
               ? {
@@ -173,12 +244,23 @@ export const useSessionStore = create<SessionState>()(
             messageStorage.save(sessionId, updated.messages);
           }
 
-          return { sessions: newSessions };
+          const sessionStats = isActive ? {
+            ...state.sessionStats,
+            totalMessages: state.sessionStats.totalMessages + 1,
+            totalTokens: state.sessionStats.totalTokens + msgTokens(message),
+          } : state.sessionStats;
+
+          return { sessions: newSessions, sessionStats };
         });
       },
 
       updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => {
         set((state) => {
+          // Find old token count for delta calculation
+          const session = state.sessions.find(s => s.id === sessionId);
+          const oldMsg = session?.messages.find(m => m.id === messageId);
+          const oldTokens = oldMsg ? msgTokens(oldMsg) : 0;
+
           const newSessions = state.sessions.map((session) =>
             session.id === sessionId && !session.deletedAt
               ? {
@@ -205,7 +287,17 @@ export const useSessionStore = create<SessionState>()(
             messageStorage.save(sessionId, updated.messages);
           }
 
-          return { sessions: newSessions };
+          // Calculate new token count from the updated message
+          const newMsg = updated?.messages.find(m => m.id === messageId);
+          const newTokens = newMsg ? msgTokens(newMsg) : 0;
+          const tokenDelta = newTokens - oldTokens;
+
+          const sessionStats = tokenDelta !== 0 ? {
+            ...state.sessionStats,
+            totalTokens: state.sessionStats.totalTokens + tokenDelta,
+          } : state.sessionStats;
+
+          return { sessions: newSessions, sessionStats };
         });
       },
 
@@ -219,7 +311,11 @@ export const useSessionStore = create<SessionState>()(
 
       clearAllSessions: () => {
         messageStorage.clear();
-        set({ sessions: [], currentSessionId: null });
+        set({
+          sessions: [],
+          currentSessionId: null,
+          sessionStats: { sessionCount: 0, totalMessages: 0, totalTokens: 0 },
+        });
       },
 
       setSessionStreaming: (sessionId: string, isStreaming: boolean) => {
@@ -281,11 +377,13 @@ export const useSessionStore = create<SessionState>()(
         const messages = await messageStorage.load(sessionId);
         if (messages.length === 0) return;
 
-        set((state) => ({
-          sessions: state.sessions.map((s) =>
+        set((state) => {
+          const newSessions = state.sessions.map((s) =>
             s.id === sessionId ? { ...s, messages } : s
-          ),
-        }));
+          );
+          // Messages loaded from IndexedDB — recalc stats to include them
+          return { sessions: newSessions, sessionStats: computeStats(newSessions) };
+        });
       },
 
       /**
@@ -353,10 +451,14 @@ export const useSessionStore = create<SessionState>()(
         currentSessionId: state.currentSessionId,
         openSessionIds: state.openSessionIds,
         llmConfig: state.llmConfig,
+        sessionStats: state.sessionStats,
       }),
       onRehydrateStorage: () => {
         return (state) => {
           if (!state) return;
+          // Recalc stats from rehydrated sessions (messages are empty at this point,
+          // but sessionCount is correct; tokens/messages will update as sessions load)
+          state.recalcStats();
           // Migrate: if localStorage still has messages (old format), move them to IndexedDB
           migrateMessagesToIndexedDB();
         };
@@ -403,7 +505,7 @@ async function migrateMessagesToIndexedDB(): Promise<void> {
         }
         return s;
       });
-      useSessionStore.setState({ sessions: updatedSessions });
+      useSessionStore.setState({ sessions: updatedSessions, sessionStats: computeStats(updatedSessions) });
 
       console.log(`[Migration] Migrated messages for ${migrated} sessions to IndexedDB`);
     }

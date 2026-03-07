@@ -1,27 +1,14 @@
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSessionStore } from '@cyberbunny/shared';
 
 export default function SessionStatsCard() {
   const { t } = useTranslation();
-  const sessions = useSessionStore((s) => s.sessions);
-
-  const { count, totalMessages, totalTokens } = useMemo(() => {
-    const active = sessions.filter((s) => !s.deletedAt);
-    return {
-      count: active.length,
-      totalMessages: active.reduce((sum, s) => sum + s.messages.length, 0),
-      totalTokens: active.reduce(
-        (sum, s) => sum + s.messages.reduce((mSum, m) => mSum + (m.metadata?.tokens ?? 0), 0),
-        0,
-      ),
-    };
-  }, [sessions]);
+  const { sessionCount, totalMessages, totalTokens } = useSessionStore((s) => s.sessionStats);
 
   return (
     <div className="grid grid-cols-3 gap-2">
         <div>
-          <div className="text-2xl font-bold">{count}</div>
+          <div className="text-2xl font-bold">{sessionCount}</div>
           <div className="text-xs text-muted-foreground">{t('dashboard.sessions')}</div>
         </div>
         <div>
