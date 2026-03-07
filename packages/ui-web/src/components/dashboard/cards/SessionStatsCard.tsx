@@ -70,20 +70,14 @@ export default function SessionStatsCard() {
   const todayTokens = todayData?.totalTokens ?? 0;
   const todayCount = todayData?.count ?? 0;
 
-  // --- Detail dialog data ---
-  const detailSince = range === 'all' ? undefined
-    : range === '30d' ? Date.now() - 30 * 86400_000
-    : Date.now() - 7 * 86400_000;
-
-  // Re-fetch when dialog range changes
+  // Re-fetch with range filter when dialog is open or range changes
   useEffect(() => {
-    if (open) fetchStats(detailSince);
-  }, [open, range, fetchStats, detailSince]);
-
-  // Restore all-time fetch when dialog closes
-  useEffect(() => {
-    if (!open) fetchStats();
-  }, [open, fetchStats]);
+    if (!open) return;
+    const since = range === 'all' ? undefined
+      : range === '30d' ? Date.now() - 30 * 86400_000
+      : Date.now() - 7 * 86400_000;
+    fetchStats(since);
+  }, [open, range, fetchStats]);
 
   const days = useMemo(() => lastNDays(range === '30d' ? 30 : 7), [range]);
 
