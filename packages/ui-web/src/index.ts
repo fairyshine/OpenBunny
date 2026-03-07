@@ -9,9 +9,8 @@ export { default as ExportDialog } from './components/chat/ExportDialog';
 
 // Components - Sidebar
 export { default as Sidebar } from './components/sidebar/Sidebar';
-export { default as FileTree } from './components/sidebar/FileTree';
+export { default as FileTree } from './components/sidebar/file-tree';
 export { default as FileEditor } from './components/sidebar/FileEditor';
-export { default as FileManager } from './components/sidebar/FileManager';
 
 // Components - Settings
 export { default as SettingsModal } from './components/settings/SettingsModal';

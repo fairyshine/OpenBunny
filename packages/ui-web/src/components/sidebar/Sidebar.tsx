@@ -4,7 +4,7 @@ import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
 import { useSettingsStore } from '@shared/stores/settings';
 import { SessionType } from '@shared/types';
 import { Trash, ChevronLeft, ChevronRight, MessageSquare, Edit2, Plus, Undo2, TrashIcon, Globe, Lightbulb, HardDrive, getProjectIcon, MessagesSquare, FolderOpen, FolderTree } from '../icons';
-import FileTree from './FileTree';
+import FileTree from './file-tree';
 import { ProjectDialog } from './ProjectDialog';
 import { SessionContextMenu } from './SessionContextMenu';
 import { Button } from '../ui/button';
