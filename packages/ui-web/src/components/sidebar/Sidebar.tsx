@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSessionStore } from '@shared/stores/session';
 import { SessionType } from '@shared/types';
-import type { Project } from '@shared/types';
+import type { Project, Agent } from '@shared/types';
 import FileTree from './file-tree';
 import { ProjectDialog } from './ProjectDialog';
+import { AgentDialog } from './AgentDialog';
 import { CollapsedSidebar } from './CollapsedSidebar';
 import { SidebarHeader } from './SidebarHeader';
 import { SessionList } from './SessionList';
@@ -30,6 +31,8 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
   const [sessionTypeFilter, setSessionTypeFilter] = useState<SessionTypeFilter>('all');
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<Agent | undefined>(undefined);
 
   const { sidebarWidth, sidebarRef, handleResizeStart } = useResizableSidebar();
   const { createSession } = useSessionStore();
@@ -94,13 +97,16 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
           onCollapse={handleCollapse}
           onCreateProject={() => { setEditingProject(null); setProjectDialogOpen(true); }}
           onCreateSession={handleCreateSession}
-          onCreateAgent={() => {/* TODO: implement agent dialog */}}
+          onCreateAgent={() => { setEditingAgent(undefined); setAgentDialogOpen(true); }}
         />
 
         {/* Content Area */}
         <div className="flex-1 overflow-hidden">
           {activeTab === 'agents' ? (
-            <AgentList onItemClick={handleItemClick} />
+            <AgentList
+              onItemClick={handleItemClick}
+              onEditAgent={(agent) => { setEditingAgent(agent); setAgentDialogOpen(true); }}
+            />
           ) : activeTab === 'sessions' ? (
             <SessionList
               onItemClick={handleItemClick}
@@ -125,6 +131,12 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
           isOpen={projectDialogOpen}
           onClose={() => { setProjectDialogOpen(false); setEditingProject(null); }}
           project={editingProject ?? undefined}
+        />
+
+        <AgentDialog
+          isOpen={agentDialogOpen}
+          onClose={() => { setAgentDialogOpen(false); setEditingAgent(undefined); }}
+          agent={editingAgent}
         />
       </aside>
     </>

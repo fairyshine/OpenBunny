@@ -3,12 +3,14 @@ import { useAgentStore } from '@shared/stores/agent';
 import { Button } from '../ui/button';
 import { MoreHorizontal, Edit2, Trash2 } from '../icons';
 import { useState } from 'react';
+import type { Agent } from '@shared/types';
 
 interface AgentListProps {
   onItemClick?: () => void;
+  onEditAgent?: (agent: Agent) => void;
 }
 
-export function AgentList({ onItemClick }: AgentListProps) {
+export function AgentList({ onItemClick, onEditAgent }: AgentListProps) {
   const { t } = useTranslation();
   const agents = useAgentStore((s) => s.agents);
   const currentAgentId = useAgentStore((s) => s.currentAgentId);
@@ -36,6 +38,11 @@ export function AgentList({ onItemClick }: AgentListProps) {
       deleteAgent(agentId);
     }
     setContextMenuAgentId(null);
+  };
+
+  const handleEditAgent = (agent: Agent) => {
+    setContextMenuAgentId(null);
+    onEditAgent?.(agent);
   };
 
   return (
@@ -99,10 +106,7 @@ export function AgentList({ onItemClick }: AgentListProps) {
                   />
                   <div className="absolute right-2 top-full mt-1 w-40 bg-popover border border-border rounded-md shadow-md z-50 py-1">
                     <button
-                      onClick={() => {
-                        // TODO: implement edit dialog
-                        setContextMenuAgentId(null);
-                      }}
+                      onClick={() => handleEditAgent(agent)}
                       className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />

@@ -261,7 +261,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
               <Separator />
 
-              <details className="group">
+              <details className="group" open>
                 <summary className="cursor-pointer text-sm font-medium py-2 flex items-center gap-2 hover:text-primary transition-colors">
                   <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
                   {t('settings.connectionTest')}
