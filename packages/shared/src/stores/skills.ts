@@ -35,25 +35,6 @@ This skill uses Python with pandas, numpy, and matplotlib to analyze data files.
     source: 'builtin',
     metadata: { author: 'system', version: '1.0' },
   },
-  {
-    id: 'web-research',
-    name: 'web-research',
-    description: 'Search the web, extract information from multiple sources, and generate comprehensive research reports.',
-    body: `# Web Research Skill
-
-## When to use this skill
-Use this skill when the user needs to:
-- Search for information on the internet
-- Compare information from multiple sources
-- Create research reports or summaries
-- Verify facts across different websites
-
-## How it works
-This skill orchestrates web search and content extraction to create comprehensive research reports.`,
-    path: 'builtin://web-research',
-    source: 'builtin',
-    metadata: { author: 'system', version: '1.0' },
-  },
 ];
 
 interface SkillState {
