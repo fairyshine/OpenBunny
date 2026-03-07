@@ -1,0 +1,16 @@
+export default {
+  'connTest.configInfo': '=== 配置信息 ===',
+  'connTest.baseUrlDefault': '(默认)',
+  'connTest.apiKeyConfigured': '已配置 ({{prefix}}...)',
+  'connTest.apiKeyNotConfigured': '未配置',
+  'connTest.noApiKey': '[错误] 未配置 API Key',
+  'connTest.testing': '=== 测试连接 ===',
+  'connTest.possibleReasons': '可能的原因:',
+  'connTest.vllmNotRunning': '1. vLLM 服务器未运行',
+  'connTest.baseUrlError': '3. Base URL 配置错误',
+  'connTest.networkError': '网络连接问题',
+  'connTest.success': '[完成] 连接成功!',
+  'connTest.failed': '[错误] 连接失败:',
+  'connTest.buttonTesting': '测试中...',
+  'connTest.buttonTest': '测试连接',
+} as const;

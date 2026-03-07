@@ -1,0 +1,16 @@
+export default {
+  'connTest.configInfo': '=== Configuration ===',
+  'connTest.baseUrlDefault': '(default)',
+  'connTest.apiKeyConfigured': 'Configured ({{prefix}}...)',
+  'connTest.apiKeyNotConfigured': 'Not configured',
+  'connTest.noApiKey': '[Error] API Key not configured',
+  'connTest.testing': '=== Testing Connection ===',
+  'connTest.possibleReasons': 'Possible reasons:',
+  'connTest.vllmNotRunning': '1. vLLM server is not running',
+  'connTest.baseUrlError': '3. Base URL is incorrect',
+  'connTest.networkError': 'Network connection issue',
+  'connTest.success': '[Done] Connection successful!',
+  'connTest.failed': '[Error] Connection failed:',
+  'connTest.buttonTesting': 'Testing...',
+  'connTest.buttonTest': 'Test Connection',
+} as const;

@@ -1,0 +1,14 @@
+export default {
+  'common.cancel': 'Cancel',
+  'common.confirm': 'Confirm',
+  'common.save': 'Save',
+  'common.create': 'Create',
+  'common.delete': 'Delete',
+  'common.loading': 'Loading...',
+  'common.download': 'Download',
+  'common.upload': 'Upload',
+  'common.rename': 'Rename',
+  'common.open': 'Open',
+  'common.more': 'More',
+  'common.retry': 'Retry',
+} as const;
