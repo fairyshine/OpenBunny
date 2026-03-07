@@ -194,6 +194,21 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
     }
   };
 
+  // Delete current session via keyboard Delete/Backspace
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (activeTab !== 'sessions' || showTrash || editingId) return;
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      if (!currentSession || currentSession.deletedAt) return;
+      if (isReadOnly(currentSession)) return;
+      e.preventDefault();
+      deleteSession(currentSession.id);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, showTrash, editingId, currentSession, deleteSession]);
+
   const sessionTypeFilters: SessionTypeFilter[] = ['all', 'user', 'agent', 'mind'];
 
   if (isCollapsed) {
