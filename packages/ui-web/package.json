@@ -15,11 +15,14 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
+    "@cyberbunny/shared": "workspace:*",
     "react": "catalog:",
-    "react-dom": "catalog:",
-    "@cyberbunny/shared": "workspace:*"
+    "react-dom": "catalog:"
   },
   "dependencies": {
+    "@dnd-kit/core": "catalog:",
+    "@dnd-kit/sortable": "catalog:",
+    "@dnd-kit/utilities": "catalog:",
     "@radix-ui/react-dialog": "catalog:",
     "@radix-ui/react-dropdown-menu": "catalog:",
     "@radix-ui/react-label": "catalog:",
@@ -30,15 +33,13 @@
     "@radix-ui/react-switch": "catalog:",
     "@radix-ui/react-tabs": "catalog:",
     "@radix-ui/react-tooltip": "catalog:",
-    "@dnd-kit/core": "catalog:",
-    "@dnd-kit/sortable": "catalog:",
-    "@dnd-kit/utilities": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "date-fns": "catalog:",
     "lucide-react": "catalog:",
     "react-day-picker": "catalog:",
     "react-i18next": "catalog:",
+    "react-syntax-highlighter": "^16.1.1",
     "react-virtuoso": "catalog:",
     "tailwind-merge": "catalog:",
     "tailwindcss-animate": "catalog:",
@@ -47,10 +48,11 @@
   "devDependencies": {
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "catalog:",
-    "typescript": "catalog:",
-    "tailwindcss": "catalog:",
     "autoprefixer": "catalog:",
-    "postcss": "catalog:"
+    "postcss": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
   }
 }

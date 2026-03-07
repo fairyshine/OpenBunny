@@ -7,9 +7,22 @@ import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Zap } from '../icons';
 import { Sparkles, FileCode, Folder, File } from 'lucide-react';
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
+import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
+import javascript from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript';
+import typescript from 'react-syntax-highlighter/dist/esm/languages/hljs/typescript';
+import bash from 'react-syntax-highlighter/dist/esm/languages/hljs/bash';
+import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
+import { atomOneDark, atomOneLight } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { useSettingsStore } from '@shared/stores/settings';
 import { useSkillStore } from '@shared/stores/skills';
 import { getToolIcon } from '../ToolIcon';
+
+SyntaxHighlighter.registerLanguage('python', python);
+SyntaxHighlighter.registerLanguage('javascript', javascript);
+SyntaxHighlighter.registerLanguage('typescript', typescript);
+SyntaxHighlighter.registerLanguage('bash', bash);
+SyntaxHighlighter.registerLanguage('json', json);
 
 interface MessageListProps {
   messages: Message[];
@@ -251,7 +264,7 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
                 ) : (
                   <>
                     <div className="text-xs font-semibold text-muted-foreground mb-2">Parameters:</div>
-                    <ToolInputDisplay input={message.toolInput} />
+                    <ToolInputDisplay input={message.toolInput} toolName={message.toolName} />
                   </>
                 )
               ) : message.content ? (
@@ -268,9 +281,15 @@ const ProcessBubble = memo(function ProcessBubble({ message }: { message: Messag
 const ToolResultBubble = memo(function ToolResultBubble({ message }: { message: Message }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
-  const content = message.content || '';
-  const isError = content.startsWith('工具执行错误') || content.startsWith('工具 "') || content.startsWith('Tool execution error') || content.startsWith('Tool "');
+  const rawContent = message.content || '';
+  const isError = rawContent.startsWith('工具执行错误') || rawContent.startsWith('工具 "') || rawContent.startsWith('Tool execution error') || rawContent.startsWith('Tool "');
   const isStreaming = message.metadata?.streaming === true;
+
+  // Strip "Output:\n```\n...\n```" wrapper from python tool results
+  const content = message.toolName === 'python'
+    ? rawContent.replace(/^Output:\n```\n?([\s\S]*?)\n?```\s*$/, '$1').trim()
+    : rawContent;
+
   const previewText = content.split('\n')[0].slice(0, 80);
 
   return (
@@ -639,41 +658,69 @@ const Timestamp = memo(function Timestamp({ time, align = 'left' }: { time: numb
   );
 });
 
-const ToolInputDisplay = memo(function ToolInputDisplay({ input }: { input: string }) {
+/** Map toolName + param key to a syntax highlight language, or undefined for plain text */
+function getCodeLanguage(toolName?: string, paramKey?: string): string | undefined {
+  if (toolName === 'python' && paramKey === 'code') return 'python';
+  if (toolName === 'exec' && paramKey === 'command') return 'bash';
+  if (toolName === 'file_manager' && paramKey === 'content') {
+    // Could be any language — skip highlighting for now
+    return undefined;
+  }
+  return undefined;
+}
+
+const ToolInputDisplay = memo(function ToolInputDisplay({ input, toolName }: { input: string; toolName?: string }) {
+  const isDark = useSettingsStore(s => {
+    if (s.theme === 'dark') return true;
+    if (s.theme === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   try {
     const params = JSON.parse(input);
     return (
       <div className="space-y-2">
-        {Object.entries(params).map(([key, value]) => (
-          <div key={key} className="flex gap-3">
-            <div className="text-xs font-mono text-primary font-semibold min-w-[80px]">{key}:</div>
-            <div className="flex-1 text-xs font-mono text-foreground/80">
-              {typeof value === 'string' ? (
-                value.includes('\n') ? (
-                  <pre className="text-xs text-green-600 dark:text-green-400 bg-background/50 rounded px-2 py-1 whitespace-pre-wrap break-all">{value}</pre>
+        {Object.entries(params).map(([key, value]) => {
+          const lang = typeof value === 'string' && value.includes('\n') ? getCodeLanguage(toolName, key) : undefined;
+          return (
+            <div key={key} className={lang ? '' : 'flex gap-3'}>
+              <div className="text-xs font-mono text-primary font-semibold min-w-[80px]">{key}:</div>
+              <div className="flex-1 text-xs font-mono text-foreground/80">
+                {typeof value === 'string' ? (
+                  lang ? (
+                    <SyntaxHighlighter
+                      language={lang}
+                      style={isDark ? atomOneDark : atomOneLight}
+                      customStyle={{ margin: 0, padding: '8px 10px', borderRadius: '6px', fontSize: '12px', maxHeight: '256px', overflow: 'auto' }}
+                      wrapLongLines
+                    >
+                      {value}
+                    </SyntaxHighlighter>
+                  ) : value.includes('\n') ? (
+                    <pre className="text-xs text-green-600 dark:text-green-400 bg-background/50 rounded px-2 py-1 whitespace-pre-wrap break-all">{value}</pre>
+                  ) : (
+                    <span className="text-green-600 dark:text-green-400">"{value}"</span>
+                  )
+                ) : typeof value === 'number' ? (
+                  <span className="text-blue-600 dark:text-blue-400">{value}</span>
+                ) : typeof value === 'boolean' ? (
+                  <span className="text-purple-600 dark:text-purple-400">{String(value)}</span>
+                ) : value === null ? (
+                  <span className="text-muted-foreground">null</span>
+                ) : Array.isArray(value) ? (
+                  <pre className="text-xs bg-background/50 rounded px-2 py-1 overflow-x-auto whitespace-pre-wrap break-all">
+                    {JSON.stringify(value, null, 2)}
+                  </pre>
+                ) : typeof value === 'object' ? (
+                  <pre className="text-xs bg-background/50 rounded px-2 py-1 overflow-x-auto whitespace-pre-wrap break-all">
+                    {JSON.stringify(value, null, 2)}
+                  </pre>
                 ) : (
-                  <span className="text-green-600 dark:text-green-400">"{value}"</span>
-                )
-              ) : typeof value === 'number' ? (
-                <span className="text-blue-600 dark:text-blue-400">{value}</span>
-              ) : typeof value === 'boolean' ? (
-                <span className="text-purple-600 dark:text-purple-400">{String(value)}</span>
-              ) : value === null ? (
-                <span className="text-muted-foreground">null</span>
-              ) : Array.isArray(value) ? (
-                <pre className="text-xs bg-background/50 rounded px-2 py-1 overflow-x-auto whitespace-pre-wrap break-all">
-                  {JSON.stringify(value, null, 2)}
-                </pre>
-              ) : typeof value === 'object' ? (
-                <pre className="text-xs bg-background/50 rounded px-2 py-1 overflow-x-auto whitespace-pre-wrap break-all">
-                  {JSON.stringify(value, null, 2)}
-                </pre>
-              ) : (
-                String(value)
-              )}
+                  String(value)
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   } catch {

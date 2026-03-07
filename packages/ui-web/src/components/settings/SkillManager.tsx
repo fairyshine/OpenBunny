@@ -222,9 +222,6 @@ function SkillCard({
             {skill.description}
           </p>
           <div className="flex items-center gap-2">
-            <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
-              activate_skill({skill.name})
-            </code>
             {skill.metadata?.version && (
               <span className="text-xs text-muted-foreground">v{skill.metadata.version}</span>
             )}

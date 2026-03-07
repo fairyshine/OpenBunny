@@ -596,6 +596,7 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
 
         {isCreatingHere && (
           <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 mx-1 rounded-sm" style={{ paddingLeft: `${4 + (depth + 1) * 16}px` }}>
+            <span className="w-4 shrink-0" />
             {creating.type === 'folder' ? <Folder className="w-4 h-4 text-yellow-500 shrink-0" /> : <FileIcon className="w-4 h-4 text-primary shrink-0" />}
             <InlineInput
               initialValue=""
@@ -938,7 +939,8 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
 
       {/* Create Input (root-level) */}
       {creating?.path === (viewMode === 'grid' ? gridPath : '/root') && (
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-primary/5 shrink-0">
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 mx-1 rounded-sm" style={{ paddingLeft: '4px' }}>
+          <span className="w-4 shrink-0" />
           {creating.type === 'folder' ? <Folder className="w-4 h-4 text-yellow-500 shrink-0" /> : <FileIcon className="w-4 h-4 text-blue-500 shrink-0" />}
           <InlineInput
             initialValue=""
