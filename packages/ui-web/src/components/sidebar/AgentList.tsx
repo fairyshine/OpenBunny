@@ -64,7 +64,13 @@ export function AgentList({ onItemClick, onEditAgent }: AgentListProps) {
               >
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-lg shrink-0"
-                  style={{ backgroundColor: agent.color + '20', color: agent.color }}
+                  style={agent.isDefault ? {
+                    backgroundColor: 'hsl(var(--foreground))',
+                    color: 'hsl(var(--background))'
+                  } : {
+                    backgroundColor: agent.color + '20',
+                    color: agent.color
+                  }}
                 >
                   {agent.avatar}
                 </div>
