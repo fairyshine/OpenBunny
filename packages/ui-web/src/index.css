@@ -63,6 +63,10 @@
   * {
     border-color: hsl(var(--border));
   }
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+  }
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
@@ -96,10 +100,12 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Prevent layout shift when scrollbar appears/disappears */
-.overflow-y-auto,
-.overflow-y-scroll {
-  scrollbar-gutter: stable;
+/* Prevent layout shift when scrollbar appears/disappears (desktop only) */
+@media (min-width: 768px) {
+  .overflow-y-auto,
+  .overflow-y-scroll {
+    scrollbar-gutter: stable;
+  }
 }
 
 /* 代码块样式 - 极简风格 */

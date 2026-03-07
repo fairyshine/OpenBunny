@@ -123,6 +123,12 @@ function App() {
     setFileContent('');
   };
 
+  const handleFileBlankClick = () => {
+    setSelectedFile(null);
+    setFileContent('');
+    setShowStatusPage(true);
+  };
+
   const handleSaveFile = async (content: string) => {
     if (selectedFile) {
       await fileSystem.writeFile(selectedFile, content);
@@ -157,7 +163,7 @@ function App() {
   // 如果应该显示状态页，直接返回状态页
   if (shouldShowStatusScreen() && !selectedFile) {
     return (
-      <div className="h-screen flex flex-col bg-background">
+      <div className="h-screen flex flex-col bg-background overflow-x-hidden">
         <Header
           onToggleConsole={() => setShowConsole(v => !v)}
           onToggleSidebar={() => setIsSidebarOpen(v => !v)}
@@ -170,6 +176,7 @@ function App() {
               isOpen={isSidebarOpen}
               onClose={() => setIsSidebarOpen(false)}
               onSessionSelect={() => setShowStatusPage(false)}
+              onFileBlankClick={handleFileBlankClick}
             />
             <StatusScreen onStart={handleStart} showStartButton={shouldShowStartButton()} />
           </div>
@@ -182,7 +189,7 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-x-hidden">
       {/* 头部 */}
       <Header
         onToggleConsole={() => setShowConsole(v => !v)}
@@ -200,6 +207,7 @@ function App() {
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
             onSessionSelect={() => setShowStatusPage(false)}
+            onFileBlankClick={handleFileBlankClick}
           />
 
           {/* 主内容区 - 聊天或文件编辑器 */}
