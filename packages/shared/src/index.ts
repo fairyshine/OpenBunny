@@ -54,6 +54,10 @@ export type { ProviderMeta } from './services/ai/providers';
 export { callLLM } from './services/llm/streaming';
 export type { StreamOptions } from './services/llm/streaming';
 
+// Services - Sound
+export { soundManager } from './services/sound';
+export type { SoundEffect, ISoundBackend } from './services/sound';
+
 // Utils
 export { getErrorMessage, isAbortError } from './utils/errors';
 

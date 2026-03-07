@@ -55,6 +55,14 @@ interface SettingsState {
   enableSessionTabs: boolean;
   setEnableSessionTabs: (value: boolean) => void;
 
+  // Audio settings
+  masterVolume: number;
+  setMasterVolume: (volume: number) => void;
+  masterMuted: boolean;
+  setMasterMuted: (muted: boolean) => void;
+  soundEffectsEnabled: boolean;
+  setSoundEffectsEnabled: (value: boolean) => void;
+
   // Tool settings
   enabledTools: string[];
   toggleTool: (toolId: string) => void;
@@ -136,6 +144,21 @@ export const useSettingsStore = create<SettingsState>()(
       setEnableSessionTabs: (value) => {
         logSettings('info', `Session tabs: ${value ? 'enabled' : 'disabled'}`);
         set({ enableSessionTabs: value });
+      },
+
+      masterVolume: 0.5,
+      setMasterVolume: (volume) => {
+        set({ masterVolume: Math.max(0, Math.min(1, volume)) });
+      },
+      masterMuted: false,
+      setMasterMuted: (muted) => {
+        logSettings('info', `Master mute: ${muted ? 'on' : 'off'}`);
+        set({ masterMuted: muted });
+      },
+      soundEffectsEnabled: true,
+      setSoundEffectsEnabled: (value) => {
+        logSettings('info', `Sound effects: ${value ? 'enabled' : 'disabled'}`);
+        set({ soundEffectsEnabled: value });
       },
 
       enabledTools: [...DEFAULT_ENABLED_TOOLS],
@@ -241,16 +264,29 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'webagent-settings',
-      migrate: (persisted: any) => {
-        // Clean up legacy tool IDs from enabledTools
-        if (persisted && Array.isArray(persisted.enabledTools)) {
-          persisted.enabledTools = persisted.enabledTools.filter(
-            (id: string) => SUPPORTED_TOOL_IDS.has(id)
-          );
+      migrate: (persisted: any, version: number) => {
+        if (persisted) {
+          // Clean up legacy tool IDs from enabledTools
+          if (Array.isArray(persisted.enabledTools)) {
+            persisted.enabledTools = persisted.enabledTools.filter(
+              (id: string) => SUPPORTED_TOOL_IDS.has(id)
+            );
+          }
+          // v1 → v2: migrate soundEnabled/soundVolume to new audio settings
+          if (version < 2) {
+            if ('soundVolume' in persisted) {
+              persisted.masterVolume = persisted.soundVolume;
+              delete persisted.soundVolume;
+            }
+            if ('soundEnabled' in persisted) {
+              persisted.soundEffectsEnabled = persisted.soundEnabled;
+              delete persisted.soundEnabled;
+            }
+          }
         }
         return persisted;
       },
-      version: 1,
+      version: 2,
     }
   )
 );

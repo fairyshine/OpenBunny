@@ -10,6 +10,7 @@ export {
   CheckCircle,
   FileCode,
   Globe,
+  Lock,
   FolderOpen,
   FolderInput,
   Keyboard,

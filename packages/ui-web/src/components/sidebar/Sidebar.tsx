@@ -19,9 +19,10 @@ interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
   onSessionSelect?: () => void;
+  onFileBlankClick?: () => void;
 }
 
-export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClose, onSessionSelect }: SidebarProps) {
+export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClose, onSessionSelect, onFileBlankClick }: SidebarProps) {
   const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('sessions');
@@ -41,6 +42,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
   const handleCreateSession = () => {
     const type: SessionType = sessionTypeFilter === 'agent' ? 'user' : (sessionTypeFilter === 'all' ? 'user' : sessionTypeFilter);
     createSession(t('header.newSession'), type);
+    onSessionSelect?.();
     handleItemClick();
   };
 
@@ -109,6 +111,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                 selectedPath={selectedFilePath}
                 onSelectFile={onSelectFile}
                 onItemClick={handleItemClick}
+                onBlankClick={onFileBlankClick}
               />
             </div>
           )}

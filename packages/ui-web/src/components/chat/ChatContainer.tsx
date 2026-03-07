@@ -166,17 +166,22 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     abortControllerRef.current = abortController;
 
     try {
+      // Use session-level tools/skills if configured, otherwise fall back to global
+      const effectiveTools = session?.sessionTools ?? enabledTools;
+      const effectiveSkills = session?.sessionSkills ?? undefined;
+
       const systemPrompt = await runAgentLoop(
         content.trim(),
         sessionId,
         llmConfig,
-        enabledTools,
+        effectiveTools,
         callbacks,
         t,
         proxyUrl,
         toolExecutionTimeout,
         abortController.signal,
         session?.projectId,
+        effectiveSkills,
       );
       // Save system prompt to session
       useSessionStore.getState().setSessionSystemPrompt(sessionId, systemPrompt);

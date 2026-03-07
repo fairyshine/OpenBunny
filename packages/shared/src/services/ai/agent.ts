@@ -37,6 +37,7 @@ export async function runAgentLoop(
   toolTimeout?: number,
   abortSignal?: AbortSignal,
   projectId?: string,
+  sessionSkillIds?: string[],
 ): Promise<string> {
   // Validate configuration
   if (!llmConfig.apiKey) {
@@ -63,7 +64,7 @@ export async function runAgentLoop(
   const groupId = callbacks.generateId();
   const model = createModel(llmConfig, proxyUrl);
   const builtinToolSet = getEnabledTools(enabledTools);
-  const skillActivationTool = getActivateSkillTool();
+  const skillActivationTool = getActivateSkillTool(sessionSkillIds);
   const tools = { ...builtinToolSet, ...skillActivationTool };
 
   const toolCount = Object.keys(tools).length;
@@ -74,7 +75,7 @@ export async function runAgentLoop(
 
   // Build system prompt (tool schemas are passed via the tools parameter, no need to duplicate in prompt)
   let systemPrompt = t('systemPrompt.assistant');
-  systemPrompt += generateSkillsSystemPrompt();
+  systemPrompt += generateSkillsSystemPrompt(sessionSkillIds);
 
   console.log('[Agent] Starting agent loop with config:', {
     provider: llmConfig.provider,

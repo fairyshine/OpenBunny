@@ -115,6 +115,11 @@ const zhCN = {
   'settings.toolTimeoutHint': '工具执行的最大等待时间（毫秒），设置为 -1 表示永久等待',
   'settings.execLoginShell': '加载用户配置文件',
   'settings.execLoginShellDesc': '启动 Shell 时加载 ~/.zshrc 或 ~/.bashrc，使 Homebrew 等工具可用',
+  'settings.masterVolume': '主音量',
+  'settings.masterVolumeHint': '控制所有音频的总音量，关闭后全局静音',
+  'settings.volume': '音量',
+  'settings.soundEffects': '音效',
+  'settings.soundEffectsHint': '为消息、工具调用和通知播放音效',
 
   // Chat
   'chat.input.placeholder': '输入消息 (Enter 发送，Shift+Enter 换行)',
@@ -123,6 +128,9 @@ const zhCN = {
   'chat.input.tools': '工具',
   'chat.input.skills': '技能',
   'chat.input.noSkills': '暂无可用技能',
+  'chat.input.scopeGlobal': '全局',
+  'chat.input.scopeSession': '本会话',
+  'chat.input.locked': '会话已开始，配置已锁定',
   'chat.input.processing': '处理中...',
   'chat.input.stop': '停止',
   'chat.stopped': '已停止生成',

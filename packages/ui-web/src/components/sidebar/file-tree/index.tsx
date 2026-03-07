@@ -17,7 +17,7 @@ import { GridBreadcrumb } from './GridBreadcrumb';
 import { Toolbar } from './Toolbar';
 import { ContextMenu } from './ContextMenu';
 
-export default function FileTree({ onSelectFile, selectedPath, onItemClick }: FileTreeProps) {
+export default function FileTree({ onSelectFile, selectedPath, onItemClick, onBlankClick }: FileTreeProps) {
   const { t } = useTranslation();
 
   const ft = useFileTree();
@@ -110,6 +110,11 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick }: Fi
       {/* Content Area */}
       <div
         className="flex-1 overflow-y-auto"
+        onClick={(e) => {
+          if (e.target === e.currentTarget || (e.target as HTMLElement).hasAttribute('data-filetree-blank')) {
+            onBlankClick?.();
+          }
+        }}
         onDragOver={(e: any) => {
           e.preventDefault();
           if (dd.draggedPath) { e.dataTransfer.dropEffect = 'move'; dd.setDropTarget(rootDir); }

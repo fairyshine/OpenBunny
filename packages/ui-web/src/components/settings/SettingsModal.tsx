@@ -46,6 +46,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setToolExecutionTimeout,
     enableSessionTabs,
     setEnableSessionTabs,
+    masterVolume,
+    setMasterVolume,
+    masterMuted,
+    setMasterMuted,
+    soundEffectsEnabled,
+    setSoundEffectsEnabled,
     llmPresets,
     addLLMPreset,
     updateLLMPreset,
@@ -322,6 +328,50 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     onCheckedChange={setEnableSessionTabs}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="masterMuted" className="text-sm font-medium">{t('settings.masterVolume')}</Label>
+                    <p className="text-xs text-muted-foreground">{t('settings.masterVolumeHint')}</p>
+                  </div>
+                  <Switch
+                    id="masterMuted"
+                    checked={!masterMuted}
+                    onCheckedChange={(checked) => setMasterMuted(!checked)}
+                  />
+                </div>
+                {!masterMuted && (
+                  <div className="flex items-center gap-3">
+                    <Label className="text-xs text-muted-foreground whitespace-nowrap">{t('settings.volume')}</Label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={masterVolume}
+                      onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
+                      className="flex-1 h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">
+                      {Math.round(masterVolume * 100)}%
+                    </span>
+                  </div>
+                )}
+                {!masterMuted && (
+                  <div className="flex items-center justify-between pl-4 border-l-2 border-border">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="soundEffects" className="text-sm font-medium">{t('settings.soundEffects')}</Label>
+                      <p className="text-xs text-muted-foreground">{t('settings.soundEffectsHint')}</p>
+                    </div>
+                    <Switch
+                      id="soundEffects"
+                      checked={soundEffectsEnabled}
+                      onCheckedChange={setSoundEffectsEnabled}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

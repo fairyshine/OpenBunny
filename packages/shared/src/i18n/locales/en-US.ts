@@ -115,6 +115,11 @@ const enUS = {
   'settings.toolTimeoutHint': 'Maximum wait time for tool execution (milliseconds), set to -1 for infinite wait',
   'settings.execLoginShell': 'Load User Profile',
   'settings.execLoginShellDesc': 'Source ~/.zshrc or ~/.bashrc on shell startup, making tools like Homebrew available',
+  'settings.masterVolume': 'Master Volume',
+  'settings.masterVolumeHint': 'Control overall audio volume. Turn off to mute everything',
+  'settings.volume': 'Volume',
+  'settings.soundEffects': 'Sound Effects',
+  'settings.soundEffectsHint': 'Play sound effects for messages, tool calls, and notifications',
 
   // Chat
   'chat.input.placeholder': 'Type a message (Enter to send, Shift+Enter for new line)',
@@ -123,6 +128,9 @@ const enUS = {
   'chat.input.tools': 'Tools',
   'chat.input.skills': 'Skills',
   'chat.input.noSkills': 'No skills available',
+  'chat.input.scopeGlobal': 'Global',
+  'chat.input.scopeSession': 'Session',
+  'chat.input.locked': 'Session started, config locked',
   'chat.input.processing': 'Processing...',
   'chat.input.stop': 'Stop',
   'chat.stopped': 'Generation stopped',

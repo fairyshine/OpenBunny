@@ -21,10 +21,12 @@ import { listSkillResources, readSkillResource } from '../skills';
  * Build the skill catalog for system prompt injection (Tier 1).
  * Lists enabled skills with name + description so the model knows what's available.
  * Returns empty string if no skills are enabled.
+ * @param sessionSkillIds - Optional session-level skill overrides. If provided, uses these instead of global enabledSkillIds.
  */
-export function generateSkillsSystemPrompt(): string {
+export function generateSkillsSystemPrompt(sessionSkillIds?: string[]): string {
   const { skills, enabledSkillIds } = useSkillStore.getState();
-  const enabled = skills.filter(s => enabledSkillIds.includes(s.id));
+  const activeIds = sessionSkillIds ?? enabledSkillIds;
+  const enabled = skills.filter(s => activeIds.includes(s.id));
 
   if (enabled.length === 0) {
     return '';
@@ -64,10 +66,12 @@ Do not guess or fabricate skill instructions — always activate first.
  *
  * Constrained to enabled skill names via enum to prevent hallucination.
  * Returns empty object if no skills are enabled (don't register a useless tool).
+ * @param sessionSkillIds - Optional session-level skill overrides. If provided, uses these instead of global enabledSkillIds.
  */
-export function getActivateSkillTool(): Record<string, Tool> {
+export function getActivateSkillTool(sessionSkillIds?: string[]): Record<string, Tool> {
   const { skills, enabledSkillIds, markActivated } = useSkillStore.getState();
-  const enabled = skills.filter(s => enabledSkillIds.includes(s.id));
+  const activeIds = sessionSkillIds ?? enabledSkillIds;
+  const enabled = skills.filter(s => activeIds.includes(s.id));
 
   if (enabled.length === 0) {
     return {};

@@ -18,6 +18,7 @@
     "@react-navigation/native": "catalog:",
     "@react-navigation/native-stack": "catalog:",
     "expo": "catalog:",
+    "expo-av": "^16.0.8",
     "expo-clipboard": "catalog:",
     "expo-file-system": "catalog:",
     "expo-localization": "catalog:",

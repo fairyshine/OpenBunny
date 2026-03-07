@@ -115,4 +115,8 @@ export interface Session {
   systemPrompt?: string; // 系统提示词
   sessionType?: SessionType; // 会话类型：user=用户对话, agent=外部Agent对话(只读), mind=Agent内心计划
   projectId?: string; // 所属项目ID
+  /** 会话级工具配置（首次发消息时快照，之后锁定） */
+  sessionTools?: string[];
+  /** 会话级技能配置（首次发消息时快照，之后锁定） */
+  sessionSkills?: string[];
 }

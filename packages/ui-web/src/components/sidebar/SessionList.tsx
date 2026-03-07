@@ -106,6 +106,7 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
   const handleCreateSessionInProject = (projectId: string) => {
     const type: SessionType = sessionTypeFilter === 'agent' ? 'user' : (sessionTypeFilter === 'all' ? 'user' : sessionTypeFilter);
     createSession(t('header.newSession'), type, projectId);
+    onSessionSelect?.();
     onItemClick();
   };
 

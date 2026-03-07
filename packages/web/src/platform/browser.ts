@@ -1,7 +1,9 @@
 import { setPlatformContext, detectPlatform } from '@shared/platform';
 import type { IPlatformStorage, IPlatformAPI } from '@shared/platform';
 import { setThemeHandler, setLanguageHandler } from '@shared/stores/settings';
+import { soundManager } from '@shared/services/sound';
 import { applyTheme, type Theme } from '@cyberbunny/ui-web';
+import { WebSoundBackend } from '@cyberbunny/ui-web/platform/sound';
 import i18n from '@shared/i18n';
 
 // Browser storage implementation (localStorage)
@@ -37,6 +39,9 @@ export function initBrowserPlatform(): void {
   setLanguageHandler((lang: string) => {
     i18n.changeLanguage(lang);
   });
+
+  // Wire up sound backend
+  soundManager.setBackend(new WebSoundBackend());
 
   console.log(`[Platform] Initialized: ${info.type}`);
 }

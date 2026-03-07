@@ -66,3 +66,4 @@ export { applyTheme, getSystemTheme, setupSystemThemeListener } from './platform
 export type { Theme } from './platform/theme';
 export { globalShortcuts, KeyboardShortcuts, useKeyboardShortcut, initGlobalShortcuts, getShortcutCategories } from './platform/keyboardShortcuts';
 export type { KeyBinding } from './platform/keyboardShortcuts';
+export { WebSoundBackend } from './platform/sound';

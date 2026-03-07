@@ -36,6 +36,7 @@
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "date-fns": "catalog:",
+    "howler": "^2.2.4",
     "lucide-react": "catalog:",
     "react-day-picker": "catalog:",
     "react-i18next": "catalog:",
@@ -43,9 +44,11 @@
     "react-virtuoso": "catalog:",
     "tailwind-merge": "catalog:",
     "tailwindcss-animate": "catalog:",
+    "use-sound": "^5.0.0",
     "uuid": "catalog:"
   },
   "devDependencies": {
+    "@types/howler": "^2.2.12",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@types/react-syntax-highlighter": "^15.5.13",

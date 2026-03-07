@@ -5,11 +5,13 @@ import { setThemeHandler, setLanguageHandler } from '@shared/stores/settings';
 import { setFileSystemInstance } from '@shared/services/filesystem';
 import { messageStorage } from '@shared/services/storage/messageStorage';
 import { statsStorage } from '@shared/services/storage/statsStorage';
+import { soundManager } from '@shared/services/sound';
 import { nativeStorage } from './storage';
 import { nativeFS } from './filesystem';
 import { mobileFileSystem } from './mobileFileSystem';
 import { SQLiteMessageBackend } from './messageBackend';
 import { SQLiteStatsBackend } from './statsBackend';
+import { MobileSoundBackend } from './sound';
 import i18n from './i18n';
 
 const nativeAPI: IPlatformAPI = {
@@ -58,6 +60,9 @@ export function initMobilePlatform(): void {
   setLanguageHandler((lang: string) => {
     i18n.changeLanguage(lang);
   });
+
+  // Wire up sound backend
+  soundManager.setBackend(new MobileSoundBackend());
 
   console.log('[Platform] Initialized: mobile (React Native)');
 }

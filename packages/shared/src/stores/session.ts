@@ -39,6 +39,10 @@ interface SessionState {
   loadSessionMessages: (sessionId: string) => Promise<void>;
   flushMessages: (sessionId: string) => Promise<void>;
   moveSessionToProject: (sessionId: string, projectId: string | null) => void;
+  /** Set per-session tool overrides (undefined to clear) */
+  setSessionTools: (sessionId: string, tools: string[] | undefined) => void;
+  /** Set per-session skill overrides (undefined to clear) */
+  setSessionSkills: (sessionId: string, skills: string[] | undefined) => void;
   /** Recalculate stats from scratch (e.g. after migration or loadSessionMessages) */
   recalcStats: () => void;
 
@@ -402,6 +406,22 @@ export const useSessionStore = create<SessionState>()(
         set((state) => ({
           sessions: state.sessions.map((s) =>
             s.id === sessionId ? { ...s, projectId: projectId || undefined, updatedAt: Date.now() } : s
+          ),
+        }));
+      },
+
+      setSessionTools: (sessionId: string, tools: string[] | undefined) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, sessionTools: tools, updatedAt: Date.now() } : s
+          ),
+        }));
+      },
+
+      setSessionSkills: (sessionId: string, skills: string[] | undefined) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, sessionSkills: skills, updatedAt: Date.now() } : s
           ),
         }));
       },
