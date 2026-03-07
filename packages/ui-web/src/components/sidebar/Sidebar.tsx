@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
 import { useSettingsStore } from '@shared/stores/settings';
 import { SessionType } from '@shared/types';
-import { Trash, ChevronLeft, ChevronRight, MessageSquare, Edit2, Plus, Undo2, TrashIcon, Globe, Lightbulb, HardDrive, getProjectIcon, MessagesSquare, FolderOpen, FolderTree } from '../icons';
+import { Trash, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, Edit2, Plus, Undo2, TrashIcon, Globe, Lightbulb, HardDrive, getProjectIcon, MessagesSquare, FolderOpen, FolderTree } from '../icons';
 import FileTree from './file-tree';
 import { ProjectDialog } from './ProjectDialog';
 import { SessionContextMenu } from './SessionContextMenu';
@@ -34,11 +34,12 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
   const [sessionTypeFilter, setSessionTypeFilter] = useState<SessionTypeFilter>('all');
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
+  const [tabDropdownOpen, setTabDropdownOpen] = useState(false);
 
   // Resizable sidebar width
   const MIN_WIDTH = 270;
   const MAX_WIDTH = 480;
-  const DEFAULT_WIDTH = 288; // w-72
+  const DEFAULT_WIDTH = 270;
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('sidebar-width');
@@ -280,11 +281,49 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
           className="absolute top-0 right-0 w-1 h-full cursor-col-resize z-10 hover:bg-primary/30 active:bg-primary/50 transition-colors"
           onMouseDown={handleResizeStart}
         />
-        {/* Header - Fixed */}
-        <div className="h-14 border-b border-border flex items-center justify-between px-4 shrink-0">
-          <span className="text-sm font-semibold tracking-tight">
-            {activeTab === 'sessions' ? t('sidebar.sessions') : t('sidebar.files')}
-          </span>
+        {/* Header with Dropdown - Fixed */}
+        <div className="h-14 border-b border-border flex items-center justify-between px-3 shrink-0">
+          <div className="relative">
+            <button
+              onClick={() => setTabDropdownOpen(!tabDropdownOpen)}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
+            >
+              {activeTab === 'sessions' ? (
+                <MessageSquare className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <FolderTree className="w-4 h-4 text-muted-foreground" />
+              )}
+              <span className="text-sm font-semibold tracking-tight">
+                {activeTab === 'sessions' ? t('sidebar.sessions') : t('sidebar.files')}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${tabDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {tabDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setTabDropdownOpen(false)} />
+                <div className="absolute top-full left-0 mt-1 w-44 bg-popover border border-border rounded-md shadow-md z-50 py-1">
+                  <button
+                    onClick={() => { setActiveTab('sessions'); setTabDropdownOpen(false); }}
+                    className={`flex items-center gap-2.5 w-full px-3 py-2 text-sm transition-colors ${
+                      activeTab === 'sessions' ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    {t('sidebar.sessions')}
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('files'); setTabDropdownOpen(false); }}
+                    className={`flex items-center gap-2.5 w-full px-3 py-2 text-sm transition-colors ${
+                      activeTab === 'files' ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50'
+                    }`}
+                  >
+                    <FolderTree className="w-4 h-4" />
+                    {t('sidebar.files')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             {activeTab === 'sessions' && (
               <>
@@ -326,49 +365,23 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
           </div>
         </div>
 
-        {/* Tabs - Fixed */}
-        <div className="grid grid-cols-2 mx-2 my-2 bg-muted/50 rounded-md p-1 shrink-0">
-          <button
-            onClick={() => setActiveTab('sessions')}
-            className={`flex items-center justify-center gap-2 text-xs px-3 py-1.5 rounded-sm transition-colors ${
-              activeTab === 'sessions'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            {t('sidebar.sessions')}
-          </button>
-          <button
-            onClick={() => setActiveTab('files')}
-            className={`flex items-center justify-center gap-2 text-xs px-3 py-1.5 rounded-sm transition-colors ${
-              activeTab === 'files'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <FolderTree className="w-3.5 h-3.5" />
-            {t('sidebar.files')}
-          </button>
-        </div>
-
         {/* Content Area - Scrollable */}
         <div className="flex-1 overflow-hidden">
           {activeTab === 'sessions' ? (
             <div className="h-full flex flex-col">
               {/* Session Type Filter */}
               {!showTrash && (
-                <div className="flex items-center gap-1 mx-2 mb-1 shrink-0">
+                <div className="grid grid-cols-4 mx-2 mt-2 mb-1 bg-muted/50 rounded-md p-1 shrink-0">
                   {sessionTypeFilters.map((filter) => {
                     const Icon = SESSION_TYPE_ICONS[filter];
                     return (
                       <button
                         key={filter}
                         onClick={() => setSessionTypeFilter(filter)}
-                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded-sm transition-colors ${
+                        className={`flex items-center justify-center gap-1 text-xs px-1 py-1.5 rounded-sm transition-colors ${
                           sessionTypeFilter === filter
-                            ? 'bg-foreground/10 text-foreground'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
                         <Icon className="w-3 h-3" />
