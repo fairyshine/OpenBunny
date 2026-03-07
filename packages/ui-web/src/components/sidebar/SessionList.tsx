@@ -22,17 +22,21 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
   const { t } = useTranslation();
   const currentAgentId = useAgentStore((s) => s.currentAgentId);
   const agentSessions = useAgentStore((s) => s.agentSessions);
+  const agentProjects = useAgentStore((s) => s.agentProjects);
   const createAgentSession = useAgentStore((s) => s.createAgentSession);
+  const deleteAgentProject = useAgentStore((s) => s.deleteAgentProject);
+  const moveAgentSessionToProject = useAgentStore((s) => s.moveAgentSessionToProject);
 
   // Fallback to default session store for default agent
   const { deleteSession, createSession, deleteProject, moveSessionToProject, clearTrash } = useSessionStore();
   const currentSession = useSessionStore(selectCurrentSession);
   const globalSessions = useSessionStore(s => s.sessions);
-  const projects = useSessionStore(s => s.projects);
+  const globalProjects = useSessionStore(s => s.projects);
 
-  // Use agent sessions if not default agent, otherwise use global sessions
+  // Use agent sessions/projects if not default agent, otherwise use global
   const isDefaultAgent = currentAgentId === DEFAULT_AGENT_ID;
   const allSessions = isDefaultAgent ? globalSessions : (agentSessions[currentAgentId] || []);
+  const projects = isDefaultAgent ? globalProjects : (agentProjects[currentAgentId] || []);
 
   const [showTrash, setShowTrash] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -106,7 +110,11 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
 
   const handleDeleteProject = (projectId: string, projectName: string) => {
     if (confirm(t('sidebar.confirmDeleteProject', { name: projectName }))) {
-      deleteProject(projectId);
+      if (isDefaultAgent) {
+        deleteProject(projectId);
+      } else {
+        deleteAgentProject(currentAgentId, projectId);
+      }
     }
   };
 
@@ -118,7 +126,7 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
     if (isDefaultAgent) {
       createSession(t('header.newSession'), type, projectId);
     } else {
-      createAgentSession(currentAgentId, t('header.newSession'));
+      createAgentSession(currentAgentId, t('header.newSession'), projectId);
     }
     onSessionSelect?.();
     onItemClick();
@@ -190,7 +198,11 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
                       onDrop={(e) => {
                         e.preventDefault();
                         if (draggedSessionId) {
-                          moveSessionToProject(draggedSessionId, project.id);
+                          if (isDefaultAgent) {
+                            moveSessionToProject(draggedSessionId, project.id);
+                          } else {
+                            moveAgentSessionToProject(currentAgentId, draggedSessionId, project.id);
+                          }
                           setDraggedSessionId(null);
                           setDropTargetProjectId(null);
                         }
@@ -263,7 +275,11 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
                         onDrop={(e) => {
                           e.preventDefault();
                           if (draggedSessionId) {
-                            moveSessionToProject(draggedSessionId, null);
+                            if (isDefaultAgent) {
+                              moveSessionToProject(draggedSessionId, null);
+                            } else {
+                              moveAgentSessionToProject(currentAgentId, draggedSessionId, null);
+                            }
                             setDraggedSessionId(null);
                             setDropTargetProjectId(null);
                           }

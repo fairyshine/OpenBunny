@@ -52,12 +52,19 @@ interface AgentState {
   // Per-agent sessions
   agentSessions: Record<string, Session[]>;
   agentCurrentSessionId: Record<string, string | null>;
-  createAgentSession: (agentId: string, name?: string) => Session;
+  createAgentSession: (agentId: string, name?: string, projectId?: string) => Session;
   deleteAgentSession: (agentId: string, sessionId: string) => void;
   setAgentCurrentSession: (agentId: string, sessionId: string) => void;
   addAgentMessage: (agentId: string, sessionId: string, message: Message) => void;
   updateAgentMessage: (agentId: string, sessionId: string, messageId: string, updates: Partial<Message>) => void;
   setAgentSessionStreaming: (agentId: string, sessionId: string, isStreaming: boolean) => void;
+  moveAgentSessionToProject: (agentId: string, sessionId: string, projectId: string | null) => void;
+
+  // Per-agent projects
+  agentProjects: Record<string, import('../types').Project[]>;
+  createAgentProject: (agentId: string, name: string, description?: string, color?: string, icon?: string) => import('../types').Project;
+  updateAgentProject: (agentId: string, projectId: string, updates: Partial<Omit<import('../types').Project, 'id' | 'createdAt' | 'agentId'>>) => void;
+  deleteAgentProject: (agentId: string, projectId: string) => void;
 
   // Per-agent config
   setAgentLLMConfig: (agentId: string, config: Partial<LLMConfig>) => void;
@@ -74,6 +81,7 @@ export const useAgentStore = create<AgentState>()(
       currentAgentId: DEFAULT_AGENT_ID,
       agentSessions: { [DEFAULT_AGENT_ID]: [] },
       agentCurrentSessionId: { [DEFAULT_AGENT_ID]: null },
+      agentProjects: { [DEFAULT_AGENT_ID]: [] },
 
       createAgent: (data) => {
         const id = crypto.randomUUID();
@@ -92,6 +100,7 @@ export const useAgentStore = create<AgentState>()(
           agents: [...state.agents, agent],
           agentSessions: { ...state.agentSessions, [id]: [] },
           agentCurrentSessionId: { ...state.agentCurrentSessionId, [id]: null },
+          agentProjects: { ...state.agentProjects, [id]: [] },
         }));
         return agent;
       },
@@ -117,11 +126,13 @@ export const useAgentStore = create<AgentState>()(
         set((state) => {
           const { [id]: _sessions, ...restSessions } = state.agentSessions;
           const { [id]: _currentId, ...restCurrentIds } = state.agentCurrentSessionId;
+          const { [id]: _projects, ...restProjects } = state.agentProjects;
           return {
             agents: state.agents.filter((a) => a.id !== id),
             currentAgentId: state.currentAgentId === id ? DEFAULT_AGENT_ID : state.currentAgentId,
             agentSessions: restSessions,
             agentCurrentSessionId: restCurrentIds,
+            agentProjects: restProjects,
           };
         });
       },
@@ -129,7 +140,7 @@ export const useAgentStore = create<AgentState>()(
       setCurrentAgent: (id) => set({ currentAgentId: id }),
 
       // Per-agent sessions
-      createAgentSession: (agentId, name = '新会话') => {
+      createAgentSession: (agentId, name = '新会话', projectId) => {
         const session: Session = {
           id: crypto.randomUUID(),
           name,
@@ -137,6 +148,7 @@ export const useAgentStore = create<AgentState>()(
           createdAt: Date.now(),
           updatedAt: Date.now(),
           sessionType: 'user' as SessionType,
+          projectId,
         };
         set((state) => ({
           agentSessions: {
@@ -219,6 +231,67 @@ export const useAgentStore = create<AgentState>()(
         }));
       },
 
+      moveAgentSessionToProject: (agentId, sessionId, projectId) => {
+        set((state) => ({
+          agentSessions: {
+            ...state.agentSessions,
+            [agentId]: (state.agentSessions[agentId] || []).map((s) =>
+              s.id === sessionId ? { ...s, projectId: projectId || undefined, updatedAt: Date.now() } : s
+            ),
+          },
+        }));
+      },
+
+      // Per-agent projects
+      createAgentProject: (agentId, name, description, color, icon) => {
+        const project: import('../types').Project = {
+          id: crypto.randomUUID(),
+          name,
+          description,
+          color: color || '#3b82f6',
+          icon: icon || 'folder-open',
+          agentId,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+
+        set((state) => ({
+          agentProjects: {
+            ...state.agentProjects,
+            [agentId]: [...(state.agentProjects[agentId] || []), project],
+          },
+        }));
+
+        return project;
+      },
+
+      updateAgentProject: (agentId, projectId, updates) => {
+        set((state) => ({
+          agentProjects: {
+            ...state.agentProjects,
+            [agentId]: (state.agentProjects[agentId] || []).map((p) =>
+              p.id === projectId ? { ...p, ...updates, updatedAt: Date.now() } : p
+            ),
+          },
+        }));
+      },
+
+      deleteAgentProject: (agentId, projectId) => {
+        set((state) => ({
+          agentProjects: {
+            ...state.agentProjects,
+            [agentId]: (state.agentProjects[agentId] || []).filter((p) => p.id !== projectId),
+          },
+          // Remove projectId from sessions in this project
+          agentSessions: {
+            ...state.agentSessions,
+            [agentId]: (state.agentSessions[agentId] || []).map((s) =>
+              s.projectId === projectId ? { ...s, projectId: undefined } : s
+            ),
+          },
+        }));
+      },
+
       // Per-agent config
       setAgentLLMConfig: (agentId, config) => {
         set((state) => ({
@@ -256,6 +329,7 @@ export const useAgentStore = create<AgentState>()(
           ])
         ),
         agentCurrentSessionId: state.agentCurrentSessionId,
+        agentProjects: state.agentProjects,
       }),
       onRehydrateStorage: () => {
         return (state) => {
@@ -271,6 +345,10 @@ export const useAgentStore = create<AgentState>()(
           }
           if (state.agentCurrentSessionId[DEFAULT_AGENT_ID] === undefined) {
             state.agentCurrentSessionId[DEFAULT_AGENT_ID] = null;
+          }
+          // Ensure default agent has projects entry
+          if (!state.agentProjects[DEFAULT_AGENT_ID]) {
+            state.agentProjects[DEFAULT_AGENT_ID] = [];
           }
         };
       },

@@ -118,6 +118,7 @@ export interface Project {
   description?: string;
   color?: string; // 项目颜色标识
   icon?: string; // lucide icon name (e.g. 'folder-open', 'rocket')
+  agentId?: string; // 所属智能体ID（undefined表示属于默认智能体/全局）
   createdAt: number;
   updatedAt: number;
 }

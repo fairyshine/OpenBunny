@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSessionStore } from '@shared/stores/session';
+import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
 import type { Project } from '@shared/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -22,11 +23,16 @@ const PRESET_COLORS = [
 
 export function ProjectDialog({ isOpen, onClose, project }: ProjectDialogProps) {
   const { t } = useTranslation();
+  const currentAgentId = useAgentStore((s) => s.currentAgentId);
+  const createAgentProject = useAgentStore((s) => s.createAgentProject);
+  const updateAgentProject = useAgentStore((s) => s.updateAgentProject);
   const { createProject, updateProject } = useSessionStore();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [icon, setIcon] = useState<string>(PROJECT_ICON_NAMES[0]);
+
+  const isDefaultAgent = currentAgentId === DEFAULT_AGENT_ID;
 
   useEffect(() => {
     if (isOpen) {
@@ -41,9 +47,17 @@ export function ProjectDialog({ isOpen, onClose, project }: ProjectDialogProps) 
     if (!name.trim()) return;
 
     if (project) {
-      updateProject(project.id, { name: name.trim(), description: description.trim(), color, icon });
+      if (isDefaultAgent) {
+        updateProject(project.id, { name: name.trim(), description: description.trim(), color, icon });
+      } else {
+        updateAgentProject(currentAgentId, project.id, { name: name.trim(), description: description.trim(), color, icon });
+      }
     } else {
-      createProject(name.trim(), description.trim(), color, icon);
+      if (isDefaultAgent) {
+        createProject(name.trim(), description.trim(), color, icon);
+      } else {
+        createAgentProject(currentAgentId, name.trim(), description.trim(), color, icon);
+      }
     }
 
     onClose();
