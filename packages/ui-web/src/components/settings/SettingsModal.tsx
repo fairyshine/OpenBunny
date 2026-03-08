@@ -87,12 +87,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   {userProfile.avatar || <User className="w-5 h-5 text-muted-foreground" />}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm truncate ${activeSection === 'profile' ? 'font-medium' : ''}`}>
-                    {userProfile.nickname || t('settings.nav.profile')}
+                  <p className={`text-[13px] truncate ${activeSection === 'profile' ? 'font-medium' : ''}`}>
+                    {t('settings.nav.profile')}
                   </p>
-                  {userProfile.email && (
-                    <p className="text-[11px] text-muted-foreground truncate">{userProfile.email}</p>
-                  )}
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {userProfile.nickname || t('settings.profile.nicknamePlaceholder')}
+                  </p>
                 </div>
               </button>
             </div>
