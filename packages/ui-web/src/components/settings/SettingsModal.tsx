@@ -166,6 +166,7 @@ function GeneralSection() {
     masterMuted, setMasterMuted,
     soundEffectsEnabled, setSoundEffectsEnabled,
     toolExecutionTimeout, setToolExecutionTimeout,
+    proxyUrl, setProxyUrl,
   } = useSettingsStore();
 
   return (
@@ -237,6 +238,31 @@ function GeneralSection() {
             </span>
           </div>
           <p className="text-xs text-muted-foreground">{t('settings.toolTimeoutHint')}</p>
+        </div>
+      </SettingsGroup>
+
+      <SettingsGroup>
+        <div className="space-y-2">
+          <Label className="text-sm">{t('settings.proxyUrl')}</Label>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={proxyUrl}
+              onChange={(e) => setProxyUrl(e.target.value)}
+              placeholder="https://your-worker.workers.dev"
+              className="h-9"
+            />
+            <a
+              href="https://deploy.workers.cloudflare.com/?url=https://github.com/fairyshine/CyberBunny/tree/main/worker"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 h-9 text-xs font-medium rounded-md border bg-background hover:bg-accent hover:text-accent-foreground transition-colors whitespace-nowrap"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              {t('settings.proxyDeploy')}
+            </a>
+          </div>
+          <p className="text-xs text-muted-foreground">{t('settings.proxyHint')}</p>
         </div>
       </SettingsGroup>
 
@@ -451,96 +477,211 @@ function SkillsSection() {
   return <SkillManager />;
 }
 
-/* ── Network Settings ── */
+/* ── Network Settings (Agent Identity) ── */
 function NetworkSection() {
   const { t } = useTranslation();
   const {
-    proxyUrl, setProxyUrl,
-    searchProvider, setSearchProvider,
-    exaApiKey, setExaApiKey,
-    braveApiKey, setBraveApiKey,
+    agentProfiles,
+    addAgentProfile,
+    updateAgentProfile,
+    removeAgentProfile,
+    setActiveAgentProfile,
   } = useSettingsStore();
+
+  const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
+  const [showNewAgent, setShowNewAgent] = useState(false);
+  const [newAgent, setNewAgent] = useState({ name: '', avatar: '🤖', description: '', systemPrompt: '' });
+
+  const AGENT_EMOJIS = ['🤖', '🧠', '🦾', '🎯', '🔮', '🛡️', '🌐', '🔬', '💡', '🎭'];
+
+  const handleAddAgent = () => {
+    if (!newAgent.name.trim()) return;
+    addAgentProfile({ ...newAgent, isActive: agentProfiles.length === 0 });
+    setNewAgent({ name: '', avatar: '🤖', description: '', systemPrompt: '' });
+    setShowNewAgent(false);
+  };
+
+  const handleDeleteAgent = (id: string) => {
+    if (!confirm(t('settings.profile.deleteConfirm'))) return;
+    removeAgentProfile(id);
+    if (editingAgentId === id) setEditingAgentId(null);
+  };
 
   return (
     <div className="space-y-5">
-      <h2 className="text-lg font-semibold">{t('settings.nav.network')}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{t('settings.nav.network')}</h2>
+        <button
+          onClick={() => setShowNewAgent(true)}
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          {t('settings.profile.addAgent')}
+        </button>
+      </div>
 
-      {/* Proxy */}
       <SettingsGroup>
-        <Label className="text-xs text-muted-foreground uppercase tracking-wide">{t('settings.network.proxy')}</Label>
-        <div className="space-y-2">
-          <Label className="text-sm">{t('settings.proxyUrl')}</Label>
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              value={proxyUrl}
-              onChange={(e) => setProxyUrl(e.target.value)}
-              placeholder="https://your-worker.workers.dev"
-              className="h-9"
-            />
-            <a
-              href="https://deploy.workers.cloudflare.com/?url=https://github.com/fairyshine/CyberBunny/tree/main/worker"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 h-9 text-xs font-medium rounded-md border bg-background hover:bg-accent hover:text-accent-foreground transition-colors whitespace-nowrap"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              {t('settings.proxyDeploy')}
-            </a>
+        <div className="flex items-center gap-2 mb-1">
+          <Globe className="w-4 h-4 text-muted-foreground" />
+          <div>
+            <h3 className="text-sm font-medium">{t('settings.profile.agentTitle')}</h3>
+            <p className="text-xs text-muted-foreground">{t('settings.profile.agentDesc')}</p>
           </div>
-          <p className="text-xs text-muted-foreground">{t('settings.proxyHint')}</p>
-        </div>
-      </SettingsGroup>
-
-      {/* Search */}
-      <SettingsGroup>
-        <Label className="text-xs text-muted-foreground uppercase tracking-wide">{t('settings.network.search')}</Label>
-        <div className="space-y-2">
-          <Label className="text-sm">{t('settings.searchProvider')}</Label>
-          <Select value={searchProvider} onValueChange={(v) => setSearchProvider(v as any)}>
-            <SelectTrigger className="h-9 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="exa_free">Exa (Free)</SelectItem>
-              <SelectItem value="exa">Exa (API Key)</SelectItem>
-              <SelectItem value="brave">Brave</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
-        {searchProvider === 'exa_free' && (
-          <p className="text-xs text-muted-foreground">{t('settings.exaFreeHint')}</p>
+        {/* New Agent Form */}
+        {showNewAgent && (
+          <AgentForm
+            agent={newAgent}
+            emojis={AGENT_EMOJIS}
+            onChange={(updates) => setNewAgent((prev) => ({ ...prev, ...updates }))}
+            onSave={handleAddAgent}
+            onCancel={() => { setShowNewAgent(false); setNewAgent({ name: '', avatar: '🤖', description: '', systemPrompt: '' }); }}
+          />
         )}
 
-        {searchProvider === 'exa' && (
-          <div className="space-y-2">
-            <Label className="text-sm">{t('settings.exaApiKey')}</Label>
-            <Input
-              type="password"
-              value={exaApiKey}
-              onChange={(e) => setExaApiKey(e.target.value)}
-              placeholder="exa-..."
-              className="h-9"
-            />
-            <p className="text-xs text-muted-foreground">{t('settings.exaApiKeyHint')}</p>
+        {/* Agent Cards */}
+        {agentProfiles.length === 0 && !showNewAgent ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Globe className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">{t('settings.profile.noAgents')}</p>
+            <p className="text-xs mt-1">{t('settings.profile.noAgentsHint')}</p>
           </div>
-        )}
-
-        {searchProvider === 'brave' && (
-          <div className="space-y-2">
-            <Label className="text-sm">{t('settings.braveApiKey')}</Label>
-            <Input
-              type="password"
-              value={braveApiKey}
-              onChange={(e) => setBraveApiKey(e.target.value)}
-              placeholder="BSA..."
-              className="h-9"
-            />
-            <p className="text-xs text-muted-foreground">{t('settings.braveApiKeyHint')}</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {agentProfiles.map((agent) => (
+              editingAgentId === agent.id ? (
+                <AgentForm
+                  key={agent.id}
+                  agent={agent}
+                  emojis={AGENT_EMOJIS}
+                  onChange={(updates) => updateAgentProfile(agent.id, updates)}
+                  onSave={() => setEditingAgentId(null)}
+                  onCancel={() => setEditingAgentId(null)}
+                  className="col-span-2"
+                />
+              ) : (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  onActivate={() => setActiveAgentProfile(agent.id)}
+                  onEdit={() => setEditingAgentId(agent.id)}
+                  onDelete={() => handleDeleteAgent(agent.id)}
+                />
+              )
+            ))}
           </div>
         )}
       </SettingsGroup>
+    </div>
+  );
+}
+
+/* ── Agent Card ── */
+function AgentCard({
+  agent,
+  onActivate,
+  onEdit,
+  onDelete,
+}: {
+  agent: { id: string; name: string; avatar: string; description: string; isActive?: boolean };
+  onActivate: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className={`relative p-3 rounded-lg border transition-all ${
+      agent.isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/40'
+    }`}>
+      <div className="flex items-start gap-2.5">
+        <span className="text-2xl shrink-0">{agent.avatar}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium truncate">{agent.name}</span>
+            {agent.isActive && (
+              <span className="text-[10px] px-1.5 py-0 rounded bg-primary text-primary-foreground font-medium">
+                {t('settings.profile.agentActive')}
+              </span>
+            )}
+          </div>
+          {agent.description && (
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{agent.description}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-1 mt-2.5 pt-2 border-t">
+        {!agent.isActive && (
+          <button onClick={onActivate} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+            <Check className="w-3 h-3" />{t('settings.profile.activate')}
+          </button>
+        )}
+        <button onClick={onEdit} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+          <Pencil className="w-3 h-3" />{t('settings.profile.editAgent')}
+        </button>
+        <button onClick={onDelete} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded hover:bg-accent transition-colors text-muted-foreground hover:text-destructive ml-auto">
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Agent Form ── */
+function AgentForm({
+  agent,
+  emojis,
+  onChange,
+  onSave,
+  onCancel,
+  className = '',
+}: {
+  agent: { name: string; avatar: string; description: string; systemPrompt: string };
+  emojis: string[];
+  onChange: (updates: Partial<typeof agent>) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className={`p-3 rounded-lg border border-primary/40 bg-muted/30 space-y-3 ${className}`}>
+      <div className="flex gap-1.5 flex-wrap">
+        {emojis.map((emoji) => (
+          <button
+            key={emoji}
+            onClick={() => onChange({ avatar: emoji })}
+            className={`w-7 h-7 rounded text-sm flex items-center justify-center transition-all
+              ${agent.avatar === emoji
+                ? 'bg-primary text-primary-foreground ring-1 ring-primary'
+                : 'bg-background hover:bg-accent'}`}
+          >{emoji}</button>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs">{t('settings.profile.agentName')}</Label>
+          <Input value={agent.name} onChange={(e) => onChange({ name: e.target.value })} placeholder={t('settings.profile.agentNamePlaceholder')} className="h-7 text-xs" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">{t('settings.profile.agentDesc.label')}</Label>
+          <Input value={agent.description} onChange={(e) => onChange({ description: e.target.value })} placeholder={t('settings.profile.agentDescPlaceholder')} className="h-7 text-xs" />
+        </div>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">{t('settings.profile.agentPrompt')}</Label>
+        <textarea
+          value={agent.systemPrompt}
+          onChange={(e) => onChange({ systemPrompt: e.target.value })}
+          placeholder={t('settings.profile.agentPromptPlaceholder')}
+          rows={3}
+          className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <button onClick={onCancel} className="px-3 py-1 text-xs rounded-md border hover:bg-accent transition-colors">{t('common.cancel')}</button>
+        <button onClick={onSave} disabled={!agent.name.trim()} className="px-3 py-1 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50">{t('common.save')}</button>
+      </div>
     </div>
   );
 }
