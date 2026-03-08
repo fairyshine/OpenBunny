@@ -2,6 +2,11 @@ import { memo } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
 import type { Agent } from '@shared/types';
 
+export const AGENT_NODE_WIDTH = 80;
+export const AGENT_NODE_HEIGHT = 82;
+export const AGENT_AVATAR_CENTER_X = 40;
+export const AGENT_AVATAR_CENTER_Y = 32;
+
 export interface AgentNodeData {
   agent: Agent;
   isEditMode?: boolean;
@@ -17,7 +22,6 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
 
   const accentColor = isDefault ? 'hsl(var(--primary))' : agent.color;
 
-  // State-driven border & ring
   let borderColor = 'hsl(var(--border))';
   let ringStyle = 'none';
   let avatarBorder = 'transparent';
@@ -54,48 +58,58 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
 
   const cursor = isEditMode ? 'cursor-crosshair' : isStatic ? 'cursor-default' : 'cursor-grab active:cursor-grabbing';
 
-  const interactiveHandleClassName = '!absolute !w-[18px] !h-[18px] !rounded-full !border-0 !bg-transparent !opacity-0';
-  const hiddenHandleClassName = '!w-px !h-px !opacity-0 !border-0 !bg-transparent pointer-events-none';
+  const interactiveHandleClassName = '!absolute !rounded-full !border-0 !bg-transparent !opacity-0 !pointer-events-auto';
+  const hiddenHandleClassName = '!w-px !h-px !opacity-0 !border-0 !bg-transparent !pointer-events-none';
+
+  const centerHandleStyle = isEditMode
+    ? {
+        top: AGENT_AVATAR_CENTER_Y,
+        left: AGENT_AVATAR_CENTER_X,
+        right: 'auto',
+        bottom: 'auto',
+        width: 28,
+        height: 28,
+        transform: 'translate(-50%, -50%)',
+        zIndex: 3,
+      }
+    : undefined;
 
   return (
-    <div className={`flex flex-col items-center ${cursor}`}>
+    <div className={`relative flex flex-col items-center ${cursor}`} style={{ width: AGENT_NODE_WIDTH, height: AGENT_NODE_HEIGHT }}>
       <Handle
         type="target"
         position={Position.Top}
         isConnectable={Boolean(isEditMode)}
         className={isEditMode ? interactiveHandleClassName : hiddenHandleClassName}
-        style={isEditMode ? { top: -6, left: '50%', transform: 'translateX(-50%)' } : undefined}
+        style={centerHandleStyle}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         isConnectable={Boolean(isEditMode)}
         className={isEditMode ? interactiveHandleClassName : hiddenHandleClassName}
-        style={isEditMode ? { bottom: -6, left: '50%', transform: 'translateX(-50%)' } : undefined}
+        style={centerHandleStyle}
       />
 
-      {/* Card container */}
       <div
         className={`relative flex flex-col items-center gap-2 px-3 pt-3 pb-2.5 rounded-xl transition-all duration-200 ${isPendingSource ? 'animate-pulse' : ''}`}
         style={{
           background: 'hsl(var(--card))',
           border: `1px solid ${borderColor}`,
           boxShadow: `${cardShadow}${ringStyle !== 'none' ? `, ${ringStyle}` : ''}`,
-          minWidth: 80,
+          width: AGENT_NODE_WIDTH,
+          minHeight: AGENT_NODE_HEIGHT,
         }}
       >
-        {/* Edit mode indicator — dashed outline */}
         {isEditMode && !isPendingSource && !willConnect && !willDisconnect && !selected && (
           <div className="absolute inset-[-3px] rounded-[14px] border border-dashed border-primary/30 pointer-events-none" />
         )}
 
-        {/* Accent color bar at top */}
         <div
           className="absolute top-0 left-3 right-3 h-[2px] rounded-b-full opacity-60"
           style={{ background: accentColor }}
         />
 
-        {/* Avatar */}
         <div
           className="relative flex items-center justify-center w-10 h-10 rounded-lg text-xl transition-colors duration-200"
           style={{
@@ -108,7 +122,6 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
           {agent.avatar}
         </div>
 
-        {/* Name */}
         <div
           className="text-[11px] font-medium text-center leading-tight select-none max-w-[72px] truncate"
           style={{ color: labelColor }}

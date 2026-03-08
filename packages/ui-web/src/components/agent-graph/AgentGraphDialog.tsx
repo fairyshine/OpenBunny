@@ -26,7 +26,7 @@ import ELK from 'elkjs/lib/elk.bundled.js';
 import { useAgentStore } from '@shared/stores/agent';
 import type { Agent, AgentGroup } from '@shared/types';
 import { Button } from '../ui/button';
-import { AgentNode, type AgentNodeData } from './AgentNode';
+import { AgentNode, AGENT_AVATAR_CENTER_X, AGENT_AVATAR_CENTER_Y, type AgentNodeData } from './AgentNode';
 import { AgentGroupNode } from './AgentGroupNode';
 import { Maximize2, Trash2, X, Link2 } from 'lucide-react';
 
@@ -55,10 +55,10 @@ function CenterEdge({ id, source, target, sourceX, sourceY, targetX, targetY, st
   const sourceNode = nodes.find((node) => node.id === source);
   const targetNode = nodes.find((node) => node.id === target);
 
-  const sourceCenterX = (sourceNode?.positionAbsolute?.x ?? sourceNode?.position.x ?? sourceX) + NODE_WIDTH / 2;
-  const sourceCenterY = (sourceNode?.positionAbsolute?.y ?? sourceNode?.position.y ?? sourceY) + NODE_HEIGHT / 2;
-  const targetCenterX = (targetNode?.positionAbsolute?.x ?? targetNode?.position.x ?? targetX) + NODE_WIDTH / 2;
-  const targetCenterY = (targetNode?.positionAbsolute?.y ?? targetNode?.position.y ?? targetY) + NODE_HEIGHT / 2;
+  const sourceCenterX = (sourceNode?.positionAbsolute?.x ?? sourceNode?.position.x ?? sourceX) + AGENT_AVATAR_CENTER_X;
+  const sourceCenterY = (sourceNode?.positionAbsolute?.y ?? sourceNode?.position.y ?? sourceY) + AGENT_AVATAR_CENTER_Y;
+  const targetCenterX = (targetNode?.positionAbsolute?.x ?? targetNode?.position.x ?? targetX) + AGENT_AVATAR_CENTER_X;
+  const targetCenterY = (targetNode?.positionAbsolute?.y ?? targetNode?.position.y ?? targetY) + AGENT_AVATAR_CENTER_Y;
 
   const [edgePath, labelX, labelY] = getStraightPath({
     sourceX: sourceCenterX,
