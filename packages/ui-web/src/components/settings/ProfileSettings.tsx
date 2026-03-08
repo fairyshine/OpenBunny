@@ -14,20 +14,28 @@ export default function ProfileSettings() {
     <div className="space-y-5">
       <h2 className="text-lg font-semibold">{t('settings.nav.profile')}</h2>
 
-      {/* User Profile Section */}
-      <div className="rounded-xl border bg-background p-4 space-y-3">
-        <div className="flex items-center gap-2 mb-1">
-          <User className="w-4 h-4 text-muted-foreground" />
-          <div>
-            <h3 className="text-sm font-medium">{t('settings.profile.userTitle')}</h3>
-            <p className="text-xs text-muted-foreground">{t('settings.profile.userDesc')}</p>
+      {/* Avatar + Name hero card */}
+      <div className="rounded-xl border bg-background p-6">
+        <div className="flex flex-col items-center gap-3">
+          {/* Large avatar */}
+          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-4xl ring-2 ring-border">
+            {userProfile.avatar || <User className="w-8 h-8 text-muted-foreground" />}
+          </div>
+          {/* Display name */}
+          <div className="text-center">
+            <p className="text-base font-medium">
+              {userProfile.nickname || t('settings.profile.nicknamePlaceholder')}
+            </p>
+            {userProfile.email && (
+              <p className="text-xs text-muted-foreground mt-0.5">{userProfile.email}</p>
+            )}
           </div>
         </div>
 
         {/* Avatar picker */}
-        <div className="space-y-1.5">
+        <div className="mt-4 pt-4 border-t space-y-1.5">
           <Label className="text-xs">{t('settings.profile.avatar')}</Label>
-          <div className="flex gap-1.5 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap justify-center">
             {AVATAR_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
@@ -42,7 +50,10 @@ export default function ProfileSettings() {
             ))}
           </div>
         </div>
+      </div>
 
+      {/* Info fields */}
+      <div className="rounded-xl border bg-background p-4 space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="nickname" className="text-xs">{t('settings.profile.nickname')}</Label>
