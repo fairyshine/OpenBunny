@@ -55,8 +55,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
   const { userProfile } = useSettingsStore();
 
-  const navItems: { id: SettingsSection; icon: React.ReactNode; label: string; avatar?: boolean }[] = [
-    { id: 'profile', icon: null, label: t('settings.nav.profile'), avatar: true },
+  const navItems: { id: SettingsSection; icon: React.ReactNode; label: string }[] = [
     { id: 'general', icon: <Settings2 className="w-[18px] h-[18px]" />, label: t('settings.nav.general') },
     { id: 'llm', icon: <BrainCircuit className="w-[18px] h-[18px]" />, label: t('settings.nav.llm') },
     { id: 'tools', icon: <Wrench className="w-[18px] h-[18px]" />, label: t('settings.nav.tools') },
@@ -74,7 +73,31 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         {/* ── Left Sidebar ── */}
         <nav className="w-[200px] shrink-0 bg-muted/40 border-r flex flex-col py-2">
           <ScrollArea className="flex-1">
-            <div className="px-2 space-y-0.5">
+            {/* Profile nav item — special layout */}
+            <div className="px-2 mb-2">
+              <button
+                onClick={() => setActiveSection('profile')}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] transition-colors text-left ${
+                  activeSection === 'profile'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-foreground/80 hover:bg-accent'
+                }`}
+              >
+                <span className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-2xl shrink-0 ring-1 ring-border">
+                  {userProfile.avatar || <User className="w-5 h-5 text-muted-foreground" />}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm truncate ${activeSection === 'profile' ? 'font-medium' : ''}`}>
+                    {userProfile.nickname || t('settings.nav.profile')}
+                  </p>
+                  {userProfile.email && (
+                    <p className="text-[11px] text-muted-foreground truncate">{userProfile.email}</p>
+                  )}
+                </div>
+              </button>
+            </div>
+
+            <div className="px-2 pt-2 border-t border-border/50 space-y-0.5">
               {navItems.map((item) => (
                 <button
                   key={item.id}
@@ -85,15 +108,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       : 'text-foreground/80 hover:bg-accent'
                   }`}
                 >
-                  {item.avatar ? (
-                    <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm shrink-0">
-                      {userProfile.avatar || <User className="w-4 h-4" />}
-                    </span>
-                  ) : (
-                    <span className="w-7 h-7 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 text-muted-foreground">
-                      {item.icon}
-                    </span>
-                  )}
+                  <span className="w-7 h-7 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 text-muted-foreground">
+                    {item.icon}
+                  </span>
                   <span className="truncate">{item.label}</span>
                 </button>
               ))}
