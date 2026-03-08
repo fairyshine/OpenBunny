@@ -71,7 +71,7 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
           <div className="flex items-center gap-2">
             <button
               onClick={onLogoClick}
-              className="w-7 h-7 rounded-md flex items-center justify-center text-sm hover:opacity-80 transition-opacity cursor-pointer"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-sm hover:opacity-80 transition-opacity cursor-pointer"
               style={displayColor ? {
                 backgroundColor: displayColor + '20',
                 color: displayColor

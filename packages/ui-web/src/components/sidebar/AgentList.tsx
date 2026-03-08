@@ -109,7 +109,7 @@ export function AgentList({ onItemClick, onEditAgent, onOpenGraph }: AgentListPr
           `}
         >
           <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-base shrink-0"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-base shrink-0"
             style={agent.isDefault ? {
               backgroundColor: 'hsl(var(--foreground))',
               color: 'hsl(var(--background))'

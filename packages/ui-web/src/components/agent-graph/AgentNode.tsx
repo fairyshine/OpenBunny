@@ -111,7 +111,7 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
         />
 
         <div
-          className="relative flex items-center justify-center w-10 h-10 rounded-lg text-xl transition-colors duration-200"
+          className="relative flex items-center justify-center w-10 h-10 rounded-full text-xl transition-colors duration-200"
           style={{
             background: isDefault
               ? 'hsl(var(--muted))'
