@@ -6,7 +6,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Agent, LLMConfig, Session, Message, SessionType } from '../types';
+import type { Agent, LLMConfig, Session, Message, SessionType, AgentRelationship, AgentGroup } from '../types';
 import { messageStorage } from '../services/storage/messageStorage';
 
 const DEFAULT_AGENT_ID = 'default';
@@ -49,6 +49,18 @@ interface AgentState {
   deleteAgent: (id: string) => void;
   setCurrentAgent: (id: string) => void;
 
+  // Agent relationships
+  relationships: AgentRelationship[];
+  createRelationship: (sourceAgentId: string, targetAgentId: string, label?: string) => AgentRelationship;
+  deleteRelationship: (relationshipId: string) => void;
+  updateRelationship: (relationshipId: string, updates: Partial<Pick<AgentRelationship, 'label'>>) => void;
+
+  // Agent groups
+  agentGroups: AgentGroup[];
+  createAgentGroup: (name: string, color?: string) => AgentGroup;
+  updateAgentGroup: (id: string, updates: Partial<Pick<AgentGroup, 'name' | 'color'>>) => void;
+  deleteAgentGroup: (id: string) => void;
+
   // Per-agent sessions
   agentSessions: Record<string, Session[]>;
   agentCurrentSessionId: Record<string, string | null>;
@@ -82,6 +94,8 @@ export const useAgentStore = create<AgentState>()(
       agentSessions: { [DEFAULT_AGENT_ID]: [] },
       agentCurrentSessionId: { [DEFAULT_AGENT_ID]: null },
       agentProjects: { [DEFAULT_AGENT_ID]: [] },
+      relationships: [],
+      agentGroups: [],
 
       createAgent: (data) => {
         const id = crypto.randomUUID();
@@ -138,6 +152,65 @@ export const useAgentStore = create<AgentState>()(
       },
 
       setCurrentAgent: (id) => set({ currentAgentId: id }),
+
+      // Agent relationships
+      createRelationship: (sourceAgentId, targetAgentId, label) => {
+        const relationship: AgentRelationship = {
+          id: crypto.randomUUID(),
+          sourceAgentId,
+          targetAgentId,
+          label,
+          createdAt: Date.now(),
+        };
+        set((state) => ({
+          relationships: [...state.relationships, relationship],
+        }));
+        return relationship;
+      },
+
+      deleteRelationship: (relationshipId) => {
+        set((state) => ({
+          relationships: state.relationships.filter((r) => r.id !== relationshipId),
+        }));
+      },
+
+      updateRelationship: (relationshipId, updates) => {
+        set((state) => ({
+          relationships: state.relationships.map((r) =>
+            r.id === relationshipId ? { ...r, ...updates } : r
+          ),
+        }));
+      },
+
+      // Agent groups
+      createAgentGroup: (name, color) => {
+        const group: AgentGroup = {
+          id: crypto.randomUUID(),
+          name,
+          color,
+          createdAt: Date.now(),
+        };
+        set((state) => ({ agentGroups: [...state.agentGroups, group] }));
+        return group;
+      },
+
+      updateAgentGroup: (id, updates) => {
+        set((state) => ({
+          agentGroups: state.agentGroups.map((g) =>
+            g.id === id ? { ...g, ...updates } : g
+          ),
+        }));
+      },
+
+      deleteAgentGroup: (id) => {
+        set((state) => ({
+          agentGroups: state.agentGroups.filter((g) => g.id !== id),
+          // Ungroup agents in this group
+          agents: state.agents.map((a) =>
+            a.groupId === id ? { ...a, groupId: undefined, updatedAt: Date.now() } : a
+          ),
+        }));
+      },
 
       // Per-agent sessions
       createAgentSession: (agentId, name = '新会话', projectId) => {
@@ -322,6 +395,8 @@ export const useAgentStore = create<AgentState>()(
       partialize: (state) => ({
         agents: state.agents,
         currentAgentId: state.currentAgentId,
+        relationships: state.relationships,
+        agentGroups: state.agentGroups,
         agentSessions: Object.fromEntries(
           Object.entries(state.agentSessions).map(([agentId, sessions]) => [
             agentId,

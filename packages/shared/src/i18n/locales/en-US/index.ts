@@ -14,6 +14,7 @@ import memory from './memory';
 import skills from './skills';
 import dashboard from './dashboard';
 import welcome from './welcome';
+import agentGraph from './agentGraph';
 
 const enUS = {
   ...common,
@@ -32,6 +33,7 @@ const enUS = {
   ...skills,
   ...dashboard,
   ...welcome,
+  ...agentGraph,
 } as const;
 
 export default enUS;

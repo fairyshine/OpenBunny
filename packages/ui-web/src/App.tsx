@@ -5,6 +5,7 @@ import SessionTabs from './components/chat/SessionTabs';
 import Sidebar from './components/sidebar/Sidebar';
 import Header from './components/layout/Header';
 import StatusScreen from './components/layout/StatusScreen';
+import { AgentGraph } from './components/agent-graph/AgentGraphDialog';
 import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
 import { useSettingsStore } from '@shared/stores/settings';
 import { useSkillStore } from '@shared/stores/skills';
@@ -33,6 +34,8 @@ function App() {
   const [showConsole, setShowConsole] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showStatusPage, setShowStatusPage] = useState(false);
+  const [showGraph, setShowGraph] = useState(false);
+  const [graphGroupId, setGraphGroupId] = useState<string | undefined>(undefined);
 
   // Apply theme on mount
   useEffect(() => {
@@ -104,18 +107,17 @@ function App() {
 
   const handleLogoClick = () => {
     if (enableSessionTabs) {
-      // 标签栏模式：切换状态页显示
       setShowStatusPage(prev => !prev);
     } else {
-      // 传统模式：切换状态页显示
       setShowStatusPage(prev => !prev);
     }
-    // 关闭文件编辑器
     setSelectedFile(null);
+    setShowGraph(false);
   };
 
   const handleSelectFile = (path: string) => {
     setSelectedFile(path);
+    setShowGraph(false);
   };
 
   const handleCloseFile = () => {
@@ -160,8 +162,29 @@ function App() {
     }
   };
 
+  const handleOpenGraph = (groupId?: string) => {
+    setShowGraph(true);
+    setGraphGroupId(groupId);
+    setSelectedFile(null);
+    setShowStatusPage(false);
+  };
+
+  const handleCloseGraph = () => {
+    setShowGraph(false);
+  };
+
+  // Sidebar props shared across both render paths
+  const sidebarProps = {
+    onSelectFile: handleSelectFile,
+    isOpen: isSidebarOpen,
+    onClose: () => setIsSidebarOpen(false),
+    onSessionSelect: () => { setShowStatusPage(false); setShowGraph(false); },
+    onFileBlankClick: handleFileBlankClick,
+    onOpenGraph: handleOpenGraph,
+  };
+
   // 如果应该显示状态页，直接返回状态页
-  if (shouldShowStatusScreen() && !selectedFile) {
+  if (shouldShowStatusScreen() && !selectedFile && !showGraph) {
     return (
       <div className="h-screen flex flex-col bg-background overflow-x-hidden">
         <Header
@@ -171,13 +194,7 @@ function App() {
         />
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 flex overflow-hidden">
-            <Sidebar
-              onSelectFile={handleSelectFile}
-              isOpen={isSidebarOpen}
-              onClose={() => setIsSidebarOpen(false)}
-              onSessionSelect={() => setShowStatusPage(false)}
-              onFileBlankClick={handleFileBlankClick}
-            />
+            <Sidebar {...sidebarProps} />
             <StatusScreen onStart={handleStart} showStartButton={shouldShowStartButton()} />
           </div>
           <Suspense fallback={<div />}>
@@ -203,16 +220,14 @@ function App() {
           {/* 侧边栏 */}
           <Sidebar
             selectedFilePath={selectedFile || undefined}
-            onSelectFile={handleSelectFile}
-            isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
-            onSessionSelect={() => setShowStatusPage(false)}
-            onFileBlankClick={handleFileBlankClick}
+            {...sidebarProps}
           />
 
-          {/* 主内容区 - 聊天或文件编辑器 */}
+          {/* 主内容区 - 关系图、文件编辑器或聊天 */}
           <main className="flex-1 flex flex-col min-w-0">
-            {selectedFile ? (
+            {showGraph ? (
+              <AgentGraph onClose={handleCloseGraph} groupId={graphGroupId} />
+            ) : selectedFile ? (
               <Suspense fallback={<div className="flex-1 flex items-center justify-center">Loading...</div>}>
                 <FileEditor
                   path={selectedFile}

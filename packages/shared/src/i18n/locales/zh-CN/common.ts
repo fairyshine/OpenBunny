@@ -11,4 +11,5 @@ export default {
   'common.open': '打开',
   'common.more': '更多',
   'common.retry': '重试',
+  'common.close': '关闭',
 } as const;

@@ -23,9 +23,10 @@ interface SidebarProps {
   onClose?: () => void;
   onSessionSelect?: () => void;
   onFileBlankClick?: () => void;
+  onOpenGraph?: (groupId?: string) => void;
 }
 
-export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClose, onSessionSelect, onFileBlankClick }: SidebarProps) {
+export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClose, onSessionSelect, onFileBlankClick, onOpenGraph }: SidebarProps) {
   const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('agents');
@@ -39,6 +40,8 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
   const { createSession } = useSessionStore();
   const currentAgentId = useAgentStore((s) => s.currentAgentId);
   const createAgentSession = useAgentStore((s) => s.createAgentSession);
+
+  const createAgentGroup = useAgentStore((s) => s.createAgentGroup);
 
   const handleItemClick = () => {
     if (onClose && window.innerWidth < 768) {
@@ -107,6 +110,8 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
           onCreateProject={() => { setEditingProject(null); setProjectDialogOpen(true); }}
           onCreateSession={handleCreateSession}
           onCreateAgent={() => { setEditingAgent(undefined); setAgentDialogOpen(true); }}
+          onCreateGroup={() => { const name = prompt(t('sidebar.agent.groupName')); if (name?.trim()) createAgentGroup(name.trim()); }}
+          onOpenGraph={() => onOpenGraph?.()}
         />
 
         {/* Content Area */}
@@ -115,6 +120,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
             <AgentList
               onItemClick={handleItemClick}
               onEditAgent={(agent) => { setEditingAgent(agent); setAgentDialogOpen(true); }}
+              onOpenGraph={onOpenGraph}
             />
           ) : activeTab === 'sessions' ? (
             <SessionList

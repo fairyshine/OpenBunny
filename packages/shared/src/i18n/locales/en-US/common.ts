@@ -11,4 +11,5 @@ export default {
   'common.open': 'Open',
   'common.more': 'More',
   'common.retry': 'Retry',
+  'common.close': 'Close',
 } as const;

@@ -35,6 +35,7 @@
     "@radix-ui/react-tooltip": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
+    "d3-force": "^3.0.0",
     "date-fns": "catalog:",
     "howler": "^2.2.4",
     "lucide-react": "catalog:",
@@ -42,12 +43,14 @@
     "react-i18next": "catalog:",
     "react-syntax-highlighter": "^16.1.1",
     "react-virtuoso": "catalog:",
+    "reactflow": "^11.11.4",
     "tailwind-merge": "catalog:",
     "tailwindcss-animate": "catalog:",
     "use-sound": "^5.0.0",
     "uuid": "catalog:"
   },
   "devDependencies": {
+    "@types/d3-force": "^3.0.10",
     "@types/howler": "^2.2.12",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

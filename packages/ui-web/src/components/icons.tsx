@@ -35,6 +35,7 @@ export {
   Building2,
   MessagesSquare,
   FolderTree,
+  Network,
 } from 'lucide-react';
 
 import type { LucideIcon } from 'lucide-react';

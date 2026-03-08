@@ -89,6 +89,23 @@ export interface LLMPreset extends LLMConfig {
   createdAt: number;
 }
 
+// 智能体分组
+export interface AgentGroup {
+  id: string;
+  name: string;
+  color?: string;
+  createdAt: number;
+}
+
+// 智能体关系
+export interface AgentRelationship {
+  id: string;
+  sourceAgentId: string;
+  targetAgentId: string;
+  label?: string; // 关系标签，如 "协作"、"依赖" 等
+  createdAt: number;
+}
+
 // 智能体（独立工作空间）
 export interface Agent {
   id: string;
@@ -104,6 +121,10 @@ export interface Agent {
   enabledSkills: string[];
   // 文件系统根目录（沙盒隔离）
   filesRoot: string; // e.g. /root/.agents/<id>/files
+  // 关系图位置（用于持久化节点位置）
+  graphPosition?: { x: number; y: number };
+  // 所属分组
+  groupId?: string;
   createdAt: number;
   updatedAt: number;
 }
