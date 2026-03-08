@@ -38,7 +38,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsSection = 'profile' | 'general' | 'llm' | 'tools' | 'skills' | 'network';
+type SettingsSection = 'profile' | 'general' | 'llm' | 'tools' | 'skills' | 'network' | 'about';
 
 // Default empty config for "new" form
 const emptyConfig: LLMConfig = {
@@ -99,12 +99,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               ))}
             </div>
 
-            {/* About section at bottom of sidebar */}
-            <div className="px-4 mt-4 pt-3 border-t border-border/50">
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <span>🐰</span>
-                <span>{t('settings.version', { version: APP_VERSION })}</span>
-              </div>
+            {/* About at bottom of sidebar */}
+            <div className="px-2 mt-3 pt-3 border-t border-border/50">
+              <button
+                onClick={() => setActiveSection('about')}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] transition-colors text-left ${
+                  activeSection === 'about'
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-foreground/80 hover:bg-accent'
+                }`}
+              >
+                <span className="w-7 h-7 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 text-sm">🐰</span>
+                <span className="truncate">{t('settings.about')}</span>
+              </button>
             </div>
           </ScrollArea>
         </nav>
@@ -119,6 +126,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               {activeSection === 'tools' && <ToolsSection />}
               {activeSection === 'skills' && <SkillsSection />}
               {activeSection === 'network' && <NetworkSection />}
+              {activeSection === 'about' && <AboutSection />}
             </div>
           </ScrollArea>
         </div>
@@ -263,24 +271,6 @@ function GeneralSection() {
             </a>
           </div>
           <p className="text-xs text-muted-foreground">{t('settings.proxyHint')}</p>
-        </div>
-      </SettingsGroup>
-
-      {/* About */}
-      <SettingsGroup>
-        <div className="flex items-start gap-3">
-          <span className="text-2xl">🐰</span>
-          <div className="space-y-1.5 flex-1">
-            <p className="font-semibold text-sm">{t('settings.about')}</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">{t('settings.aboutDesc')}</p>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-[11px]">
-                {t('settings.version', { version: APP_VERSION })}
-              </span>
-              <span>·</span>
-              <span>React 19 + shadcn/ui</span>
-            </div>
-          </div>
         </div>
       </SettingsGroup>
     </div>
@@ -682,6 +672,33 @@ function AgentForm({
         <button onClick={onCancel} className="px-3 py-1 text-xs rounded-md border hover:bg-accent transition-colors">{t('common.cancel')}</button>
         <button onClick={onSave} disabled={!agent.name.trim()} className="px-3 py-1 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50">{t('common.save')}</button>
       </div>
+    </div>
+  );
+}
+
+/* ── About Section ── */
+function AboutSection() {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-5">
+      <h2 className="text-lg font-semibold">{t('settings.about')}</h2>
+
+      <SettingsGroup>
+        <div className="flex items-start gap-3">
+          <span className="text-3xl">🐰</span>
+          <div className="space-y-2 flex-1">
+            <p className="font-semibold text-base">CyberBunny</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{t('settings.aboutDesc')}</p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-[11px]">
+                {t('settings.version', { version: APP_VERSION })}
+              </span>
+              <span>·</span>
+              <span>React 19 + shadcn/ui</span>
+            </div>
+          </div>
+        </div>
+      </SettingsGroup>
     </div>
   );
 }
