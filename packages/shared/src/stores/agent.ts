@@ -155,6 +155,26 @@ export const useAgentStore = create<AgentState>()(
 
       // Agent relationships
       createRelationship: (sourceAgentId, targetAgentId, label) => {
+        if (sourceAgentId === targetAgentId) {
+          return {
+            id: '',
+            sourceAgentId,
+            targetAgentId,
+            label,
+            createdAt: Date.now(),
+          };
+        }
+
+        const existing = get().relationships.find(
+          (relationship) =>
+            (relationship.sourceAgentId === sourceAgentId && relationship.targetAgentId === targetAgentId) ||
+            (relationship.sourceAgentId === targetAgentId && relationship.targetAgentId === sourceAgentId)
+        );
+
+        if (existing) {
+          return existing;
+        }
+
         const relationship: AgentRelationship = {
           id: crypto.randomUUID(),
           sourceAgentId,

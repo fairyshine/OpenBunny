@@ -35,8 +35,8 @@
     "@radix-ui/react-tooltip": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
-    "d3-force": "^3.0.0",
     "date-fns": "catalog:",
+    "elkjs": "^0.11.1",
     "howler": "^2.2.4",
     "lucide-react": "catalog:",
     "react-day-picker": "catalog:",
@@ -50,7 +50,6 @@
     "uuid": "catalog:"
   },
   "devDependencies": {
-    "@types/d3-force": "^3.0.10",
     "@types/howler": "^2.2.12",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

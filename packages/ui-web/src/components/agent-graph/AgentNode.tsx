@@ -1,58 +1,121 @@
-// Knowledge Graph style Agent Node
 import { memo } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, NodeProps, Position } from 'reactflow';
 import type { Agent } from '@shared/types';
 
 export interface AgentNodeData {
   agent: Agent;
+  isEditMode?: boolean;
+  isPendingSource?: boolean;
+  willConnect?: boolean;
+  willDisconnect?: boolean;
+  isStatic?: boolean;
 }
 
 export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => {
-  const { agent } = data;
+  const { agent, isEditMode, isPendingSource, willConnect, willDisconnect, isStatic } = data;
   const isDefault = agent.isDefault;
 
-  const color = isDefault ? 'hsl(var(--primary))' : agent.color;
-  const glowColor = isDefault ? 'hsl(var(--primary) / 0.4)' : `${agent.color}66`;
+  const accentColor = isDefault ? 'hsl(var(--primary))' : agent.color;
+
+  // State-driven border & ring
+  let borderColor = 'hsl(var(--border))';
+  let ringStyle = 'none';
+  let avatarBorder = 'transparent';
+  let labelColor = 'hsl(var(--muted-foreground))';
+  let cardShadow = '0 1px 3px hsl(var(--foreground) / 0.04), 0 4px 12px hsl(var(--foreground) / 0.03)';
+
+  if (isPendingSource) {
+    borderColor = 'hsl(var(--primary))';
+    ringStyle = '0 0 0 2px hsl(var(--primary) / 0.2)';
+    avatarBorder = 'hsl(var(--primary))';
+    labelColor = 'hsl(var(--primary))';
+    cardShadow = '0 2px 8px hsl(var(--primary) / 0.15), 0 8px 24px hsl(var(--primary) / 0.1)';
+  } else if (willDisconnect) {
+    borderColor = 'hsl(var(--destructive))';
+    ringStyle = '0 0 0 2px hsl(var(--destructive) / 0.15)';
+    avatarBorder = 'hsl(var(--destructive))';
+    labelColor = 'hsl(var(--destructive))';
+    cardShadow = '0 2px 8px hsl(var(--destructive) / 0.12)';
+  } else if (willConnect) {
+    borderColor = 'hsl(142 76% 36%)';
+    ringStyle = '0 0 0 2px hsl(142 76% 36% / 0.15)';
+    avatarBorder = 'hsl(142 76% 36%)';
+    labelColor = 'hsl(142 76% 36%)';
+    cardShadow = '0 2px 8px hsl(142 76% 36% / 0.12)';
+  } else if (selected) {
+    borderColor = accentColor;
+    ringStyle = isDefault ? '0 0 0 2px hsl(var(--primary) / 0.15)' : `0 0 0 2px ${agent.color}22`;
+    avatarBorder = accentColor;
+    labelColor = accentColor;
+    cardShadow = '0 2px 8px hsl(var(--foreground) / 0.08), 0 8px 20px hsl(var(--foreground) / 0.06)';
+  } else if (isEditMode) {
+    borderColor = 'hsl(var(--primary) / 0.25)';
+  }
+
+  const cursor = isEditMode ? 'cursor-crosshair' : isStatic ? 'cursor-default' : 'cursor-grab active:cursor-grabbing';
+
+  const interactiveHandleClassName = '!absolute !w-[18px] !h-[18px] !rounded-full !border-0 !bg-transparent !opacity-0';
+  const hiddenHandleClassName = '!w-px !h-px !opacity-0 !border-0 !bg-transparent pointer-events-none';
 
   return (
-    <div className="flex flex-col items-center gap-1.5 group">
-      {/* Handles — invisible, full circle coverage */}
+    <div className={`flex flex-col items-center ${cursor}`}>
       <Handle
         type="target"
         position={Position.Top}
-        className="!w-full !h-full !rounded-full !border-none !bg-transparent !top-0 !left-0 !transform-none !min-w-0 !min-h-0"
-        style={{ width: 56, height: 56 }}
+        isConnectable={Boolean(isEditMode)}
+        className={isEditMode ? interactiveHandleClassName : hiddenHandleClassName}
+        style={isEditMode ? { top: -6, left: '50%', transform: 'translateX(-50%)' } : undefined}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!w-full !h-full !rounded-full !border-none !bg-transparent !top-0 !left-0 !transform-none !min-w-0 !min-h-0"
-        style={{ width: 56, height: 56 }}
+        isConnectable={Boolean(isEditMode)}
+        className={isEditMode ? interactiveHandleClassName : hiddenHandleClassName}
+        style={isEditMode ? { bottom: -6, left: '50%', transform: 'translateX(-50%)' } : undefined}
       />
 
-      {/* Avatar circle */}
+      {/* Card container */}
       <div
-        className="w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-all duration-300 cursor-grab active:cursor-grabbing"
+        className={`relative flex flex-col items-center gap-2 px-3 pt-3 pb-2.5 rounded-xl transition-all duration-200 ${isPendingSource ? 'animate-pulse' : ''}`}
         style={{
-          background: isDefault
-            ? 'hsl(var(--foreground))'
-            : `linear-gradient(135deg, ${agent.color}30, ${agent.color}60)`,
-          color: isDefault ? 'hsl(var(--background))' : agent.color,
-          boxShadow: selected
-            ? `0 0 0 3px ${color}, 0 0 20px ${glowColor}`
-            : `0 0 12px ${glowColor}`,
-          border: `2px solid ${selected ? color : 'transparent'}`,
+          background: 'hsl(var(--card))',
+          border: `1px solid ${borderColor}`,
+          boxShadow: `${cardShadow}${ringStyle !== 'none' ? `, ${ringStyle}` : ''}`,
+          minWidth: 80,
         }}
       >
-        {agent.avatar}
-      </div>
+        {/* Edit mode indicator — dashed outline */}
+        {isEditMode && !isPendingSource && !willConnect && !willDisconnect && !selected && (
+          <div className="absolute inset-[-3px] rounded-[14px] border border-dashed border-primary/30 pointer-events-none" />
+        )}
 
-      {/* Name label */}
-      <div
-        className="text-xs font-medium text-center max-w-[80px] leading-tight select-none"
-        style={{ color: selected ? color : 'hsl(var(--foreground))' }}
-      >
-        {agent.name}
+        {/* Accent color bar at top */}
+        <div
+          className="absolute top-0 left-3 right-3 h-[2px] rounded-b-full opacity-60"
+          style={{ background: accentColor }}
+        />
+
+        {/* Avatar */}
+        <div
+          className="relative flex items-center justify-center w-10 h-10 rounded-lg text-xl transition-colors duration-200"
+          style={{
+            background: isDefault
+              ? 'hsl(var(--muted))'
+              : `linear-gradient(135deg, ${agent.color}18, ${agent.color}0A)`,
+            border: `1.5px solid ${avatarBorder === 'transparent' ? 'hsl(var(--border) / 0.6)' : avatarBorder}`,
+          }}
+        >
+          {agent.avatar}
+        </div>
+
+        {/* Name */}
+        <div
+          className="text-[11px] font-medium text-center leading-tight select-none max-w-[72px] truncate"
+          style={{ color: labelColor }}
+          title={agent.name}
+        >
+          {agent.name}
+        </div>
       </div>
     </div>
   );
