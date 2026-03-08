@@ -217,7 +217,7 @@ export const useSettingsStore = create<SettingsState>()(
       resetDashboardLayout: () =>
         set({ dashboardCardOrder: [], dashboardVisibleCards: [] }),
 
-      userProfile: { nickname: '', bio: '', avatar: '🐰', email: '', location: '' },
+      userProfile: { nickname: '', callName: '', bio: '', avatar: '🐰', email: '', location: '' },
       setUserProfile: (profile) =>
         set((state) => ({ userProfile: { ...state.userProfile, ...profile } })),
 

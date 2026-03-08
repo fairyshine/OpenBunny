@@ -17,15 +17,18 @@ export default function ProfileSettings() {
       {/* Avatar + Name hero card */}
       <div className="rounded-xl border bg-background p-6">
         <div className="flex flex-col items-center gap-3">
-          {/* Large avatar */}
           <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-4xl ring-2 ring-border">
             {userProfile.avatar || <User className="w-8 h-8 text-muted-foreground" />}
           </div>
-          {/* Display name */}
           <div className="text-center">
             <p className="text-base font-medium">
               {userProfile.nickname || t('settings.profile.nicknamePlaceholder')}
             </p>
+            {userProfile.callName && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t('settings.profile.callName')}: {userProfile.callName}
+              </p>
+            )}
             {userProfile.email && (
               <p className="text-xs text-muted-foreground mt-0.5">{userProfile.email}</p>
             )}
@@ -66,6 +69,20 @@ export default function ProfileSettings() {
             />
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="callName" className="text-xs">{t('settings.profile.callName')}</Label>
+            <Input
+              id="callName"
+              value={userProfile.callName}
+              onChange={(e) => setUserProfile({ callName: e.target.value })}
+              placeholder={t('settings.profile.callNamePlaceholder')}
+              className="h-8 text-sm"
+            />
+            <p className="text-[11px] text-muted-foreground">{t('settings.profile.callNameHint')}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
             <Label htmlFor="email" className="text-xs">{t('settings.profile.email')}</Label>
             <Input
               id="email"
@@ -76,9 +93,6 @@ export default function ProfileSettings() {
               className="h-8 text-sm"
             />
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="location" className="text-xs">{t('settings.profile.location')}</Label>
             <Input
@@ -89,16 +103,17 @@ export default function ProfileSettings() {
               className="h-8 text-sm"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="bio" className="text-xs">{t('settings.profile.bio')}</Label>
-            <Input
-              id="bio"
-              value={userProfile.bio}
-              onChange={(e) => setUserProfile({ bio: e.target.value })}
-              placeholder={t('settings.profile.bioPlaceholder')}
-              className="h-8 text-sm"
-            />
-          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="bio" className="text-xs">{t('settings.profile.bio')}</Label>
+          <Input
+            id="bio"
+            value={userProfile.bio}
+            onChange={(e) => setUserProfile({ bio: e.target.value })}
+            placeholder={t('settings.profile.bioPlaceholder')}
+            className="h-8 text-sm"
+          />
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 // 用户身份信息
 export interface UserProfile {
   nickname: string;
+  callName: string; // how the agent addresses the user
   bio: string;
   avatar: string; // emoji or URL
   email: string;
