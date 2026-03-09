@@ -10,17 +10,17 @@ export const askCommand = new Command('ask')
   .argument('<question>', 'The question to ask')
   .option('-m, --model <model>', 'Model to use', 'gpt-4')
   .option('-p, --provider <provider>', 'Provider (openai|anthropic)', 'openai')
-  .option('-k, --api-key <key>', 'API key (or set CYBERBUNNY_API_KEY env)')
+  .option('-k, --api-key <key>', 'API key (or set OPENBUNNY_API_KEY env)')
   .option('-b, --base-url <url>', 'Custom API base URL')
   .option('-t, --temperature <temp>', 'Temperature', '0.7')
   .option('--max-tokens <tokens>', 'Max tokens', '4096')
   .option('--system <prompt>', 'System prompt')
   .option('--no-stream', 'Disable streaming output')
   .action(async (question: string, opts) => {
-    const apiKey = opts.apiKey || process.env.CYBERBUNNY_API_KEY || useSessionStore.getState().llmConfig.apiKey;
+    const apiKey = opts.apiKey || process.env.OPENBUNNY_API_KEY || useSessionStore.getState().llmConfig.apiKey;
 
     if (!apiKey) {
-      console.error(chalk.red('Error: API key required. Use --api-key, CYBERBUNNY_API_KEY env, or `cyberbunny config set apiKey <key>`'));
+      console.error(chalk.red('Error: API key required. Use --api-key, OPENBUNNY_API_KEY env, or `openbunny config set apiKey <key>`'));
       process.exit(1);
     }
 

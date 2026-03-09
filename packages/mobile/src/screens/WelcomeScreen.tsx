@@ -57,7 +57,7 @@ export default function WelcomeScreen() {
     >
       <View style={styles.header}>
         <Text variant="headlineMedium" style={styles.title}>
-          CyberBunny
+          OpenBunny
         </Text>
         <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
           {t('welcome.subtitle') || 'Your AI Agent on Mobile'}

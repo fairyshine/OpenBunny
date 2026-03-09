@@ -19,7 +19,7 @@ export default function WelcomeCard() {
         <span className="text-3xl">🐰</span>
       </div>
       <h1 className="text-3xl sm:text-4xl font-bold mb-3 tracking-tight">
-        CyberBunny
+        OpenBunny
       </h1>
       <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed mb-4">
         {t('status.subtitle')}

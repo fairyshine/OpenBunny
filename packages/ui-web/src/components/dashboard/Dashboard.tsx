@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '@cyberbunny/shared';
+import { useSettingsStore } from '@openbunny/shared';
 import {
   DndContext,
   closestCenter,
@@ -52,6 +52,19 @@ function SortableCard({ id }: { id: DashboardCardId }) {
     (def.rowSpan ?? 1) === 2 ? 'row-span-2' : 'row-span-1';
 
   const Component = def.component;
+  const isClickable = typeof def.onClick === 'function';
+
+  const handleCardActivate = () => {
+    def.onClick?.();
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!isClickable) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleCardActivate();
+    }
+  };
 
   return (
     <div
@@ -59,11 +72,18 @@ function SortableCard({ id }: { id: DashboardCardId }) {
       style={style}
       className={`${colSpanClass} ${rowSpanClass} ${isDragging ? 'z-50 opacity-75' : ''}`}
     >
-      <Card className="h-full border-elegant hover:shadow-lg transition-shadow flex flex-col">
+      <Card
+        className={`h-full border-elegant hover:shadow-lg transition-shadow flex flex-col ${isClickable ? 'cursor-pointer' : ''}`}
+        onClick={isClickable ? handleCardActivate : undefined}
+        onKeyDown={handleCardKeyDown}
+        role={isClickable ? 'button' : undefined}
+        tabIndex={isClickable ? 0 : undefined}
+      >
         <CardHeader className="pb-2 flex flex-row items-center gap-2 space-y-0 shrink-0">
           <button
             className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-muted text-muted-foreground"
             aria-label="Drag to reorder"
+            onClick={(event) => event.stopPropagation()}
             {...attributes}
             {...listeners}
           >

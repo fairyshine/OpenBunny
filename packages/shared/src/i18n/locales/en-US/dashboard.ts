@@ -11,7 +11,7 @@ export default {
   'dashboard.mcpStatus': 'MCP Connections',
   'dashboard.noMcp': 'No MCP connections',
   'dashboard.recentLogs': 'Recent Logs',
-  'dashboard.bunnyMascot': 'CyberBunny',
+  'dashboard.bunnyMascot': 'OpenBunny',
   'dashboard.customize': 'Customize Dashboard',
   'dashboard.resetLayout': 'Reset Layout',
   'dashboard.usageStats': 'Usage Stats',

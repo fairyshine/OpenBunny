@@ -20,7 +20,7 @@ interface PersistedJob {
   runCount: number;
 }
 
-const STORAGE_KEY = 'cyberbunny-cron-jobs';
+const STORAGE_KEY = 'openbunny-cron-jobs';
 
 type CronListener = (jobs: CronJob[]) => void;
 

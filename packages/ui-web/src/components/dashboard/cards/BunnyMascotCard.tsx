@@ -10,7 +10,7 @@ import {
 } from './bunny-animations';
 
 const BUBBLES = [
-  'Hello! I\'m CyberBunny~',
+  'Hello! I\'m OpenBunny~',
   'Need help? Just ask!',
   'Let\'s build something cool!',
   'Hop hop hop...',

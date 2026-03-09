@@ -1,9 +1,9 @@
 {
-  "name": "@cyberbunny/cli",
+  "name": "@openbunny/cli",
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "cyberbunny": "./dist/index.js"
+    "openbunny": "./dist/index.js"
   },
   "scripts": {
     "dev": "tsx src/index.ts",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cyberbunny/shared": "workspace:*",
+    "@openbunny/shared": "workspace:*",
     "ai": "catalog:",
     "chalk": "catalog:",
     "commander": "catalog:",

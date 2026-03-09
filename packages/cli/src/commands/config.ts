@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import Conf from 'conf';
 
-const store = new Conf({ projectName: 'cyberbunny' });
+const store = new Conf({ projectName: 'openbunny' });
 
 export const configCommand = new Command('config')
   .description('Manage configuration');

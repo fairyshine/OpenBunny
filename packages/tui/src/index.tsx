@@ -9,7 +9,7 @@ import { useSessionStore } from '@shared/stores/session';
 import App from './App';
 
 // Initialize platform
-const store = new Conf({ projectName: 'cyberbunny' });
+const store = new Conf({ projectName: 'openbunny' });
 const storage: IPlatformStorage = {
   getItem: (key: string) => (store.get(key) as string) ?? null,
   setItem: (key: string, value: string) => store.set(key, value),
@@ -24,7 +24,7 @@ initNodePlatform(
 const args = process.argv.slice(2);
 let model = 'gpt-4';
 let provider: 'openai' | 'anthropic' = 'openai';
-let apiKey = process.env.CYBERBUNNY_API_KEY || '';
+let apiKey = process.env.OPENBUNNY_API_KEY || '';
 let baseUrl: string | undefined;
 let systemPrompt: string | undefined;
 let temperature = 0.7;
@@ -41,12 +41,12 @@ for (let i = 0; i < args.length; i++) {
     case '--max-tokens': maxTokens = parseInt(args[++i]); break;
     case '-h': case '--help':
       console.log(`
-cyberbunny-tui - Interactive terminal UI for CyberBunny
+openbunny-tui - Interactive terminal UI for OpenBunny
 
 Options:
   -m, --model <model>       Model to use (default: gpt-4)
   -p, --provider <provider> Provider: openai|anthropic (default: openai)
-  -k, --api-key <key>       API key (or set CYBERBUNNY_API_KEY env)
+  -k, --api-key <key>       API key (or set OPENBUNNY_API_KEY env)
   -b, --base-url <url>      Custom API base URL
   -s, --system <prompt>     System prompt
   -t, --temperature <temp>  Temperature (default: 0.7)
@@ -67,7 +67,7 @@ if (!apiKey) {
 }
 
 if (!apiKey) {
-  console.error('Error: API key required. Use --api-key or set CYBERBUNNY_API_KEY env.');
+  console.error('Error: API key required. Use --api-key or set OPENBUNNY_API_KEY env.');
   process.exit(1);
 }
 

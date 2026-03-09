@@ -11,6 +11,8 @@ import ToolStatusCard from './cards/ToolStatusCard';
 import MCPStatusCard from './cards/MCPStatusCard';
 import RecentLogsCard from './cards/RecentLogsCard';
 import QuickStartCard from './cards/QuickStartCard';
+import { openSettingsModal } from '../settings/settingsModalEvents';
+import { openConsolePanel } from '../layout/consolePanelEvents';
 
 export const cardRegistry: Record<DashboardCardId, DashboardCardDef> = {
   welcome: {
@@ -46,6 +48,7 @@ export const cardRegistry: Record<DashboardCardId, DashboardCardDef> = {
     colSpan: 1,
     rowSpan: 1,
     component: LLMConfigCard,
+    onClick: () => openSettingsModal('llm'),
   },
   'session-stats': {
     id: 'session-stats',
@@ -62,6 +65,7 @@ export const cardRegistry: Record<DashboardCardId, DashboardCardDef> = {
     colSpan: 1,
     rowSpan: 1,
     component: ToolStatusCard,
+    onClick: () => openSettingsModal('tools'),
   },
   'mcp-status': {
     id: 'mcp-status',
@@ -78,6 +82,7 @@ export const cardRegistry: Record<DashboardCardId, DashboardCardDef> = {
     colSpan: 2,
     rowSpan: 1,
     component: RecentLogsCard,
+    onClick: () => openConsolePanel(),
   },
   'quick-start': {
     id: 'quick-start',

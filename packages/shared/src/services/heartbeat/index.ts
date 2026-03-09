@@ -11,7 +11,7 @@ interface PersistedState {
   interval: HeartbeatInterval;
 }
 
-const STORAGE_KEY = 'cyberbunny-heartbeat';
+const STORAGE_KEY = 'openbunny-heartbeat';
 
 type HeartbeatListener = () => void;
 

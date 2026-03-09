@@ -24,9 +24,11 @@ interface SidebarProps {
   onFileBlankClick?: () => void;
   onOpenGraph?: (groupId?: string) => void;
   onTabChange?: (tab: 'agents' | 'sessions' | 'files') => void;
+  onAgentSelect?: (agentId: string, reselected: boolean) => void;
+  onCurrentAgentDeleted?: () => void;
 }
 
-export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClose, onSessionSelect, onFileBlankClick, onOpenGraph, onTabChange }: SidebarProps) {
+export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClose, onSessionSelect, onFileBlankClick, onOpenGraph, onTabChange, onAgentSelect, onCurrentAgentDeleted }: SidebarProps) {
   const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('agents');
@@ -127,6 +129,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
           onCreateAgent={() => {
             const agent = createAgent({ name: t('sidebar.agent.defaultName'), avatar: '🤖', description: '', systemPrompt: '', color: '#3b82f6' });
             setCurrentAgent(agent.id);
+            onAgentSelect?.(agent.id, false);
           }}
           onCreateGroup={() => { const name = prompt(t('sidebar.agent.groupName'), getDefaultGroupName()); if (name?.trim()) createAgentGroup(name.trim()); }}
           onOpenGraph={() => onOpenGraph?.()}
@@ -138,6 +141,8 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
             <AgentList
               onItemClick={handleItemClick}
               onOpenGraph={onOpenGraph}
+              onAgentSelect={onAgentSelect}
+              onCurrentAgentDeleted={onCurrentAgentDeleted}
             />
           ) : activeTab === 'sessions' ? (
             <SessionList

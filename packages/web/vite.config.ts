@@ -118,12 +118,13 @@ export default defineConfig({
     dedupe: ['react', 'react-dom', 'zustand', 'react-i18next'],
     alias: {
       '@shared': path.resolve(__dirname, '../shared/src'),
-      '@cyberbunny/ui-web/styles': path.resolve(__dirname, '../ui-web/src/index.css'),
-      '@cyberbunny/ui-web': path.resolve(__dirname, '../ui-web/src'),
+      '@openbunny/shared': path.resolve(__dirname, '../shared/src/index.ts'),
+      '@openbunny/ui-web/styles': path.resolve(__dirname, '../ui-web/src/index.css'),
+      '@openbunny/ui-web': path.resolve(__dirname, '../ui-web/src'),
     },
   },
   // GitHub Pages 部署配置 - 根据仓库名自动调整
-  base: process.env.GITHUB_PAGES ? '/CyberBunny/' : '/',
+  base: process.env.GITHUB_PAGES ? '/OpenBunny/' : '/',
   build: {
     target: 'esnext',
     rollupOptions: {

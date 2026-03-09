@@ -75,7 +75,7 @@ function App({ config, systemPrompt }: AppProps) {
     <Box flexDirection="column" padding={1}>
       {/* Header */}
       <Box marginBottom={1}>
-        <Text bold color="cyan">CyberBunny TUI</Text>
+        <Text bold color="cyan">OpenBunny TUI</Text>
         <Text color="gray"> | {config.model} | {config.provider} | /quit to exit</Text>
       </Box>
 

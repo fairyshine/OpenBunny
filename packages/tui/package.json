@@ -1,9 +1,9 @@
 {
-  "name": "@cyberbunny/tui",
+  "name": "@openbunny/tui",
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "cyberbunny-tui": "./dist/index.js"
+    "openbunny-tui": "./dist/index.js"
   },
   "scripts": {
     "dev": "tsx src/index.tsx",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cyberbunny/shared": "workspace:*",
+    "@openbunny/shared": "workspace:*",
     "ai": "catalog:",
     "conf": "catalog:",
     "ink": "catalog:",

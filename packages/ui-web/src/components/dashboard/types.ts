@@ -21,4 +21,5 @@ export interface DashboardCardDef {
   component: React.ComponentType;
   /** Hide card when condition returns false (e.g. non-Electron for system-info) */
   isAvailable?: () => boolean;
+  onClick?: () => void;
 }

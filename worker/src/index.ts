@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker CORS Proxy for CyberBunny
+ * Cloudflare Worker CORS Proxy for OpenBunny
  *
  * Routes browser requests to external APIs (OpenAI, Anthropic, vLLM, DuckDuckGo)
  * while handling CORS and streaming SSE responses.
@@ -128,7 +128,7 @@ export default {
 
     // Health check endpoint
     if (request.method === 'GET' && url.pathname === '/health') {
-      return new Response(JSON.stringify({ status: 'ok', service: 'cyberbunny-proxy' }), {
+      return new Response(JSON.stringify({ status: 'ok', service: 'openbunny-proxy' }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }

@@ -73,7 +73,7 @@ export default function GeneralSettingsScreen() {
               mode="outlined"
               compact
               icon="open-in-new"
-              onPress={() => Linking.openURL('https://deploy.workers.cloudflare.com/?url=https://github.com/fairyshine/CyberBunny/tree/main/worker')}
+              onPress={() => Linking.openURL('https://deploy.workers.cloudflare.com/?url=https://github.com/fairyshine/OpenBunny/tree/main/worker')}
             >
               {t('settings.proxyDeploy')}
             </Button>
@@ -107,7 +107,7 @@ export default function GeneralSettingsScreen() {
 
       <List.Section>
         <List.Subheader>{t('settings.about')}</List.Subheader>
-        <List.Item title="CyberBunny Mobile" description={t('settings.version', { version: APP_VERSION })} />
+        <List.Item title="OpenBunny Mobile" description={t('settings.version', { version: APP_VERSION })} />
         <List.Item title="" description={t('settings.aboutDesc')} />
       </List.Section>
     </ScrollView>

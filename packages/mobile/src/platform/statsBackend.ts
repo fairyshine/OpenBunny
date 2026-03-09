@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 import type { IStatsStorageBackend, StatsRecord } from '@shared/services/storage/statsTypes';
 
-const DB_NAME = 'cyberbunny_stats.db';
+const DB_NAME = 'openbunny_stats.db';
 
 export class SQLiteStatsBackend implements IStatsStorageBackend {
   private db: SQLite.SQLiteDatabase | null = null;

@@ -1,5 +1,5 @@
 {
-  "name": "@cyberbunny/ui-web",
+  "name": "@openbunny/ui-web",
   "version": "0.1.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@cyberbunny/shared": "workspace:*",
+    "@openbunny/shared": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

@@ -84,7 +84,7 @@ export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `cyberbunny-console-${new Date().toISOString().slice(0, 19)}.log`;
+    a.download = `openbunny-console-${new Date().toISOString().slice(0, 19)}.log`;
     a.click();
     URL.revokeObjectURL(url);
   };

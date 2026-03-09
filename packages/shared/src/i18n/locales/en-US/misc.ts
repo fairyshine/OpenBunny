@@ -8,5 +8,5 @@ export default {
   'shortcuts.noShortcuts': 'No shortcuts available',
   'shortcuts.hint': 'Tip: Press Escape in an input field to cancel',
   'systemPrompt.assistant': 'You are an intelligent assistant.',
-  'logger.startup': 'CyberBunny started',
+  'logger.startup': 'OpenBunny started',
 } as const;

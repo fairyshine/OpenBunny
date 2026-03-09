@@ -3,9 +3,11 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@openbunny/shared": ["../shared/src/index.ts"],
+      "@openbunny/shared/*": ["../shared/src/*"],
       "@shared/*": ["../shared/src/*"],
-      "@cyberbunny/ui-web": ["../ui-web/src/index.ts"],
-      "@cyberbunny/ui-web/*": ["../ui-web/src/*"]
+      "@openbunny/ui-web": ["../ui-web/src/index.ts"],
+      "@openbunny/ui-web/*": ["../ui-web/src/*"]
     }
   },
   "include": ["src"],

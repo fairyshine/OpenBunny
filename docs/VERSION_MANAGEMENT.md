@@ -2,7 +2,7 @@
 
 ## 概述
 
-CyberBunny 使用统一的版本管理系统，所有包的版本号由根目录 `package.json` 统一管理。
+OpenBunny 使用统一的版本管理系统，所有包的版本号由根目录 `package.json` 统一管理。
 
 ## 版本同步机制
 
@@ -98,7 +98,7 @@ git push origin main --tags
 ```typescript
 import { APP_VERSION } from '@shared/version';
 
-console.log(`CyberBunny v${APP_VERSION}`);
+console.log(`OpenBunny v${APP_VERSION}`);
 ```
 
 ## CI/CD 集成
@@ -149,5 +149,5 @@ cat packages/mobile/app.json | grep version
 
 ---
 
-**维护者**: CyberBunny Team  
+**维护者**: OpenBunny Team  
 **最后更新**: 2024-03-05

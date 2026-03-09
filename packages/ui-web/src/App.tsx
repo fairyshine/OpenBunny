@@ -16,6 +16,7 @@ import { fileSystem } from '@shared/services/filesystem';
 import { logSystem } from '@shared/services/console/logger';
 import { applyTheme, setupSystemThemeListener } from './platform/theme';
 import { initGlobalShortcuts } from './platform/keyboardShortcuts';
+import { addOpenConsolePanelListener } from './components/layout/consolePanelEvents';
 
 // Lazy load non-critical components
 const FileEditor = lazy(() => import('./components/sidebar/FileEditor'));
@@ -37,6 +38,7 @@ function App() {
   const [showConsole, setShowConsole] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showStatusPage, setShowStatusPage] = useState(false);
+  const [showAgentConfig, setShowAgentConfig] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
   const [graphGroupId, setGraphGroupId] = useState<string | undefined>(undefined);
   const [sidebarTab, setSidebarTab] = useState<'agents' | 'sessions' | 'files'>('agents');
@@ -83,6 +85,12 @@ function App() {
     return cleanup;
   }, []);
 
+  useEffect(() => {
+    return addOpenConsolePanelListener(() => {
+      setShowConsole(true);
+    });
+  }, []);
+
   // 键盘快捷键: Ctrl+` 切换控制台
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -106,15 +114,14 @@ function App() {
 
   const handleStart = () => {
     createSession(t('header.newSession'));
+    setSidebarTab('sessions');
     setShowStatusPage(false);
+    setShowAgentConfig(false);
   };
 
   const handleLogoClick = () => {
-    if (enableSessionTabs) {
-      setShowStatusPage(prev => !prev);
-    } else {
-      setShowStatusPage(prev => !prev);
-    }
+    setShowStatusPage(true);
+    setShowAgentConfig(false);
     setSelectedFile(null);
     setShowGraph(false);
   };
@@ -122,17 +129,22 @@ function App() {
   const handleSelectFile = (path: string) => {
     setSelectedFile(path);
     setShowGraph(false);
+    setShowStatusPage(false);
+    setShowAgentConfig(false);
   };
 
   const handleCloseFile = () => {
     setSelectedFile(null);
     setFileContent('');
+    setShowStatusPage(true);
+    setShowAgentConfig(false);
   };
 
   const handleFileBlankClick = () => {
     setSelectedFile(null);
     setFileContent('');
     setShowStatusPage(true);
+    setShowAgentConfig(false);
   };
 
   const handleSaveFile = async (content: string) => {
@@ -146,13 +158,17 @@ function App() {
 
   // 判断是否应该显示状态页
   const shouldShowStatusScreen = () => {
+    if (sidebarTab === 'agents' && !showAgentConfig && !showGraph && !selectedFile) {
+      return true;
+    }
+
     if (enableSessionTabs) {
       // 标签栏模式：手动控制或没有打开的标签时显示状态页
       return showStatusPage || openSessionIds.length === 0;
-    } else {
-      // 传统模式：手动控制或没有当前会话时显示状态页
-      return showStatusPage || !currentSession;
     }
+
+    // 传统模式：手动控制或没有当前会话时显示状态页
+    return showStatusPage || !currentSession;
   };
 
   // 判断状态页是否显示开始按钮
@@ -171,9 +187,49 @@ function App() {
     setGraphGroupId(groupId);
     setSelectedFile(null);
     setShowStatusPage(false);
+    setShowAgentConfig(false);
   };
 
   const handleCloseGraph = () => {
+    setShowGraph(false);
+    setShowStatusPage(true);
+  };
+
+  const handleSidebarTabChange = (tab: 'agents' | 'sessions' | 'files') => {
+    setSidebarTab(tab);
+
+    if (tab === 'agents') {
+      setShowStatusPage(true);
+      setShowAgentConfig(false);
+      setSelectedFile(null);
+      setShowGraph(false);
+      return;
+    }
+
+    setShowStatusPage(false);
+    setShowAgentConfig(false);
+  };
+
+  const handleCurrentAgentDeleted = () => {
+    setSidebarTab('agents');
+    setShowStatusPage(true);
+    setShowAgentConfig(false);
+    setSelectedFile(null);
+    setShowGraph(false);
+  };
+
+  const handleAgentSelect = (_agentId: string, reselected: boolean) => {
+    if (reselected && showAgentConfig && sidebarTab === 'agents') {
+      setShowAgentConfig(false);
+      setShowStatusPage(true);
+      setSelectedFile(null);
+      setShowGraph(false);
+      return;
+    }
+
+    setShowStatusPage(false);
+    setShowAgentConfig(true);
+    setSelectedFile(null);
     setShowGraph(false);
   };
 
@@ -182,14 +238,13 @@ function App() {
     onSelectFile: handleSelectFile,
     isOpen: isSidebarOpen,
     onClose: () => setIsSidebarOpen(false),
-    onSessionSelect: () => { setShowStatusPage(false); setShowGraph(false); },
+    onSessionSelect: () => { setShowStatusPage(false); setShowGraph(false); setShowAgentConfig(false); },
     onFileBlankClick: handleFileBlankClick,
     onOpenGraph: handleOpenGraph,
-    onTabChange: setSidebarTab,
+    onTabChange: handleSidebarTabChange,
+    onAgentSelect: handleAgentSelect,
+    onCurrentAgentDeleted: handleCurrentAgentDeleted,
   };
-
-  // 智能体 tab 下且没有 graph/file 覆盖时，右侧常态显示配置面板
-  const showAgentConfig = sidebarTab === 'agents' && !showGraph && !selectedFile;
 
   // 如果应该显示状态页，直接返回状态页
   if (shouldShowStatusScreen() && !selectedFile && !showGraph && !showAgentConfig) {
@@ -248,7 +303,7 @@ function App() {
               </Suspense>
             ) : (
               <>
-                {enableSessionTabs && <SessionTabs />}
+                {enableSessionTabs && sidebarTab !== 'agents' && <SessionTabs />}
                 {enableSessionTabs ? (
                   <div className="flex-1 relative overflow-hidden">
                     {openSessionIds.map((sessionId) => (

@@ -9,7 +9,7 @@ import { configCommand } from './commands/config';
 import { askCommand } from './commands/ask';
 
 // Initialize platform
-const store = new Conf({ projectName: 'cyberbunny' });
+const store = new Conf({ projectName: 'openbunny' });
 const storage: IPlatformStorage = {
   getItem: (key: string) => (store.get(key) as string) ?? null,
   setItem: (key: string, value: string) => store.set(key, value),
@@ -23,17 +23,17 @@ initNodePlatform(
 const program = new Command();
 
 program
-  .name('cyberbunny')
-  .description('CyberBunny AI Agent CLI')
+  .name('openbunny')
+  .description('OpenBunny personal AI assistant CLI')
   .version(APP_VERSION);
 
-// cyberbunny ask "question" — one-shot question
+// openbunny ask "question" — one-shot question
 program.addCommand(askCommand);
 
-// cyberbunny chat — interactive REPL
+// openbunny chat — interactive REPL
 program.addCommand(chatCommand);
 
-// cyberbunny config — manage configuration
+// openbunny config — manage configuration
 program.addCommand(configCommand);
 
 program.parse();

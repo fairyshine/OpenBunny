@@ -52,7 +52,7 @@ name: skill-name
 description: 技能描述和使用场景
 license: MIT
 metadata:
-  author: CyberBunny
+  author: OpenBunny
   version: "1.0"
   category: data
 allowed-tools: Read Write Bash(python:*)

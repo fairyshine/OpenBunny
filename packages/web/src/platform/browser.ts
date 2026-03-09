@@ -2,8 +2,8 @@ import { setPlatformContext, detectPlatform } from '@shared/platform';
 import type { IPlatformStorage, IPlatformAPI } from '@shared/platform';
 import { setThemeHandler, setLanguageHandler } from '@shared/stores/settings';
 import { soundManager } from '@shared/services/sound';
-import { applyTheme, type Theme } from '@cyberbunny/ui-web';
-import { WebSoundBackend } from '@cyberbunny/ui-web/platform/sound';
+import { applyTheme, type Theme } from '@openbunny/ui-web';
+import { WebSoundBackend } from '@openbunny/ui-web/platform/sound';
 import i18n from '@shared/i18n';
 
 // Browser storage implementation (localStorage)

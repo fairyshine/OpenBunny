@@ -1,5 +1,5 @@
-appId: com.cyberbunny.desktop
-productName: CyberBunny
+appId: com.openbunny.desktop
+productName: OpenBunny
 directories:
   buildResources: assets
   output: release

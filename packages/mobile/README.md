@@ -1,13 +1,13 @@
-# CyberBunny Mobile
+# OpenBunny Mobile
 
-React Native mobile application for CyberBunny, built with Expo SDK 52.
+React Native mobile application for OpenBunny, built with Expo SDK 52.
 
 ## Features
 
 - **Chat Interface**: Full-featured chat with streaming LLM responses
 - **Session Management**: Create, list, and manage chat sessions
 - **Settings**: Configure LLM provider, API keys, theme, and language
-- **Platform Integration**: Shares core logic with web/desktop via `@cyberbunny/shared`
+- **Platform Integration**: Shares core logic with web/desktop via `@openbunny/shared`
 - **Offline Storage**: AsyncStorage-based persistence for sessions and settings
 - **i18n**: Multi-language support (zh-CN, en-US)
 - **Theming**: Light/dark/system theme support via React Native Paper
@@ -37,14 +37,14 @@ pnpm mobile:ios
 pnpm mobile:android
 
 # Type check
-pnpm --filter @cyberbunny/mobile typecheck
+pnpm --filter @openbunny/mobile typecheck
 ```
 
 ## Architecture
 
 ### Platform Adapters
 
-The mobile app implements the platform abstraction layer defined in `@cyberbunny/shared`:
+The mobile app implements the platform abstraction layer defined in `@openbunny/shared`:
 
 - **localStorage-shim.ts**: Synchronous localStorage API over AsyncStorage (for Zustand persist)
 - **storage.ts**: IPlatformStorage implementation (AsyncStorage)
@@ -103,7 +103,7 @@ packages/mobile/
 
 ## Shared Package Fixes
 
-The following compatibility fixes were made to `@cyberbunny/shared` for React Native:
+The following compatibility fixes were made to `@openbunny/shared` for React Native:
 
 1. **src/i18n/index.ts**: Added `typeof localStorage !== 'undefined'` and `typeof navigator !== 'undefined'` guards
 2. **src/utils/api.ts**: Wrapped `import.meta.env` in try-catch blocks

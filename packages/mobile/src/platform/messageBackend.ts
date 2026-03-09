@@ -6,7 +6,7 @@ import * as SQLite from 'expo-sqlite';
 import type { IMessageStorageBackend } from '@shared/services/storage/types';
 import type { Message } from '@shared/types';
 
-const DB_NAME = 'cyberbunny_messages.db';
+const DB_NAME = 'openbunny_messages.db';
 
 export class SQLiteMessageBackend implements IMessageStorageBackend {
   private db: SQLite.SQLiteDatabase | null = null;

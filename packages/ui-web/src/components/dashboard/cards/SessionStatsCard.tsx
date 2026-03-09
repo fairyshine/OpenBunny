@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSessionStore, useStatsStore } from '@cyberbunny/shared';
-import type { AggregatedStats } from '@cyberbunny/shared';
+import { useSessionStore, useStatsStore } from '@openbunny/shared';
+import type { AggregatedStats } from '@openbunny/shared';
 import {
   Dialog,
   DialogContent,

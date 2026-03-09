@@ -1,12 +1,12 @@
-# 🐰 CyberBunny — Cross-platform OpenClaw
+# 🐰 OpenBunny — Cross-platform Personal AI Assistant
 
 A cross-platform personal AI assistant that runs on multiple platforms (browser, desktop, mobile, CLI, terminal UI).
 
 ## 🚀 Quick Start
 
-Visit [https://fairyshine.github.io/CyberBunny/](https://fairyshine.github.io/CyberBunny/) and enjoy!
+Visit [https://fairyshine.github.io/OpenBunny/](https://fairyshine.github.io/OpenBunny/) and enjoy!
 
-Exec `sudo xattr -rd com.apple.quarantine /Applications/CyberBunny.app` after installing on Mac.
+Exec `sudo xattr -rd com.apple.quarantine /Applications/OpenBunny.app` after installing on Mac.
 
 ## ✨ Features
 
@@ -22,7 +22,7 @@ Exec `sudo xattr -rd com.apple.quarantine /Applications/CyberBunny.app` after in
 ## 📦 Monorepo Structure
 
 ```
-cyberbunny/
+openbunny/
 ├── packages/
 │   ├── shared/          # Platform-agnostic core logic
 │   ├── web/             # Browser (Vite + React)
@@ -51,7 +51,7 @@ Since workspace packages like `shared` and `ui-web` are consumed as **source cod
 
 ```
 web/desktop source
-  → import { Foo } from '@cyberbunny/ui-web'    # workspace source reference
+  → import { Foo } from '@openbunny/ui-web'    # workspace source reference
     → ui-web source import '@radix-ui/react-dialog'  # transitive dependency
       → Vite resolves from web/desktop node_modules  # must be declared in strict mode
 ```
@@ -92,4 +92,4 @@ MIT License
 
 ---
 
-**CyberBunny** - A truly cross-platform AI Agent 🐰
+**OpenBunny** - A truly cross-platform personal AI assistant 🐰

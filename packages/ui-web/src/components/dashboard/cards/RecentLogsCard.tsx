@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { consoleLogger } from '@cyberbunny/shared';
-import type { LogEntry } from '@cyberbunny/shared';
+import { consoleLogger } from '@openbunny/shared';
+import type { LogEntry } from '@openbunny/shared';
 import { Badge } from '../../ui/badge';
 
 export default function RecentLogsCard() {

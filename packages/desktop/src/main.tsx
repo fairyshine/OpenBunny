@@ -2,8 +2,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { initDesktopPlatform } from './platform/electron'
 import '@shared/i18n'
-import { App, ErrorBoundary } from '@cyberbunny/ui-web'
-import '@cyberbunny/ui-web/styles'
+import { App, ErrorBoundary } from '@openbunny/ui-web'
+import '@openbunny/ui-web/styles'
 
 // Initialize desktop platform before rendering
 initDesktopPlatform()

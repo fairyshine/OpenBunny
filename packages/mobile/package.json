@@ -1,5 +1,5 @@
 {
-  "name": "@cyberbunny/mobile",
+  "name": "@openbunny/mobile",
   "version": "0.1.0",
   "private": true,
   "main": "index.js",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cyberbunny/shared": "workspace:*",
+    "@openbunny/shared": "workspace:*",
     "@react-native-async-storage/async-storage": "catalog:",
     "@react-navigation/bottom-tabs": "catalog:",
     "@react-navigation/drawer": "catalog:",

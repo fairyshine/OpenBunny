@@ -2,8 +2,8 @@ import { setPlatformContext } from '@shared/platform';
 import type { IPlatformStorage, IPlatformFS, IPlatformAPI, OSType } from '@shared/platform';
 import { setThemeHandler, setLanguageHandler } from '@shared/stores/settings';
 import { soundManager } from '@shared/services/sound';
-import { applyTheme } from '@cyberbunny/ui-web';
-import { WebSoundBackend } from '@cyberbunny/ui-web/platform/sound';
+import { applyTheme } from '@openbunny/ui-web';
+import { WebSoundBackend } from '@openbunny/ui-web/platform/sound';
 import i18n from '@shared/i18n';
 
 // Type for the electronAPI exposed via preload

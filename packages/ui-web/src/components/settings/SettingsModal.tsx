@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@shared/stores/settings';
 import { ToolManager } from './ToolManager';
@@ -28,18 +28,24 @@ import {
 import { APP_VERSION } from '@shared/version';
 import { isImageAvatar } from '@shared/utils/imageUtils';
 import { AvatarPicker } from '../ui/avatar-picker';
+import type { SettingsSection } from './settingsModalEvents';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialSection?: SettingsSection;
 }
 
-type SettingsSection = 'profile' | 'general' | 'llm' | 'tools' | 'skills' | 'network' | 'about';
-
-export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export default function SettingsModal({ isOpen, onClose, initialSection = 'profile' }: SettingsModalProps) {
   const { t } = useTranslation();
-  const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
+  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   const { userProfile } = useSettingsStore();
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection, isOpen]);
 
   const navItems: { id: SettingsSection; icon: React.ReactNode; label: string }[] = [
     { id: 'general', icon: <Settings2 className="w-[18px] h-[18px]" />, label: t('settings.nav.general') },
@@ -259,7 +265,7 @@ function GeneralSection() {
               className="h-9"
             />
             <a
-              href="https://deploy.workers.cloudflare.com/?url=https://github.com/fairyshine/CyberBunny/tree/main/worker"
+              href="https://deploy.workers.cloudflare.com/?url=https://github.com/fairyshine/OpenBunny/tree/main/worker"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3 h-9 text-xs font-medium rounded-md bg-muted hover:bg-accent hover:text-accent-foreground transition-colors whitespace-nowrap"
@@ -502,7 +508,7 @@ function AboutSection() {
         <div className="flex items-start gap-3">
           <span className="text-3xl">🐰</span>
           <div className="space-y-2 flex-1">
-            <p className="font-semibold text-base">CyberBunny</p>
+            <p className="font-semibold text-base">OpenBunny</p>
             <p className="text-sm text-muted-foreground leading-relaxed">{t('settings.aboutDesc')}</p>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-[11px]">

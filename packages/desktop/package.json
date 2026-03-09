@@ -1,5 +1,5 @@
 {
-  "name": "@cyberbunny/desktop",
+  "name": "@openbunny/desktop",
   "version": "0.1.0",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -13,8 +13,8 @@
     "package:linux": "tsc && vite build && electron-builder --linux"
   },
   "dependencies": {
-    "@cyberbunny/shared": "workspace:*",
-    "@cyberbunny/ui-web": "workspace:*",
+    "@openbunny/shared": "workspace:*",
+    "@openbunny/ui-web": "workspace:*",
     "@radix-ui/react-dialog": "catalog:",
     "@radix-ui/react-dropdown-menu": "catalog:",
     "@radix-ui/react-label": "catalog:",

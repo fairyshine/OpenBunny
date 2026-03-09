@@ -1,6 +1,6 @@
-# CyberBunny CLI & TUI
+# OpenBunny CLI & TUI
 
-CyberBunny 提供了两种命令行使用方式：
+OpenBunny 提供了两种命令行使用方式：
 
 ## CLI - 命令行工具
 
@@ -25,29 +25,29 @@ pnpm build
 
 ```bash
 # 基本用法
-cyberbunny ask "什么是 TypeScript?"
+openbunny ask "什么是 TypeScript?"
 
 # 指定模型和 provider
-cyberbunny ask "解释 monorepo" -m gpt-4 -p openai -k YOUR_API_KEY
+openbunny ask "解释 monorepo" -m gpt-4 -p openai -k YOUR_API_KEY
 
 # 使用系统提示
-cyberbunny ask "写一个排序算法" --system "你是一个 Python 专家"
+openbunny ask "写一个排序算法" --system "你是一个 Python 专家"
 
 # 禁用流式输出
-cyberbunny ask "Hello" --no-stream
+openbunny ask "Hello" --no-stream
 ```
 
 #### 2. 交互式对话
 
 ```bash
 # 启动聊天会话
-cyberbunny chat -k YOUR_API_KEY
+openbunny chat -k YOUR_API_KEY
 
 # 指定模型
-cyberbunny chat -m gpt-4-turbo -p openai
+openbunny chat -m gpt-4-turbo -p openai
 
 # 使用自定义 API
-cyberbunny chat -b http://localhost:8000 -k local-key
+openbunny chat -b http://localhost:8000 -k local-key
 
 # 会话内命令
 > /quit      # 退出
@@ -60,32 +60,32 @@ cyberbunny chat -b http://localhost:8000 -k local-key
 
 ```bash
 # 设置 API Key
-cyberbunny config set apiKey sk-xxx
+openbunny config set apiKey sk-xxx
 
 # 设置默认模型
-cyberbunny config set model gpt-4
+openbunny config set model gpt-4
 
 # 查看配置
-cyberbunny config list
+openbunny config list
 
 # 获取单个配置
-cyberbunny config get apiKey
+openbunny config get apiKey
 
 # 删除配置
-cyberbunny config delete apiKey
+openbunny config delete apiKey
 
 # 清空所有配置
-cyberbunny config clear
+openbunny config clear
 ```
 
 ### 环境变量
 
 ```bash
 # API Key
-export CYBERBUNNY_API_KEY=sk-xxx
+export OPENBUNNY_API_KEY=sk-xxx
 
 # 使用环境变量
-cyberbunny ask "Hello"
+openbunny ask "Hello"
 ```
 
 ### 选项
@@ -123,23 +123,23 @@ pnpm build
 
 ```bash
 # 基本用法
-cyberbunny-tui -k YOUR_API_KEY
+openbunny-tui -k YOUR_API_KEY
 
 # 指定模型
-cyberbunny-tui -m gpt-4-turbo -p openai -k YOUR_API_KEY
+openbunny-tui -m gpt-4-turbo -p openai -k YOUR_API_KEY
 
 # 使用系统提示
-cyberbunny-tui -s "你是一个代码助手" -k YOUR_API_KEY
+openbunny-tui -s "你是一个代码助手" -k YOUR_API_KEY
 
 # 使用自定义 API
-cyberbunny-tui -b http://localhost:8000 -k local-key
+openbunny-tui -b http://localhost:8000 -k local-key
 ```
 
 ### 界面说明
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ CyberBunny TUI | gpt-4 | openai | /quit to exit│
+│ OpenBunny TUI | gpt-4 | openai | /quit to exit│
 ├─────────────────────────────────────────────────┤
 │ > 你好                                          │
 │   你好！有什么我可以帮助你的吗？                │
@@ -169,8 +169,8 @@ cyberbunny-tui -b http://localhost:8000 -k local-key
 ## 配置优先级
 
 1. 命令行参数（最高优先级）
-2. 环境变量 `CYBERBUNNY_API_KEY`
-3. 配置文件（`cyberbunny config set`）
+2. 环境变量 `OPENBUNNY_API_KEY`
+3. 配置文件（`openbunny config set`）
 
 ---
 
@@ -180,18 +180,18 @@ cyberbunny-tui -b http://localhost:8000 -k local-key
 
 ```bash
 # 设置一次 API Key
-cyberbunny config set apiKey sk-xxx
+openbunny config set apiKey sk-xxx
 
 # 之后直接使用
-cyberbunny ask "什么是 Docker?"
-cyberbunny ask "解释 Kubernetes"
+openbunny ask "什么是 Docker?"
+openbunny ask "解释 Kubernetes"
 ```
 
 ### 场景 2: 代码助手
 
 ```bash
 # 启动代码助手会话
-cyberbunny chat --system "你是一个 TypeScript 专家，帮我解答代码问题"
+openbunny chat --system "你是一个 TypeScript 专家，帮我解答代码问题"
 
 > 如何在 TypeScript 中定义泛型约束？
 > 什么是 mapped types？
@@ -202,7 +202,7 @@ cyberbunny chat --system "你是一个 TypeScript 专家，帮我解答代码问
 
 ```bash
 # 连接本地 vLLM 服务
-cyberbunny-tui -b http://localhost:8000/v1 -m llama-3 -k local
+openbunny-tui -b http://localhost:8000/v1 -m llama-3 -k local
 ```
 
 ### 场景 4: 脚本集成
@@ -213,7 +213,7 @@ cyberbunny-tui -b http://localhost:8000/v1 -m llama-3 -k local
 
 for file in *.txt; do
   content=$(cat "$file")
-  cyberbunny ask "翻译成英文: $content" --no-stream > "${file%.txt}.en.txt"
+  openbunny ask "翻译成英文: $content" --no-stream > "${file%.txt}.en.txt"
 done
 ```
 
@@ -276,9 +276,9 @@ pnpm dev -- ask "test"
 设置环境变量或配置：
 
 ```bash
-export CYBERBUNNY_API_KEY=sk-xxx
+export OPENBUNNY_API_KEY=sk-xxx
 # 或
-cyberbunny config set apiKey sk-xxx
+openbunny config set apiKey sk-xxx
 ```
 
 ### 问题：连接失败
@@ -287,7 +287,7 @@ cyberbunny config set apiKey sk-xxx
 
 ```bash
 # 测试连接
-curl https://api.openai.com/v1/models -H "Authorization: Bearer $CYBERBUNNY_API_KEY"
+curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENBUNNY_API_KEY"
 ```
 
 ---
@@ -314,7 +314,7 @@ cd packages/cli
 npm link
 
 # 现在可以全局使用
-cyberbunny ask "test"
+openbunny ask "test"
 ```
 
 ### 发布到 npm

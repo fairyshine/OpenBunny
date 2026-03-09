@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Settings, Menu, Languages, CheckIcon, Keyboard } from '../icons';
 import { SquareTerminal } from 'lucide-react';
@@ -13,6 +13,7 @@ import { getToolIcon } from '../ToolIcon';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { addOpenSettingsModalListener, type SettingsSection } from '../settings/settingsModalEvents';
 
 const SettingsModal = lazy(() => import('../settings/SettingsModal'));
 const ShortcutsHelp = lazy(() => import('../ShortcutsHelp'));
@@ -32,6 +33,7 @@ interface HeaderProps {
 export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }: HeaderProps) {
   const { t } = useTranslation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection | null>(null);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [isCronOpen, setIsCronOpen] = useState(false);
   const [isHeartbeatOpen, setIsHeartbeatOpen] = useState(false);
@@ -48,6 +50,13 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
   const currentAgent = agents.find((a) => a.id === currentAgentId);
   const displayAvatar = isDefaultAgent ? '🐰' : currentAgent?.avatar || '🐰';
   const displayColor = isDefaultAgent ? undefined : currentAgent?.color;
+
+  useEffect(() => {
+    return addOpenSettingsModalListener(({ section }) => {
+      setSettingsSection(section ?? null);
+      setIsSettingsOpen(true);
+    });
+  }, []);
 
   const languageOptions: { value: Language; label: string }[] = [
     { value: 'system', label: t('settings.language.system') },
@@ -87,7 +96,7 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
                 : displayAvatar}
             </button>
             <div className="flex items-center gap-2">
-              <h1 className="font-semibold text-foreground tracking-tight">CyberBunny</h1>
+              <h1 className="font-semibold text-foreground tracking-tight">OpenBunny</h1>
               {!isDefaultAgent && currentAgent && (
                 <span className="text-sm text-muted-foreground">{currentAgent.name}</span>
               )}
@@ -205,7 +214,7 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  onClick={() => setIsSettingsOpen(true)}
+                  onClick={() => { setSettingsSection(null); setIsSettingsOpen(true); }}
                   variant="ghost"
                   size="icon"
                 >
@@ -219,7 +228,7 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
       </header>
 
       <Suspense fallback={null}>
-        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+        <SettingsModal isOpen={isSettingsOpen} initialSection={settingsSection ?? undefined} onClose={() => setIsSettingsOpen(false)} />
       </Suspense>
       <Suspense fallback={null}>
         <ShortcutsHelp isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />

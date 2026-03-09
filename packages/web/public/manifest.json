@@ -1,7 +1,7 @@
 {
-  "name": "CyberBunny - 浏览器端智能体",
-  "short_name": "CyberBunny",
-  "description": "纯前端 AI Agent，支持 MCP、Python 代码执行",
+  "name": "OpenBunny - 浏览器端个人智能助理",
+  "short_name": "OpenBunny",
+  "description": "纯前端个人智能助理系统，支持 MCP、Python 代码执行",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

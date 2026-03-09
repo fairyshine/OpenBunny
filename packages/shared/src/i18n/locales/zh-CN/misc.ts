@@ -8,5 +8,5 @@ export default {
   'shortcuts.noShortcuts': '暂无快捷键',
   'shortcuts.hint': '提示: 在输入框中按 Escape 可以取消输入',
   'systemPrompt.assistant': '你是一个智能助手。',
-  'logger.startup': 'CyberBunny 启动',
+  'logger.startup': 'OpenBunny 启动',
 } as const;

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '@cyberbunny/shared';
+import { useSettingsStore } from '@openbunny/shared';
 import {
   DropdownMenu,
   DropdownMenuContent,

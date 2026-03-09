@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useToolStore } from '@cyberbunny/shared';
+import { useToolStore } from '@openbunny/shared';
 
 export default function MCPStatusCard() {
   const { t } = useTranslation();

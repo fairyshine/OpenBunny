@@ -15,7 +15,7 @@ export class WeatherTool extends BaseTool {
       description: '查询指定城市的天气信息',
       icon: '🌤️',
       version: '1.0.0',
-      author: 'CyberBunny',
+      author: 'OpenBunny',
       tags: ['weather', 'api'],
     };
     super(metadata);

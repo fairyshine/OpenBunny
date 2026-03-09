@@ -69,7 +69,7 @@ export default function DrawerContent(props: any) {
   return (
     <DrawerContentScrollView {...props} contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>CyberBunny</Text>
+        <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>OpenBunny</Text>
         <IconButton icon="plus" size={20} onPress={handleNewSession} />
       </View>
 

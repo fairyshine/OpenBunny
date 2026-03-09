@@ -3,6 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@openbunny/shared": ["../shared/src/index.ts"],
+      "@openbunny/shared/*": ["../shared/src/*"],
       "@shared/*": ["../shared/src/*"],
       "@/*": ["./src/*"]
     }

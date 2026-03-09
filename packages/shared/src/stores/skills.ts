@@ -82,7 +82,7 @@ export const useSkillStore = create<SkillState>()(
     skills: [],
     enabledSkillIds: (() => {
       try {
-        const saved = localStorage.getItem('cyberbunny-enabled-skills');
+        const saved = localStorage.getItem('openbunny-enabled-skills');
         return saved ? JSON.parse(saved) : BUILTIN_SKILLS.map(s => s.id);
       } catch {
         return BUILTIN_SKILLS.map(s => s.id);
@@ -117,7 +117,7 @@ export const useSkillStore = create<SkillState>()(
         : [...enabledSkillIds, skillId];
       set({ enabledSkillIds: next });
       try {
-        localStorage.setItem('cyberbunny-enabled-skills', JSON.stringify(next));
+        localStorage.setItem('openbunny-enabled-skills', JSON.stringify(next));
       } catch { /* ignore */ }
     },
 

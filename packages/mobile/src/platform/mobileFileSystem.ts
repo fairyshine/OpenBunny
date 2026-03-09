@@ -5,7 +5,7 @@
  */
 
 import * as ExpoFS from 'expo-file-system';
-import type { IFileSystem, FileSystemEntry } from '@cyberbunny/shared';
+import type { IFileSystem, FileSystemEntry } from '@shared/services/filesystem';
 
 const FS_ROOT = `${ExpoFS.documentDirectory}root/`;
 

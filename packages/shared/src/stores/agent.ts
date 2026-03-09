@@ -24,7 +24,7 @@ const DEFAULT_TOOLS = ['python', 'web_search', 'file_manager', 'memory'];
 function createDefaultAgent(): Agent {
   return {
     id: DEFAULT_AGENT_ID,
-    name: 'CyberBunny',
+    name: 'OpenBunny',
     avatar: '🐰',
     description: '',
     systemPrompt: '',
@@ -434,6 +434,16 @@ export const useAgentStore = create<AgentState>()(
           if (!hasDefault) {
             state.agents = [createDefaultAgent(), ...state.agents];
           }
+
+          const defaultAgent = state.agents.find((a) => a.id === DEFAULT_AGENT_ID || a.isDefault);
+          if (defaultAgent) {
+            defaultAgent.id = DEFAULT_AGENT_ID;
+            defaultAgent.isDefault = true;
+            if (!defaultAgent.name || defaultAgent.name === 'CyberBunny') {
+              defaultAgent.name = 'OpenBunny';
+            }
+          }
+
           // Ensure default agent has sessions entry
           if (!state.agentSessions[DEFAULT_AGENT_ID]) {
             state.agentSessions[DEFAULT_AGENT_ID] = [];

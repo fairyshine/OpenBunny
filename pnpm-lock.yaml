@@ -263,7 +263,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@cyberbunny/shared':
+      '@openbunny/shared':
         specifier: workspace:*
         version: link:../shared
       ai:
@@ -300,10 +300,10 @@ importers:
 
   packages/desktop:
     dependencies:
-      '@cyberbunny/shared':
+      '@openbunny/shared':
         specifier: workspace:*
         version: link:../shared
-      '@cyberbunny/ui-web':
+      '@openbunny/ui-web':
         specifier: workspace:*
         version: link:../ui-web
       '@radix-ui/react-dialog':
@@ -427,7 +427,7 @@ importers:
 
   packages/mobile:
     dependencies:
-      '@cyberbunny/shared':
+      '@openbunny/shared':
         specifier: workspace:*
         version: link:../shared
       '@react-native-async-storage/async-storage':
@@ -585,7 +585,7 @@ importers:
 
   packages/tui:
     dependencies:
-      '@cyberbunny/shared':
+      '@openbunny/shared':
         specifier: workspace:*
         version: link:../shared
       ai:
@@ -625,7 +625,7 @@ importers:
 
   packages/ui-web:
     dependencies:
-      '@cyberbunny/shared':
+      '@openbunny/shared':
         specifier: workspace:*
         version: link:../shared
       '@dnd-kit/core':
@@ -749,10 +749,10 @@ importers:
 
   packages/web:
     dependencies:
-      '@cyberbunny/shared':
+      '@openbunny/shared':
         specifier: workspace:*
         version: link:../shared
-      '@cyberbunny/ui-web':
+      '@openbunny/ui-web':
         specifier: workspace:*
         version: link:../ui-web
       '@radix-ui/react-dialog':

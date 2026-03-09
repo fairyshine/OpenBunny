@@ -10,9 +10,11 @@ import { ChevronRight, Pencil, ArrowRightLeft } from 'lucide-react';
 interface AgentListProps {
   onItemClick?: () => void;
   onOpenGraph?: (groupId?: string) => void;
+  onAgentSelect?: (agentId: string, reselected: boolean) => void;
+  onCurrentAgentDeleted?: () => void;
 }
 
-export function AgentList({ onItemClick, onOpenGraph }: AgentListProps) {
+export function AgentList({ onItemClick, onOpenGraph, onAgentSelect, onCurrentAgentDeleted }: AgentListProps) {
   const { t } = useTranslation();
   const agents = useAgentStore((s) => s.agents);
   const currentAgentId = useAgentStore((s) => s.currentAgentId);
@@ -40,7 +42,9 @@ export function AgentList({ onItemClick, onOpenGraph }: AgentListProps) {
   };
 
   const handleAgentClick = (agentId: string) => {
+    const reselected = currentAgentId === agentId;
     setCurrentAgent(agentId);
+    onAgentSelect?.(agentId, reselected);
     onItemClick?.();
   };
 
@@ -48,7 +52,15 @@ export function AgentList({ onItemClick, onOpenGraph }: AgentListProps) {
     const agent = agents.find((a) => a.id === agentId);
     if (!agent) return;
     if (agent.isDefault) { alert(t('sidebar.agent.cannotDeleteDefault')); return; }
-    if (confirm(t('sidebar.agent.deleteConfirm', { name: agent.name }))) deleteAgent(agentId);
+
+    const isCurrentAgent = currentAgentId === agentId;
+    if (confirm(t('sidebar.agent.deleteConfirm', { name: agent.name }))) {
+      deleteAgent(agentId);
+      if (isCurrentAgent) {
+        onCurrentAgentDeleted?.();
+      }
+    }
+
     setContextMenuAgentId(null);
   };
 
