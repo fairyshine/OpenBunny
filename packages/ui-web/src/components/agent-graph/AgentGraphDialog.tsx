@@ -9,12 +9,14 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   useNodes,
+  useStore,
   NodeTypes,
   EdgeTypes,
   EdgeProps,
   Connection,
   ConnectionMode,
   ConnectionLineType,
+  ConnectionLineComponentProps,
   ReactFlowProvider,
   useReactFlow,
   getStraightPath,
@@ -100,6 +102,39 @@ function CenterEdge({ id, source, target, sourceX, sourceY, targetX, targetY, st
 const edgeTypes: EdgeTypes = {
   centerEdge: CenterEdge,
 };
+
+function CenterConnectionLine({ fromNode, toX, toY }: ConnectionLineComponentProps) {
+  if (!fromNode) return null;
+
+  const sourceX = (fromNode.positionAbsolute?.x ?? fromNode.position.x) + AGENT_AVATAR_CENTER_X;
+  const sourceY = (fromNode.positionAbsolute?.y ?? fromNode.position.y) + AGENT_AVATAR_CENTER_Y;
+
+  // Snap to target node's avatar center if hovering over one
+  const nodeLookup = useStore((s) => s.nodeInternals);
+  let finalX = toX;
+  let finalY = toY;
+
+  nodeLookup.forEach((node) => {
+    if (node.type !== 'agentNode' || node.id === fromNode.id) return;
+    const nx = node.positionAbsolute?.x ?? node.position.x;
+    const ny = node.positionAbsolute?.y ?? node.position.y;
+    const cx = nx + AGENT_AVATAR_CENTER_X;
+    const cy = ny + AGENT_AVATAR_CENTER_Y;
+    const dist = Math.hypot(toX - cx, toY - cy);
+    if (dist < 40) {
+      finalX = cx;
+      finalY = cy;
+    }
+  });
+
+  const [path] = getStraightPath({ sourceX, sourceY, targetX: finalX, targetY: finalY });
+
+  return (
+    <g>
+      <path d={path} fill="none" stroke="hsl(var(--primary) / 0.65)" strokeWidth={2} strokeDasharray="6 4" />
+    </g>
+  );
+}
 
 interface AgentLike { id: string }
 interface RelLike { id: string; sourceAgentId: string; targetAgentId: string }
@@ -664,8 +699,8 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
         panOnDrag={isOverviewMode ? true : !isEditMode}
         connectionMode={ConnectionMode.Loose}
         connectionLineType={ConnectionLineType.Straight}
+        connectionLineComponent={CenterConnectionLine}
         defaultEdgeOptions={{ type: 'centerEdge', markerStart: undefined, markerEnd: undefined }}
-        connectionLineStyle={{ stroke: 'hsl(var(--primary) / 0.65)', strokeWidth: 2, strokeDasharray: '6 4' }}
         fitView
         minZoom={0.2}
         maxZoom={3}
