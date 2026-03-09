@@ -10,6 +10,8 @@ import { Switch } from '../ui/switch';
 
 interface ConsolePanelProps {
   isOpen: boolean;
+  height: number;
+  onHeightChange: (height: number) => void;
   onClose: () => void;
 }
 
@@ -33,7 +35,7 @@ const CATEGORY_STYLES: Record<LogCategory, { label: string }> = {
 
 const ALL_CATEGORIES: LogCategory[] = ['llm', 'tool', 'file', 'settings', 'mcp', 'python', 'system'];
 
-export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
+export default function ConsolePanel({ isOpen, height, onHeightChange, onClose }: ConsolePanelProps) {
   const { t } = useTranslation();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filter, setFilter] = useState<LogCategory | 'all'>('all');
@@ -41,6 +43,7 @@ export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   useEffect(() => {
     setLogs(consoleLogger.getLogs());
@@ -102,10 +105,50 @@ export default function ConsolePanel({ isOpen, onClose }: ConsolePanelProps) {
     }
   };
 
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState) return;
+
+      const minHeight = 160;
+      const maxHeight = Math.max(minHeight, Math.floor(window.innerHeight * 0.7));
+      const nextHeight = dragState.startHeight + (dragState.startY - event.clientY);
+      onHeightChange(Math.min(maxHeight, Math.max(minHeight, nextHeight)));
+    };
+
+    const handlePointerUp = () => {
+      if (!dragStateRef.current) return;
+      dragStateRef.current = null;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [onHeightChange]);
+
+  const handleResizeStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    dragStateRef.current = { startY: event.clientY, startHeight: height };
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="flex flex-col border-t border-border bg-card h-48 md:h-[280px]">
+    <div className="shrink-0 flex flex-col border-t border-border bg-card" style={{ height }}>
+      <div
+        className="h-2 shrink-0 cursor-ns-resize border-b border-border/60 bg-muted/40 hover:bg-muted/70 transition-colors"
+        onPointerDown={handleResizeStart}
+        aria-label="Resize console panel"
+      />
       <div className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 border-b border-border bg-muted/50 text-xs shrink-0">
         <span className="font-semibold mr-1 hidden sm:inline">{t('console.title')}</span>
 

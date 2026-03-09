@@ -1,7 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronLeft, MessageSquare, Plus, FolderOpen, FolderTree, Rabbit, Network } from '../icons';
 import { Button } from '../ui/button';
-import { useState } from 'react';
 import type { FC } from 'react';
 import { FolderPlus } from 'lucide-react';
 
@@ -27,13 +27,32 @@ const TAB_CONFIG: { key: TabType; icon: FC<{ className?: string }>; labelKey: st
 export function SidebarHeader({ activeTab, onTabChange, onCollapse, onCreateProject, onCreateSession, onCreateAgent, onCreateGroup, onOpenGraph }: SidebarHeaderProps) {
   const { t } = useTranslation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!dropdownRef.current?.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handlePointerDown);
+    return () => window.removeEventListener('mousedown', handlePointerDown);
+  }, [dropdownOpen]);
 
   const currentTab = TAB_CONFIG.find((tab) => tab.key === activeTab)!;
   const CurrentIcon = currentTab.icon;
 
   return (
     <div className="h-14 border-b border-border flex items-center justify-between px-3 shrink-0">
-      <div className="relative">
+      <div
+        ref={dropdownRef}
+        className="relative"
+        onMouseEnter={() => setDropdownOpen(true)}
+        onMouseLeave={() => setDropdownOpen(false)}
+      >
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
           className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
@@ -45,9 +64,8 @@ export function SidebarHeader({ activeTab, onTabChange, onCollapse, onCreateProj
           <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
         </button>
         {dropdownOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
-            <div className="absolute top-full left-0 mt-1 w-44 bg-popover border border-border rounded-md shadow-md z-50 py-1">
+          <div className="absolute top-full left-0 w-44 pt-1 z-50">
+            <div className="bg-popover border border-border rounded-md shadow-md py-1">
               {TAB_CONFIG.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -64,7 +82,7 @@ export function SidebarHeader({ activeTab, onTabChange, onCollapse, onCreateProj
                 );
               })}
             </div>
-          </>
+          </div>
         )}
       </div>
       <div className="flex items-center gap-1">

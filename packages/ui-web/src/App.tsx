@@ -36,6 +36,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [showConsole, setShowConsole] = useState(false);
+  const [consoleHeight, setConsoleHeight] = useState(280);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showStatusPage, setShowStatusPage] = useState(false);
   const [showAgentConfig, setShowAgentConfig] = useState(false);
@@ -255,13 +256,18 @@ function App() {
           onToggleSidebar={() => setIsSidebarOpen(v => !v)}
           onLogoClick={handleLogoClick}
         />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 flex overflow-hidden">
             <Sidebar {...sidebarProps} />
             <StatusScreen onStart={handleStart} showStartButton={shouldShowStartButton()} />
           </div>
           <Suspense fallback={<div />}>
-            <ConsolePanel isOpen={showConsole} onClose={() => setShowConsole(false)} />
+            <ConsolePanel
+              isOpen={showConsole}
+              height={consoleHeight}
+              onHeightChange={setConsoleHeight}
+              onClose={() => setShowConsole(false)}
+            />
           </Suspense>
         </div>
       </div>
@@ -278,8 +284,8 @@ function App() {
       />
 
       {/* 主内容区 */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex overflow-hidden">
           {/* 侧边栏 */}
           <Sidebar
             selectedFilePath={selectedFile || undefined}
@@ -287,7 +293,7 @@ function App() {
           />
 
           {/* 主内容区 - 智能体配置、关系图、文件编辑器或聊天 */}
-          <main className="flex-1 flex flex-col min-w-0">
+          <main className="flex-1 min-h-0 flex flex-col min-w-0">
             {showAgentConfig ? (
               <AgentConfigPanel agentId={currentAgentId} />
             ) : showGraph ? (
@@ -305,7 +311,7 @@ function App() {
               <>
                 {enableSessionTabs && sidebarTab !== 'agents' && <SessionTabs />}
                 {enableSessionTabs ? (
-                  <div className="flex-1 relative overflow-hidden">
+                  <div className="flex-1 min-h-0 relative overflow-hidden">
                     {openSessionIds.map((sessionId) => (
                       <div
                         key={sessionId}
@@ -333,7 +339,12 @@ function App() {
 
         {/* 控制台面板 */}
         <Suspense fallback={<div />}>
-          <ConsolePanel isOpen={showConsole} onClose={() => setShowConsole(false)} />
+          <ConsolePanel
+            isOpen={showConsole}
+            height={consoleHeight}
+            onHeightChange={setConsoleHeight}
+            onClose={() => setShowConsole(false)}
+          />
         </Suspense>
       </div>
     </div>
