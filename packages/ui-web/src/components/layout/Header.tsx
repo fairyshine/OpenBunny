@@ -66,8 +66,8 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
 
   return (
     <>
-      <header className="h-14 bg-background border-b border-border flex items-center justify-between px-4 shadow-none">
-        <div className="flex items-center gap-3">
+      <header className="h-14 bg-background border-b border-border flex items-center justify-between px-4 shadow-none overflow-hidden">
+        <div className="flex items-center gap-3 shrink-0">
           {onToggleSidebar && (
             <Button
               onClick={onToggleSidebar}
@@ -81,7 +81,7 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
           <div className="flex items-center gap-2">
             <button
               onClick={onLogoClick}
-              className="w-7 h-7 rounded-full flex items-center justify-center text-sm hover:opacity-80 transition-opacity cursor-pointer overflow-hidden"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-sm hover:opacity-80 transition-opacity cursor-pointer overflow-hidden shrink-0"
               style={displayColor ? {
                 backgroundColor: displayColor + '20',
                 color: displayColor
@@ -95,17 +95,17 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
                 ? <img src={displayAvatar} alt="avatar" className="w-full h-full object-cover" draggable={false} />
                 : displayAvatar}
             </button>
-            <div className="flex items-center gap-2">
-              <h1 className="font-semibold text-foreground tracking-tight">OpenBunny</h1>
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="font-semibold text-foreground tracking-tight truncate">OpenBunny</h1>
               {!isDefaultAgent && currentAgent && (
-                <span className="text-sm text-muted-foreground">{currentAgent.name}</span>
+                <span className="text-sm text-muted-foreground truncate">{currentAgent.name}</span>
               )}
             </div>
           </div>
         </div>
 
         <TooltipProvider>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             {isMemoryEnabled && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -168,35 +168,37 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
 
             <ThemeToggle />
 
-            <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
+            <div className="hidden sm:block">
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                      >
+                        <Languages className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('settings.language')}</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end">
+                  {languageOptions.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onClick={() => setLanguage(option.value)}
+                      className="flex items-center justify-between min-w-[140px]"
                     >
-                      <Languages className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent>{t('settings.language')}</TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent align="end">
-                {languageOptions.map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onClick={() => setLanguage(option.value)}
-                    className="flex items-center justify-between min-w-[140px]"
-                  >
-                    <span>{option.label}</span>
-                    {language === option.value && (
-                      <CheckIcon className="w-4 h-4 ml-2" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                      <span>{option.label}</span>
+                      {language === option.value && (
+                        <CheckIcon className="w-4 h-4 ml-2" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -204,6 +206,7 @@ export default function Header({ onToggleConsole, onToggleSidebar, onLogoClick }
                   onClick={() => setIsShortcutsOpen(true)}
                   variant="ghost"
                   size="icon"
+                  className="hidden sm:inline-flex"
                 >
                   <Keyboard className="w-4 h-4" />
                 </Button>
