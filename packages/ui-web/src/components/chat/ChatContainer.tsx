@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSessionStore } from '@shared/stores/session';
+import { useAgentStore } from '@shared/stores/agent';
 import { useSettingsStore } from '@shared/stores/settings';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
+import { useWorkspaceSession } from '../../hooks/useWorkspaceSession';
 import { Message } from '@shared/types';
 import { logLLM } from '@shared/services/console/logger';
 import { runAgentLoop } from '@shared/services/ai/agent';
@@ -27,7 +29,19 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>('');
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const { sessions, addMessage, updateMessage, loadSessionMessages } = useSessionStore();
+  const globalSessions = useSessionStore((s) => s.sessions);
+  const addMessage = useSessionStore((s) => s.addMessage);
+  const updateMessage = useSessionStore((s) => s.updateMessage);
+  const loadSessionMessages = useSessionStore((s) => s.loadSessionMessages);
+  const addAgentMessage = useAgentStore((s) => s.addAgentMessage);
+  const updateAgentMessage = useAgentStore((s) => s.updateAgentMessage);
+  const loadAgentSessionMessages = useAgentStore((s) => s.loadAgentSessionMessages);
+  const renameAgentSession = useAgentStore((s) => s.renameAgentSession);
+  const setAgentSessionStreaming = useAgentStore((s) => s.setAgentSessionStreaming);
+  const setAgentSessionSystemPrompt = useAgentStore((s) => s.setAgentSessionSystemPrompt);
+  const flushAgentMessages = useAgentStore((s) => s.flushAgentMessages);
+  const agentSessions = useAgentStore((s) => s.agentSessions);
+  const { currentAgentId, isDefaultAgent, sessions } = useWorkspaceSession();
   const { llmConfig, enabledTools, enabledSkills } = useAgentConfig();
   const { proxyUrl, toolExecutionTimeout } = useSettingsStore();
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -42,8 +56,12 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
 
   // Load messages from IndexedDB when session becomes active
   useEffect(() => {
-    loadSessionMessages(sessionId);
-  }, [sessionId, loadSessionMessages]);
+    if (isDefaultAgent) {
+      loadSessionMessages(sessionId);
+    } else {
+      loadAgentSessionMessages(currentAgentId, sessionId);
+    }
+  }, [currentAgentId, isDefaultAgent, loadAgentSessionMessages, loadSessionMessages, sessionId]);
 
   // Reset restored flag when sessionId changes (non-tab mode where component is reused)
   useEffect(() => {
@@ -116,8 +134,19 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     }
     setIsLoading(false);
     setCurrentStatus('');
-    useSessionStore.getState().setSessionStreaming(sessionId, false);
-    addMessage(sessionId, {
+    if (isDefaultAgent) {
+      useSessionStore.getState().setSessionStreaming(sessionId, false);
+      addMessage(sessionId, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: t('chat.stopped'),
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    setAgentSessionStreaming(currentAgentId, sessionId, false);
+    addAgentMessage(currentAgentId, sessionId, {
       id: crypto.randomUUID(),
       role: 'assistant',
       content: t('chat.stopped'),
@@ -125,17 +154,38 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     });
   };
 
+  const appendMessage = useCallback((targetSessionId: string, message: Message) => {
+    if (isDefaultAgent) {
+      addMessage(targetSessionId, message);
+    } else {
+      addAgentMessage(currentAgentId, targetSessionId, message);
+    }
+  }, [addAgentMessage, addMessage, currentAgentId, isDefaultAgent]);
+
+  const patchMessage = useCallback((targetSessionId: string, messageId: string, updates: Partial<Message>) => {
+    if (isDefaultAgent) {
+      updateMessage(targetSessionId, messageId, updates);
+    } else {
+      updateAgentMessage(currentAgentId, targetSessionId, messageId, updates);
+    }
+  }, [currentAgentId, isDefaultAgent, updateAgentMessage, updateMessage]);
+
+  const readSession = useCallback((targetSessionId: string) => {
+    const sourceSessions = isDefaultAgent ? globalSessions : (agentSessions[currentAgentId] || []);
+    return sourceSessions.find((candidate) => candidate.id === targetSessionId);
+  }, [agentSessions, currentAgentId, globalSessions, isDefaultAgent]);
+
   const callbacks: AgentCallbacks = {
-    addMessage,
-    updateMessage,
+    addMessage: appendMessage,
+    updateMessage: patchMessage,
     setStatus: setCurrentStatus,
     generateId: () => crypto.randomUUID(),
-    streamToolOutput: (sessionId, msgId, chunk) => {
-      const session = useSessionStore.getState().sessions.find(s => s.id === sessionId);
-      if (!session) return;
-      const message = session.messages.find(m => m.id === msgId);
+    streamToolOutput: (targetSessionId, msgId, chunk) => {
+      const targetSession = readSession(targetSessionId);
+      if (!targetSession) return;
+      const message = targetSession.messages.find(m => m.id === msgId);
       if (!message) return;
-      updateMessage(sessionId, msgId, {
+      patchMessage(targetSessionId, msgId, {
         content: (message.content || '') + chunk,
         toolOutput: (message.toolOutput || '') + chunk,
       });
@@ -151,17 +201,25 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
       content: content.trim(),
       timestamp: Date.now(),
     };
-    addMessage(sessionId, userMessage);
+    appendMessage(sessionId, userMessage);
 
     // Auto-rename session with first user message (max 50 chars)
     if (session && session.messages.length === 0) {
       const sessionName = content.trim().slice(0, 50);
-      useSessionStore.getState().renameSession(sessionId, sessionName);
+      if (isDefaultAgent) {
+        useSessionStore.getState().renameSession(sessionId, sessionName);
+      } else {
+        renameAgentSession(currentAgentId, sessionId, sessionName);
+      }
     }
 
     setIsLoading(true);
     setCurrentStatus('');
-    useSessionStore.getState().setSessionStreaming(sessionId, true);
+    if (isDefaultAgent) {
+      useSessionStore.getState().setSessionStreaming(sessionId, true);
+    } else {
+      setAgentSessionStreaming(currentAgentId, sessionId, true);
+    }
     logLLM('info', `User message: ${content.trim().slice(0, 100)}${content.length > 100 ? '...' : ''}`);
 
     const abortController = new AbortController();
@@ -186,12 +244,16 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
         effectiveSkills,
       );
       // Save system prompt to session
-      useSessionStore.getState().setSessionSystemPrompt(sessionId, systemPrompt);
+      if (isDefaultAgent) {
+        useSessionStore.getState().setSessionSystemPrompt(sessionId, systemPrompt);
+      } else {
+        setAgentSessionSystemPrompt(currentAgentId, sessionId, systemPrompt);
+      }
     } catch (error) {
       // Don't show error message if user aborted
       if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Error:', error);
-      addMessage(sessionId, {
+      appendMessage(sessionId, {
         id: crypto.randomUUID(),
         role: 'assistant',
         content: t('chat.error', { error: error instanceof Error ? error.message : String(error) }),
@@ -201,9 +263,13 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
       abortControllerRef.current = null;
       setIsLoading(false);
       setCurrentStatus('');
-      useSessionStore.getState().setSessionStreaming(sessionId, false);
-      // Force-flush messages to IndexedDB after agent loop completes
-      useSessionStore.getState().flushMessages(sessionId);
+      if (isDefaultAgent) {
+        useSessionStore.getState().setSessionStreaming(sessionId, false);
+        useSessionStore.getState().flushMessages(sessionId);
+      } else {
+        setAgentSessionStreaming(currentAgentId, sessionId, false);
+        flushAgentMessages(currentAgentId, sessionId);
+      }
     }
   };
 

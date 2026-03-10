@@ -65,11 +65,17 @@ interface AgentState {
   agentSessions: Record<string, Session[]>;
   agentCurrentSessionId: Record<string, string | null>;
   createAgentSession: (agentId: string, name?: string, projectId?: string) => Session;
+  renameAgentSession: (agentId: string, sessionId: string, name: string) => void;
   deleteAgentSession: (agentId: string, sessionId: string) => void;
-  setAgentCurrentSession: (agentId: string, sessionId: string) => void;
+  setAgentCurrentSession: (agentId: string, sessionId: string | null) => void;
   addAgentMessage: (agentId: string, sessionId: string, message: Message) => void;
   updateAgentMessage: (agentId: string, sessionId: string, messageId: string, updates: Partial<Message>) => void;
   setAgentSessionStreaming: (agentId: string, sessionId: string, isStreaming: boolean) => void;
+  setAgentSessionSystemPrompt: (agentId: string, sessionId: string, systemPrompt: string) => void;
+  setAgentSessionTools: (agentId: string, sessionId: string, tools: string[] | undefined) => void;
+  setAgentSessionSkills: (agentId: string, sessionId: string, skills: string[] | undefined) => void;
+  loadAgentSessionMessages: (agentId: string, sessionId: string) => Promise<void>;
+  flushAgentMessages: (agentId: string, sessionId: string) => Promise<void>;
   moveAgentSessionToProject: (agentId: string, sessionId: string, projectId: string | null) => void;
 
   // Per-agent projects
@@ -256,6 +262,21 @@ export const useAgentStore = create<AgentState>()(
         return session;
       },
 
+      renameAgentSession: (agentId, sessionId, name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        set((state) => ({
+          agentSessions: {
+            ...state.agentSessions,
+            [agentId]: (state.agentSessions[agentId] || []).map((session) =>
+              session.id === sessionId
+                ? { ...session, name: trimmed, updatedAt: Date.now() }
+                : session
+            ),
+          },
+        }));
+      },
+
       deleteAgentSession: (agentId, sessionId) => {
         messageStorage.delete(sessionId);
         set((state) => {
@@ -322,6 +343,66 @@ export const useAgentStore = create<AgentState>()(
             ),
           },
         }));
+      },
+
+      setAgentSessionSystemPrompt: (agentId, sessionId, systemPrompt) => {
+        set((state) => ({
+          agentSessions: {
+            ...state.agentSessions,
+            [agentId]: (state.agentSessions[agentId] || []).map((session) =>
+              session.id === sessionId
+                ? { ...session, systemPrompt, updatedAt: Date.now() }
+                : session
+            ),
+          },
+        }));
+      },
+
+      setAgentSessionTools: (agentId, sessionId, tools) => {
+        set((state) => ({
+          agentSessions: {
+            ...state.agentSessions,
+            [agentId]: (state.agentSessions[agentId] || []).map((session) =>
+              session.id === sessionId
+                ? { ...session, sessionTools: tools, updatedAt: Date.now() }
+                : session
+            ),
+          },
+        }));
+      },
+
+      setAgentSessionSkills: (agentId, sessionId, skills) => {
+        set((state) => ({
+          agentSessions: {
+            ...state.agentSessions,
+            [agentId]: (state.agentSessions[agentId] || []).map((session) =>
+              session.id === sessionId
+                ? { ...session, sessionSkills: skills, updatedAt: Date.now() }
+                : session
+            ),
+          },
+        }));
+      },
+
+      loadAgentSessionMessages: async (agentId, sessionId) => {
+        const session = (get().agentSessions[agentId] || []).find((s) => s.id === sessionId);
+        if (!session || session.messages.length > 0) return;
+
+        const messages = await messageStorage.load(sessionId);
+        if (messages.length === 0) return;
+
+        set((state) => ({
+          agentSessions: {
+            ...state.agentSessions,
+            [agentId]: (state.agentSessions[agentId] || []).map((s) =>
+              s.id === sessionId ? { ...s, messages } : s
+            ),
+          },
+        }));
+      },
+
+      flushAgentMessages: async (_agentId, sessionId) => {
+        await messageStorage.flush(sessionId);
       },
 
       moveAgentSessionToProject: (agentId, sessionId, projectId) => {

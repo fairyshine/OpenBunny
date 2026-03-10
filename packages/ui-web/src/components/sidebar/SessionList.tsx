@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
+import { useSessionStore } from '@shared/stores/session';
 import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
 import { SessionType } from '@shared/types';
 import type { Project } from '@shared/types';
@@ -9,6 +9,7 @@ import { Button } from '../ui/button';
 import { SessionTypeFilterBar, type SessionTypeFilter } from './SessionTypeFilterBar';
 import { SessionItem } from './SessionItem';
 import { TrashList } from './TrashList';
+import { useWorkspaceSession } from '../../hooks/useWorkspaceSession';
 
 interface SessionListProps {
   onItemClick: () => void;
@@ -24,14 +25,16 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
   const agentSessions = useAgentStore((s) => s.agentSessions);
   const agentProjects = useAgentStore((s) => s.agentProjects);
   const createAgentSession = useAgentStore((s) => s.createAgentSession);
+  const renameAgentSession = useAgentStore((s) => s.renameAgentSession);
+  const deleteAgentSession = useAgentStore((s) => s.deleteAgentSession);
   const deleteAgentProject = useAgentStore((s) => s.deleteAgentProject);
   const moveAgentSessionToProject = useAgentStore((s) => s.moveAgentSessionToProject);
 
   // Fallback to default session store for default agent
   const { deleteSession, createSession, deleteProject, moveSessionToProject, clearTrash } = useSessionStore();
-  const currentSession = useSessionStore(selectCurrentSession);
   const globalSessions = useSessionStore(s => s.sessions);
   const globalProjects = useSessionStore(s => s.projects);
+  const { currentSession } = useWorkspaceSession();
 
   // Use agent sessions/projects if not default agent, otherwise use global
   const isDefaultAgent = currentAgentId === DEFAULT_AGENT_ID;
@@ -76,11 +79,15 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
       if (!currentSession || currentSession.deletedAt) return;
       if (currentSession.sessionType === 'agent') return;
       e.preventDefault();
-      deleteSession(currentSession.id);
+      if (isDefaultAgent) {
+        deleteSession(currentSession.id);
+      } else {
+        deleteAgentSession(currentAgentId, currentSession.id);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showTrash, editingId, currentSession, deleteSession]);
+  }, [showTrash, editingId, currentSession, currentAgentId, deleteAgentSession, deleteSession, isDefaultAgent]);
 
   const toggleProjectsListVisible = () => {
     const next = !projectsListVisible;
@@ -103,7 +110,11 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
 
   const commitRename = () => {
     if (editingId && editingName.trim()) {
-      useSessionStore.getState().renameSession(editingId, editingName);
+      if (isDefaultAgent) {
+        useSessionStore.getState().renameSession(editingId, editingName);
+      } else {
+        renameAgentSession(currentAgentId, editingId, editingName);
+      }
     }
     setEditingId(null);
   };

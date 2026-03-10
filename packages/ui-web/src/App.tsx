@@ -7,8 +7,8 @@ import Header from './components/layout/Header';
 import StatusScreen from './components/layout/StatusScreen';
 import { AgentGraph } from './components/agent-graph/AgentGraphDialog';
 import { AgentConfigPanel } from './components/settings/AgentConfigPanel';
-import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
-import { useAgentStore } from '@shared/stores/agent';
+import { useSessionStore } from '@shared/stores/session';
+import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
 import { useSettingsStore } from '@shared/stores/settings';
 import { useSkillStore } from '@shared/stores/skills';
 import { pythonExecutor } from '@shared/services/python/executor';
@@ -17,6 +17,7 @@ import { logSystem } from '@shared/services/console/logger';
 import { applyTheme, setupSystemThemeListener } from './platform/theme';
 import { initGlobalShortcuts } from './platform/keyboardShortcuts';
 import { addOpenConsolePanelListener } from './components/layout/consolePanelEvents';
+import { useWorkspaceSession } from './hooks/useWorkspaceSession';
 
 // Lazy load non-critical components
 const FileEditor = lazy(() => import('./components/sidebar/FileEditor'));
@@ -24,15 +25,15 @@ const ConsolePanel = lazy(() => import('./components/layout/ConsolePanel'));
 
 function App() {
   const { t } = useTranslation();
-  const currentSession = useSessionStore(selectCurrentSession);
   const openSessionIds = useSessionStore(s => s.openSessionIds);
-  const sessions = useSessionStore(s => s.sessions);
   const createSession = useSessionStore(s => s.createSession);
   const initializePython = useSettingsStore(s => s.initializePython);
   const theme = useSettingsStore(s => s.theme);
   const enableSessionTabs = useSettingsStore(s => s.enableSessionTabs);
   const loadSkills = useSkillStore(s => s.loadSkills);
   const currentAgentId = useAgentStore(s => s.currentAgentId);
+  const createAgentSession = useAgentStore(s => s.createAgentSession);
+  const { currentSession, currentSessionId, isDefaultAgent, sessions } = useWorkspaceSession();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [showConsole, setShowConsole] = useState(false);
@@ -114,7 +115,11 @@ function App() {
   }, [selectedFile]);
 
   const handleStart = () => {
-    createSession(t('header.newSession'));
+    if (currentAgentId === DEFAULT_AGENT_ID) {
+      createSession(t('header.newSession'));
+    } else {
+      createAgentSession(currentAgentId, t('header.newSession'));
+    }
     setSidebarTab('sessions');
     setShowStatusPage(false);
     setShowAgentConfig(false);
@@ -164,8 +169,7 @@ function App() {
     }
 
     if (enableSessionTabs) {
-      // 标签栏模式：手动控制或没有打开的标签时显示状态页
-      return showStatusPage || openSessionIds.length === 0;
+      return showStatusPage || (isDefaultAgent ? openSessionIds.length === 0 : !currentSessionId);
     }
 
     // 传统模式：手动控制或没有当前会话时显示状态页
@@ -309,8 +313,8 @@ function App() {
               </Suspense>
             ) : (
               <>
-                {enableSessionTabs && sidebarTab !== 'agents' && <SessionTabs />}
-                {enableSessionTabs ? (
+                {enableSessionTabs && isDefaultAgent && sidebarTab !== 'agents' && <SessionTabs />}
+                {enableSessionTabs && isDefaultAgent ? (
                   <div className="flex-1 min-h-0 relative overflow-hidden">
                     {openSessionIds.map((sessionId) => (
                       <div

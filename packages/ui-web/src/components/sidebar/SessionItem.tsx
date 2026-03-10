@@ -1,12 +1,14 @@
 import { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
+import { useSessionStore } from '@shared/stores/session';
+import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
 import { useSettingsStore } from '@shared/stores/settings';
 import type { Session } from '@shared/types';
 import { Button } from '../ui/button';
 import { SessionContextMenu } from './SessionContextMenu';
 import { SESSION_TYPE_ICONS } from './SessionTypeFilterBar';
 import { formatDate } from './utils';
+import { useWorkspaceSession } from '../../hooks/useWorkspaceSession';
 
 interface SessionItemProps {
   session: Session;
@@ -39,9 +41,13 @@ export function SessionItem({
 }: SessionItemProps) {
   const { t } = useTranslation();
   const { setCurrentSession, deleteSession } = useSessionStore();
-  const currentSession = useSessionStore(selectCurrentSession);
+  const currentAgentId = useAgentStore((s) => s.currentAgentId);
+  const setAgentCurrentSession = useAgentStore((s) => s.setAgentCurrentSession);
+  const deleteAgentSession = useAgentStore((s) => s.deleteAgentSession);
+  const { currentSession } = useWorkspaceSession();
   const enableSessionTabs = useSettingsStore(s => s.enableSessionTabs);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const isDefaultAgent = currentAgentId === DEFAULT_AGENT_ID;
 
   const isEditing = editingId === session.id;
   const readOnly = session.sessionType === 'agent';
@@ -57,16 +63,32 @@ export function SessionItem({
     if (isEditing) return;
     if (enableSessionTabs) {
       if (currentSession?.id === session.id) {
-        useSessionStore.getState().closeSession(session.id);
+        if (isDefaultAgent) {
+          useSessionStore.getState().closeSession(session.id);
+        } else {
+          setAgentCurrentSession(currentAgentId, null);
+        }
       } else {
-        useSessionStore.getState().openSession(session.id);
+        if (isDefaultAgent) {
+          useSessionStore.getState().openSession(session.id);
+        } else {
+          setAgentCurrentSession(currentAgentId, session.id);
+        }
         onSessionSelect?.();
       }
     } else {
       if (currentSession?.id === session.id) {
-        useSessionStore.setState({ currentSessionId: null });
+        if (isDefaultAgent) {
+          useSessionStore.setState({ currentSessionId: null });
+        } else {
+          setAgentCurrentSession(currentAgentId, null);
+        }
       } else {
-        setCurrentSession(session.id);
+        if (isDefaultAgent) {
+          setCurrentSession(session.id);
+        } else {
+          setAgentCurrentSession(currentAgentId, session.id);
+        }
         onSessionSelect?.();
       }
     }
@@ -131,7 +153,13 @@ export function SessionItem({
           <SessionContextMenu
             session={session}
             onRename={() => onStartRename(session.id, session.name)}
-            onDelete={() => deleteSession(session.id)}
+            onDelete={() => {
+              if (isDefaultAgent) {
+                deleteSession(session.id);
+              } else {
+                deleteAgentSession(currentAgentId, session.id);
+              }
+            }}
           >
             <Button
               onClick={(e) => e.stopPropagation()}

@@ -5,8 +5,10 @@ import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
+import { useWorkspaceSession } from '../../hooks/useWorkspaceSession';
 import { useSkillStore } from '@shared/stores/skills';
-import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
+import { useSessionStore } from '@shared/stores/session';
+import { useAgentStore } from '@shared/stores/agent';
 import { builtinTools } from '@shared/services/ai/tools';
 import { detectPlatform } from '@shared/platform/detect';
 import { ToolIcon, toolDisplayInfo } from '../ToolIcon';
@@ -39,9 +41,11 @@ export default function ChatInput({ onSend, onStop, isLoading, disabled, placeho
 
   const { enabledTools, toggleTool, enabledSkills, toggleSkill: toggleAgentSkill } = useAgentConfig();
   const { skills, loadSkills } = useSkillStore();
-  const session = useSessionStore(selectCurrentSession);
+  const { currentAgentId, currentSession: session, isDefaultAgent } = useWorkspaceSession();
   const setSessionTools = useSessionStore((s) => s.setSessionTools);
   const setSessionSkills = useSessionStore((s) => s.setSessionSkills);
+  const setAgentSessionTools = useAgentStore((s) => s.setAgentSessionTools);
+  const setAgentSessionSkills = useAgentStore((s) => s.setAgentSessionSkills);
   const allToolIds = Object.keys(builtinTools);
 
   // Whether the session has started (has messages) — tools/skills are locked
@@ -119,10 +123,17 @@ export default function ChatInput({ onSend, onStop, isLoading, disabled, placeho
       const next = current.includes(toolId)
         ? current.filter((id) => id !== toolId)
         : [...current, toolId];
-      setSessionTools(session.id, next);
-      // Also snapshot skills if not yet
+      if (isDefaultAgent) {
+        setSessionTools(session.id, next);
+      } else {
+        setAgentSessionTools(currentAgentId, session.id, next);
+      }
       if (session.sessionSkills == null) {
-        setSessionSkills(session.id, [...enabledSkills]);
+        if (isDefaultAgent) {
+          setSessionSkills(session.id, [...enabledSkills]);
+        } else {
+          setAgentSessionSkills(currentAgentId, session.id, [...enabledSkills]);
+        }
       }
     }
   };
@@ -136,10 +147,17 @@ export default function ChatInput({ onSend, onStop, isLoading, disabled, placeho
       const next = current.includes(skillId)
         ? current.filter((id) => id !== skillId)
         : [...current, skillId];
-      setSessionSkills(session.id, next);
-      // Also snapshot tools if not yet
+      if (isDefaultAgent) {
+        setSessionSkills(session.id, next);
+      } else {
+        setAgentSessionSkills(currentAgentId, session.id, next);
+      }
       if (session.sessionTools == null) {
-        setSessionTools(session.id, [...enabledTools]);
+        if (isDefaultAgent) {
+          setSessionTools(session.id, [...enabledTools]);
+        } else {
+          setAgentSessionTools(currentAgentId, session.id, [...enabledTools]);
+        }
       }
     }
   };
@@ -148,13 +166,21 @@ export default function ChatInput({ onSend, onStop, isLoading, disabled, placeho
     if (isSessionStarted) return;
     setScopeMode(mode);
     if (mode === 'session' && session && !hasSessionOverride) {
-      // Snapshot current agent config to session
-      setSessionTools(session.id, [...enabledTools]);
-      setSessionSkills(session.id, [...enabledSkills]);
+      if (isDefaultAgent) {
+        setSessionTools(session.id, [...enabledTools]);
+        setSessionSkills(session.id, [...enabledSkills]);
+      } else {
+        setAgentSessionTools(currentAgentId, session.id, [...enabledTools]);
+        setAgentSessionSkills(currentAgentId, session.id, [...enabledSkills]);
+      }
     } else if (mode === 'global' && session && hasSessionOverride) {
-      // Clear session overrides, revert to global
-      setSessionTools(session.id, undefined);
-      setSessionSkills(session.id, undefined);
+      if (isDefaultAgent) {
+        setSessionTools(session.id, undefined);
+        setSessionSkills(session.id, undefined);
+      } else {
+        setAgentSessionTools(currentAgentId, session.id, undefined);
+        setAgentSessionSkills(currentAgentId, session.id, undefined);
+      }
     }
   };
 
