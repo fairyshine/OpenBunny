@@ -17,10 +17,10 @@ import { GridBreadcrumb } from './GridBreadcrumb';
 import { Toolbar } from './Toolbar';
 import { ContextMenu } from './ContextMenu';
 
-export default function FileTree({ onSelectFile, selectedPath, onItemClick, onBlankClick }: FileTreeProps) {
+export default function FileTree({ onSelectFile, selectedPath, onItemClick, onBlankClick, rootPath }: FileTreeProps) {
   const { t } = useTranslation();
 
-  const ft = useFileTree();
+  const ft = useFileTree(rootPath);
   const dd = useDragDrop(ft.expandedPaths, ft.setExpandedPaths, ft.loadTree);
   const ms = useMultiSelect(ft.tree, ft.loadTree);
 

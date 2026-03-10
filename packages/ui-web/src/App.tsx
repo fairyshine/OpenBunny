@@ -223,15 +223,20 @@ function App() {
     setShowGraph(false);
   };
 
-  const handleAgentSelect = (_agentId: string, reselected: boolean) => {
-    if (reselected && showAgentConfig && sidebarTab === 'agents') {
-      setShowAgentConfig(false);
-      setShowStatusPage(true);
-      setSelectedFile(null);
-      setShowGraph(false);
-      return;
-    }
+  const handleAgentSelect = (_agentId: string, _reselected: boolean) => {
+    // Just switch agent — close config if open, show chat
+    setShowAgentConfig(false);
+    setShowStatusPage(false);
+    setSelectedFile(null);
+    setShowGraph(false);
+  };
 
+  const handleAgentConfig = (agentId: string) => {
+    // Open config panel for the given agent
+    const store = useAgentStore.getState();
+    if (store.currentAgentId !== agentId) {
+      store.setCurrentAgent(agentId);
+    }
     setShowStatusPage(false);
     setShowAgentConfig(true);
     setSelectedFile(null);
@@ -248,6 +253,7 @@ function App() {
     onOpenGraph: handleOpenGraph,
     onTabChange: handleSidebarTabChange,
     onAgentSelect: handleAgentSelect,
+    onAgentConfig: handleAgentConfig,
     onCurrentAgentDeleted: handleCurrentAgentDeleted,
   };
 

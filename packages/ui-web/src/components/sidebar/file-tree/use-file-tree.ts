@@ -4,14 +4,14 @@ import { fileSystem, FileSystemEntry } from '@shared/services/filesystem';
 import { useAgentStore } from '@shared/stores/agent';
 import { TreeNode, ViewMode } from './types';
 
-export function useFileTree() {
+export function useFileTree(rootPathOverride?: string) {
   const { t } = useTranslation();
   const currentAgentId = useAgentStore((s) => s.currentAgentId);
   const agents = useAgentStore((s) => s.agents);
 
   // Get current agent's file root
   const currentAgent = agents.find((a) => a.id === currentAgentId);
-  const rootPath = currentAgent?.filesRoot || '/root';
+  const rootPath = rootPathOverride || currentAgent?.filesRoot || '/root';
 
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);

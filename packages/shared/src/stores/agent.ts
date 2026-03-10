@@ -10,6 +10,16 @@ import type { Agent, LLMConfig, Session, Message, SessionType, AgentRelationship
 import { messageStorage } from '../services/storage/messageStorage';
 
 const DEFAULT_AGENT_ID = 'default';
+const AGENT_FILES_BASE = '/root/.agents';
+const AGENT_GROUP_FILES_BASE = '/root/.agent-groups';
+
+export function getAgentFilesRoot(agentId: string) {
+  return `${AGENT_FILES_BASE}/${agentId}/files`;
+}
+
+export function getAgentGroupFilesRoot(groupId: string) {
+  return `${AGENT_GROUP_FILES_BASE}/${groupId}/shared`;
+}
 
 const DEFAULT_LLM_CONFIG: LLMConfig = {
   provider: 'openai',
@@ -58,7 +68,7 @@ interface AgentState {
   // Agent groups
   agentGroups: AgentGroup[];
   createAgentGroup: (name: string, color?: string) => AgentGroup;
-  updateAgentGroup: (id: string, updates: Partial<Pick<AgentGroup, 'name' | 'color'>>) => void;
+  updateAgentGroup: (id: string, updates: Partial<Pick<AgentGroup, 'name' | 'color' | 'coreAgentId'>>) => void;
   deleteAgentGroup: (id: string) => void;
 
   // Per-agent sessions
@@ -111,7 +121,7 @@ export const useAgentStore = create<AgentState>()(
           llmConfig: { ...DEFAULT_LLM_CONFIG },
           enabledTools: [...DEFAULT_TOOLS],
           enabledSkills: [],
-          filesRoot: `/root/.agents/${id}/files`,
+          filesRoot: getAgentFilesRoot(id),
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
@@ -126,11 +136,22 @@ export const useAgentStore = create<AgentState>()(
       },
 
       updateAgent: (id, updates) => {
-        set((state) => ({
-          agents: state.agents.map((a) =>
+        set((state) => {
+          const newAgents = state.agents.map((a) =>
             a.id === id ? { ...a, ...updates, updatedAt: Date.now() } : a
-          ),
-        }));
+          );
+          // Auto-set as core if joining a group that has no core yet
+          let newGroups = state.agentGroups;
+          if (updates.groupId) {
+            const targetGroup = newGroups.find((g) => g.id === updates.groupId);
+            if (targetGroup && !targetGroup.coreAgentId) {
+              newGroups = newGroups.map((g) =>
+                g.id === updates.groupId ? { ...g, coreAgentId: id } : g
+              );
+            }
+          }
+          return { agents: newAgents, agentGroups: newGroups };
+        });
       },
 
       deleteAgent: (id) => {
@@ -147,12 +168,19 @@ export const useAgentStore = create<AgentState>()(
           const { [id]: _sessions, ...restSessions } = state.agentSessions;
           const { [id]: _currentId, ...restCurrentIds } = state.agentCurrentSessionId;
           const { [id]: _projects, ...restProjects } = state.agentProjects;
+          const remainingAgents = state.agents.filter((a) => a.id !== id);
           return {
-            agents: state.agents.filter((a) => a.id !== id),
+            agents: remainingAgents,
             currentAgentId: state.currentAgentId === id ? DEFAULT_AGENT_ID : state.currentAgentId,
             agentSessions: restSessions,
             agentCurrentSessionId: restCurrentIds,
             agentProjects: restProjects,
+            agentGroups: state.agentGroups.map((g) => {
+              if (g.coreAgentId !== id) return g;
+              // Re-assign core to first remaining member
+              const nextCore = remainingAgents.find((a) => a.groupId === g.id);
+              return { ...g, coreAgentId: nextCore?.id };
+            }),
           };
         });
       },

@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { fileSystem } from '@shared/services/filesystem';
 import { useSessionStore } from '@shared/stores/session';
-import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
+import { useAgentStore, DEFAULT_AGENT_ID, getAgentGroupFilesRoot } from '@shared/stores/agent';
 import { SessionType } from '@shared/types';
 import type { Project } from '@shared/types';
+import { FolderOpen } from '../icons';
+import { Button } from '../ui/button';
 import FileTree from './file-tree';
 import { ProjectDialog } from './ProjectDialog';
 import { CollapsedSidebar } from './CollapsedSidebar';
@@ -14,6 +17,9 @@ import { useResizableSidebar } from './useResizableSidebar';
 import type { SessionTypeFilter } from './SessionTypeFilterBar';
 
 type TabType = 'agents' | 'sessions' | 'files';
+type FileScope = { type: 'agent' } | { type: 'group'; groupId: string };
+
+const FILES_SIDEBAR_WIDTH = 270;
 
 interface SidebarProps {
   selectedFilePath?: string;
@@ -32,19 +38,40 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
   const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('agents');
+  const [fileScope, setFileScope] = useState<FileScope>({ type: 'agent' });
   const [sessionTypeFilter, setSessionTypeFilter] = useState<SessionTypeFilter>('all');
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
-  const { sidebarWidth, sidebarRef, handleResizeStart } = useResizableSidebar();
+  const { sidebarWidth, sidebarRef, handleResizeStart, ensureSidebarWidth, resetSidebarWidth } = useResizableSidebar();
   const { createSession } = useSessionStore();
   const currentAgentId = useAgentStore((s) => s.currentAgentId);
   const createAgentSession = useAgentStore((s) => s.createAgentSession);
   const createAgent = useAgentStore((s) => s.createAgent);
   const setCurrentAgent = useAgentStore((s) => s.setCurrentAgent);
-
   const createAgentGroup = useAgentStore((s) => s.createAgentGroup);
   const agentGroups = useAgentStore((s) => s.agentGroups);
+  const agents = useAgentStore((s) => s.agents);
+
+  const currentAgent = agents.find((agent) => agent.id === currentAgentId) || null;
+  const currentAgentGroup = currentAgent?.groupId
+    ? agentGroups.find((group) => group.id === currentAgent.groupId) || null
+    : null;
+  const currentGroup = fileScope.type === 'group'
+    ? agentGroups.find((group) => group.id === fileScope.groupId) || null
+    : null;
+  const groupRootPath = currentGroup ? getAgentGroupFilesRoot(currentGroup.id) : undefined;
+  const displayGroup = currentAgentGroup || currentGroup;
+
+  useEffect(() => {
+    if (fileScope.type === 'group' && !currentGroup) {
+      setFileScope({ type: 'agent' });
+    }
+  }, [currentGroup, fileScope]);
+
+  useEffect(() => {
+    setFileScope({ type: 'agent' });
+  }, [currentAgentId]);
 
   const getDefaultGroupName = () => {
     const existingNames = new Set(agentGroups.map((group) => group.name.trim()));
@@ -57,6 +84,12 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
+    if (tab === 'files') {
+      setFileScope({ type: 'agent' });
+      ensureSidebarWidth(FILES_SIDEBAR_WIDTH);
+    } else {
+      resetSidebarWidth();
+    }
     onTabChange?.(tab);
   };
 
@@ -79,6 +112,30 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
     handleItemClick();
   };
 
+  const handleCreateGroup = async () => {
+    const name = prompt(t('sidebar.agent.groupName'), getDefaultGroupName());
+    if (!name?.trim()) return;
+
+    const group = createAgentGroup(name.trim());
+    await fileSystem.mkdir(getAgentGroupFilesRoot(group.id));
+  };
+
+  const handleOpenGroupFiles = async (groupId: string) => {
+    const rootPath = getAgentGroupFilesRoot(groupId);
+    await fileSystem.mkdir(rootPath);
+    setActiveTab('files');
+    setFileScope({ type: 'group', groupId });
+    ensureSidebarWidth(FILES_SIDEBAR_WIDTH);
+    onTabChange?.('files');
+  };
+
+  const handleOpenAgentFiles = async () => {
+    setActiveTab('files');
+    setFileScope({ type: 'agent' });
+    ensureSidebarWidth(FILES_SIDEBAR_WIDTH);
+    onTabChange?.('files');
+  };
+
   const handleCollapse = () => {
     setIsCollapsed(true);
     onClose?.();
@@ -88,7 +145,15 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
     return (
       <CollapsedSidebar
         activeTab={activeTab}
-        onExpand={(tab) => { setActiveTab(tab); setIsCollapsed(false); }}
+        onExpand={(tab) => {
+          setActiveTab(tab);
+          if (tab === 'files') {
+            setFileScope({ type: 'agent' });
+            ensureSidebarWidth(FILES_SIDEBAR_WIDTH);
+          }
+          setIsCollapsed(false);
+          onTabChange?.(tab);
+        }}
       />
     );
   }
@@ -114,7 +179,6 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
         ${isOpen ? '!flex' : ''}
         flex-col
       `}>
-        {/* Resize Handle */}
         <div
           className="absolute top-0 right-0 w-1 h-full cursor-col-resize z-10 hover:bg-primary/30 active:bg-primary/50 transition-colors"
           onMouseDown={handleResizeStart}
@@ -131,16 +195,16 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
             setCurrentAgent(agent.id);
             onAgentSelect?.(agent.id, false);
           }}
-          onCreateGroup={() => { const name = prompt(t('sidebar.agent.groupName'), getDefaultGroupName()); if (name?.trim()) createAgentGroup(name.trim()); }}
+          onCreateGroup={handleCreateGroup}
           onOpenGraph={() => onOpenGraph?.()}
         />
 
-        {/* Content Area */}
         <div className="flex-1 overflow-hidden">
           {activeTab === 'agents' ? (
             <AgentList
               onItemClick={handleItemClick}
               onOpenGraph={onOpenGraph}
+              onOpenGroupFiles={handleOpenGroupFiles}
               onAgentSelect={onAgentSelect}
               onCurrentAgentDeleted={onCurrentAgentDeleted}
             />
@@ -153,13 +217,51 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
               onSessionTypeFilterChange={setSessionTypeFilter}
             />
           ) : (
-            <div className="h-full">
-              <FileTree
-                selectedPath={selectedFilePath}
-                onSelectFile={onSelectFile}
-                onItemClick={handleItemClick}
-                onBlankClick={onFileBlankClick}
-              />
+            <div className="h-full flex flex-col">
+              {displayGroup && (
+                <div className="px-3 py-2 border-b border-border bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                        {fileScope.type === 'group' ? t('sidebar.agent.sharedFiles') : t('sidebar.agent.viewAgentFiles')}
+                      </div>
+                      <div className="text-sm font-medium truncate">
+                        {fileScope.type === 'group' ? displayGroup.name : currentAgent?.name}
+                      </div>
+                    </div>
+                    <FolderOpen className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      onClick={handleOpenAgentFiles}
+                      variant={fileScope.type === 'agent' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="flex-1 min-w-0"
+                      title={t('sidebar.agent.viewAgentFiles')}
+                    >
+                      <span className="truncate">{t('sidebar.agent.viewAgentFiles')}</span>
+                    </Button>
+                    <Button
+                      onClick={() => handleOpenGroupFiles(displayGroup.id)}
+                      variant={fileScope.type === 'group' && fileScope.groupId === displayGroup.id ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="flex-1 min-w-0"
+                      title={t('sidebar.agent.sharedFiles')}
+                    >
+                      <span className="truncate">{t('sidebar.agent.sharedFiles')}</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <div className="flex-1 min-h-0">
+                <FileTree
+                  rootPath={groupRootPath}
+                  selectedPath={selectedFilePath}
+                  onSelectFile={onSelectFile}
+                  onItemClick={handleItemClick}
+                  onBlankClick={onFileBlankClick}
+                />
+              </div>
             </div>
           )}
         </div>

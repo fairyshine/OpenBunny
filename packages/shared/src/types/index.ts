@@ -95,6 +95,7 @@ export interface AgentGroup {
   id: string;
   name: string;
   color?: string;
+  coreAgentId?: string;
   createdAt: number;
 }
 

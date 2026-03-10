@@ -16,10 +16,11 @@ export interface AgentNodeData {
   willDisconnect?: boolean;
   isStatic?: boolean;
   isStreaming?: boolean;
+  isCore?: boolean;
 }
 
 export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => {
-  const { agent, isEditMode, isPendingSource, willConnect, willDisconnect, isStatic, isStreaming } = data;
+  const { agent, isEditMode, isPendingSource, willConnect, willDisconnect, isStatic, isStreaming, isCore } = data;
   const isDefault = agent.isDefault;
 
   const accentColor = isDefault ? 'hsl(var(--primary))' : agent.color;
@@ -112,18 +113,30 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
           style={{ background: accentColor }}
         />
 
-        <div
-          className="relative inline-flex items-center justify-center w-10 h-10 shrink-0 overflow-hidden rounded-full text-xl leading-none transition-colors duration-200"
-          style={{
-            background: isDefault
-              ? 'hsl(var(--muted))'
-              : `linear-gradient(135deg, ${agent.color}18, ${agent.color}0A)`,
-            border: `1.5px solid ${avatarBorder === 'transparent' ? 'hsl(var(--border) / 0.6)' : avatarBorder}`,
-          }}
-        >
-          {isImageAvatar(agent.avatar)
-            ? <img src={agent.avatar} alt="avatar" className="w-full h-full object-cover rounded-full" draggable={false} />
-            : <span className="select-none leading-none">{agent.avatar}</span>}
+        <div className="relative">
+          <div
+            className="relative inline-flex items-center justify-center w-10 h-10 shrink-0 overflow-hidden rounded-full text-xl leading-none transition-colors duration-200"
+            style={{
+              background: isDefault
+                ? 'hsl(var(--muted))'
+                : `linear-gradient(135deg, ${agent.color}18, ${agent.color}0A)`,
+              border: `1.5px solid ${avatarBorder === 'transparent' ? 'hsl(var(--border) / 0.6)' : avatarBorder}`,
+            }}
+          >
+            {isImageAvatar(agent.avatar)
+              ? <img src={agent.avatar} alt="avatar" className="w-full h-full object-cover rounded-full" draggable={false} />
+              : <span className="select-none leading-none">{agent.avatar}</span>}
+          </div>
+          {isCore && (
+            <div
+              className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
+              style={{ background: 'hsl(var(--card))', border: '1.5px solid hsl(var(--border))' }}
+            >
+              <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="hsl(var(--foreground))" stroke="hsl(var(--foreground))" strokeWidth="1.5">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+            </div>
+          )}
         </div>
 
         <div

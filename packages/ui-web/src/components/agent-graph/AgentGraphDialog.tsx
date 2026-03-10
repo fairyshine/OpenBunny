@@ -268,6 +268,7 @@ function buildOverviewNodes(agents: Agent[], agentGroups: AgentGroup[], streamin
           agent,
           isStatic: true,
           isStreaming: streamingAgentIds?.has(agent.id),
+          isCore: entry.group.coreAgentId === agent.id,
         } satisfies AgentNodeData,
         className: 'bg-transparent border-0 shadow-none',
         style: { zIndex: 1, background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 },
@@ -405,17 +406,20 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
     (positions: Map<string, { x: number; y: number }>) => {
       positions.forEach((position, id) => nodePositionsRef.current.set(id, position));
       setNodes(
-        agents.map((agent) => ({
-          id: agent.id,
-          type: 'agentNode',
-          position: positions.get(agent.id) ?? nodePositionsRef.current.get(agent.id) ?? { x: 0, y: 0 },
-          data: { agent, isStreaming: streamingAgentIds.has(agent.id) } satisfies AgentNodeData,
-          className: 'bg-transparent border-0 shadow-none',
-          style: { background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 },
-        })),
+        agents.map((agent) => {
+          const group = agent.groupId ? agentGroups.find((g) => g.id === agent.groupId) : undefined;
+          return {
+            id: agent.id,
+            type: 'agentNode',
+            position: positions.get(agent.id) ?? nodePositionsRef.current.get(agent.id) ?? { x: 0, y: 0 },
+            data: { agent, isStreaming: streamingAgentIds.has(agent.id), isCore: group?.coreAgentId === agent.id } satisfies AgentNodeData,
+            className: 'bg-transparent border-0 shadow-none',
+            style: { background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 },
+          };
+        }),
       );
     },
-    [agents, setNodes, streamingAgentIds],
+    [agents, agentGroups, setNodes, streamingAgentIds],
   );
 
   useEffect(() => {
@@ -489,13 +493,15 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
         const agent = agentMap.get(node.id);
         if (!agent) return node;
         const newIsStreaming = streamingAgentIds.has(agent.id);
-        if (agent !== node.data?.agent || newIsStreaming !== node.data?.isStreaming) {
-          return { ...node, data: { ...node.data, agent, isStreaming: newIsStreaming } };
+        const group = agent.groupId ? agentGroups.find((g) => g.id === agent.groupId) : undefined;
+        const newIsCore = group?.coreAgentId === agent.id;
+        if (agent !== node.data?.agent || newIsStreaming !== node.data?.isStreaming || newIsCore !== node.data?.isCore) {
+          return { ...node, data: { ...node.data, agent, isStreaming: newIsStreaming, isCore: newIsCore } };
         }
         return node;
       }),
     );
-  }, [agents, isOverviewMode, setNodes, streamingAgentIds]);
+  }, [agents, agentGroups, isOverviewMode, setNodes, streamingAgentIds]);
 
   const hasRelationship = useCallback(
     (sourceAgentId: string, targetAgentId: string) => {

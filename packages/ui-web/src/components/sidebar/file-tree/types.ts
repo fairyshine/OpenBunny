@@ -5,6 +5,7 @@ export interface FileTreeProps {
   selectedPath?: string;
   onItemClick?: () => void;
   onBlankClick?: () => void;
+  rootPath?: string;
 }
 
 export interface TreeNode extends FileSystemEntry {
