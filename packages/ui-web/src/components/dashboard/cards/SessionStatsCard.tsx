@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSessionStore, useStatsStore } from '@openbunny/shared';
+import { DEFAULT_AGENT_ID, useAgentStore, useSessionStore, useStatsStore } from '@openbunny/shared';
+import type { Session } from '@openbunny/shared';
 import type { AggregatedStats } from '@openbunny/shared';
 import {
   Dialog,
@@ -74,16 +75,46 @@ function BarRow({ label, value, max, suffix }: { label: string; value: number; m
 
 const today = () => new Date().toLocaleDateString('sv-SE');
 
+function computeSessionSummary(sessions: Session[]) {
+  const activeSessions = sessions.filter((session) => !session.deletedAt);
+
+  return {
+    sessionCount: activeSessions.length,
+    totalMessages: activeSessions.reduce((sum, session) => sum + session.messages.length, 0),
+    totalTokens: activeSessions.reduce(
+      (sum, session) => sum + session.messages.reduce((messageSum, message) => messageSum + (message.metadata?.tokens ?? 0), 0),
+      0,
+    ),
+  };
+}
+
 export default function SessionStatsCard() {
   const { t } = useTranslation();
-  const { sessionCount, totalMessages, totalTokens } = useSessionStore((s) => s.sessionStats);
+  const currentAgentId = useAgentStore((s) => s.currentAgentId);
+  const agentSessions = useAgentStore((s) => s.agentSessions);
+  const globalSessions = useSessionStore((s) => s.sessions);
   const { stats, fetchStats } = useStatsStore();
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState<TimeRange>('7d');
   const [hovered, setHovered] = useState(false);
 
+  const currentSessions = useMemo(
+    () => (currentAgentId === DEFAULT_AGENT_ID ? globalSessions : (agentSessions[currentAgentId] || [])),
+    [agentSessions, currentAgentId, globalSessions],
+  );
+
+  const currentSessionIds = useMemo(
+    () => currentSessions.map((session) => session.id),
+    [currentSessions],
+  );
+
+  const { sessionCount, totalMessages, totalTokens } = useMemo(
+    () => computeSessionSummary(currentSessions),
+    [currentSessions],
+  );
+
   // Always fetch all-time stats for the card (today data comes from byDate)
-  useEffect(() => { fetchStats(); }, [fetchStats]);
+  useEffect(() => { fetchStats(undefined, undefined, currentSessionIds); }, [currentSessionIds, fetchStats]);
 
   const todayKey = useMemo(today, []);
   const todayData = stats?.byDate[todayKey];
@@ -96,8 +127,8 @@ export default function SessionStatsCard() {
     const since = range === 'all' ? undefined
       : range === '30d' ? Date.now() - 30 * 86400_000
       : Date.now() - 7 * 86400_000;
-    fetchStats(since);
-  }, [open, range, fetchStats]);
+    fetchStats(since, undefined, currentSessionIds);
+  }, [currentSessionIds, open, range, fetchStats]);
 
   const days = useMemo(() => lastNDays(range === '30d' ? 30 : 7), [range]);
 

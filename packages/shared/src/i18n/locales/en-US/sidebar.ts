@@ -2,6 +2,7 @@ export default {
   'sidebar.agents': 'Agents',
   'sidebar.sessions': 'Sessions',
   'sidebar.files': 'Files',
+  'sidebar.stats': 'Stats',
   'sidebar.noSessions': 'No sessions',
   'sidebar.expand': 'Expand',
   'sidebar.collapse': 'Collapse',

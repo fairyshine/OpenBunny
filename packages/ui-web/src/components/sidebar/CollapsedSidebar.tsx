@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
+import { BarChart3 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ChevronRight, MessageSquare, FolderTree, Rabbit } from '../icons';
 
-type TabType = 'agents' | 'sessions' | 'files';
+type TabType = 'agents' | 'sessions' | 'files' | 'stats';
 
 interface CollapsedSidebarProps {
   activeTab: TabType;
@@ -51,6 +52,15 @@ export function CollapsedSidebar({ activeTab, onExpand }: CollapsedSidebarProps)
           className="h-9 w-9"
         >
           <FolderTree className="w-4 h-4" />
+        </Button>
+        <Button
+          onClick={() => onExpand('stats')}
+          variant={activeTab === 'stats' ? 'default' : 'ghost'}
+          size="icon"
+          title={t('sidebar.stats')}
+          className="h-9 w-9"
+        >
+          <BarChart3 className="w-4 h-4" />
         </Button>
       </div>
     </div>

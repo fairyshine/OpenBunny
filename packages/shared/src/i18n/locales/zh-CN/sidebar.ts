@@ -2,6 +2,7 @@ export default {
   'sidebar.agents': '智能体',
   'sidebar.sessions': '会话',
   'sidebar.files': '文件',
+  'sidebar.stats': '统计',
   'sidebar.noSessions': '暂无会话',
   'sidebar.expand': '展开',
   'sidebar.collapse': '收起',

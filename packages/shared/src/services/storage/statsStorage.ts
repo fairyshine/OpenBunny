@@ -41,11 +41,12 @@ class StatsStorage {
     }
   }
 
-  /** Aggregate all stats, optionally filtered by time range. */
-  async aggregate(since?: number, until?: number): Promise<AggregatedStats> {
+  /** Aggregate all stats, optionally filtered by time range and session ids. */
+  async aggregate(since?: number, until?: number, sessionIds?: string[]): Promise<AggregatedStats> {
     try {
       const records = await this.backend.loadAll(since, until);
-      return computeAggregation(records);
+      const filteredRecords = filterRecordsBySession(records, sessionIds);
+      return computeAggregation(filteredRecords);
     } catch (err) {
       console.error('[StatsStorage] aggregate failed:', err);
       return EMPTY_STATS;
@@ -73,6 +74,14 @@ class StatsStorage {
       console.error('[StatsStorage] clear failed:', err);
     }
   }
+}
+
+function filterRecordsBySession(records: StatsRecord[], sessionIds?: string[]): StatsRecord[] {
+  if (sessionIds === undefined) return records;
+  if (sessionIds.length === 0) return [];
+
+  const sessionIdSet = new Set(sessionIds);
+  return records.filter((record) => sessionIdSet.has(record.sessionId));
 }
 
 const EMPTY_STATS: AggregatedStats = {

@@ -15,6 +15,7 @@ import skills from './skills';
 import dashboard from './dashboard';
 import welcome from './welcome';
 import agentGraph from './agentGraph';
+import stats from './stats';
 
 const enUS = {
   ...common,
@@ -34,6 +35,7 @@ const enUS = {
   ...dashboard,
   ...welcome,
   ...agentGraph,
+  ...stats,
 } as const;
 
 export default enUS;

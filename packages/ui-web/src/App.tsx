@@ -4,6 +4,7 @@ import ChatContainer from './components/chat/ChatContainer';
 import SessionTabs from './components/chat/SessionTabs';
 import Sidebar from './components/sidebar/Sidebar';
 import Header from './components/layout/Header';
+import GlobalStatsPage from './components/layout/GlobalStatsPage';
 import StatusScreen from './components/layout/StatusScreen';
 import { AgentGraph } from './components/agent-graph/AgentGraphDialog';
 import { AgentConfigPanel } from './components/settings/AgentConfigPanel';
@@ -43,7 +44,7 @@ function App() {
   const [showAgentConfig, setShowAgentConfig] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
   const [graphGroupId, setGraphGroupId] = useState<string | undefined>(undefined);
-  const [sidebarTab, setSidebarTab] = useState<'agents' | 'sessions' | 'files'>('agents');
+  const [sidebarTab, setSidebarTab] = useState<'agents' | 'sessions' | 'files' | 'stats'>('agents');
 
   // Apply theme on mount
   useEffect(() => {
@@ -126,6 +127,7 @@ function App() {
   };
 
   const handleLogoClick = () => {
+    setSidebarTab('agents');
     setShowStatusPage(true);
     setShowAgentConfig(false);
     setSelectedFile(null);
@@ -164,6 +166,10 @@ function App() {
 
   // 判断是否应该显示状态页
   const shouldShowStatusScreen = () => {
+    if (sidebarTab === 'stats') {
+      return false;
+    }
+
     if (sidebarTab === 'agents' && !showAgentConfig && !showGraph && !selectedFile) {
       return true;
     }
@@ -200,7 +206,7 @@ function App() {
     setShowStatusPage(true);
   };
 
-  const handleSidebarTabChange = (tab: 'agents' | 'sessions' | 'files') => {
+  const handleSidebarTabChange = (tab: 'agents' | 'sessions' | 'files' | 'stats') => {
     setSidebarTab(tab);
 
     if (tab === 'agents') {
@@ -245,6 +251,7 @@ function App() {
 
   // Sidebar props shared across both render paths
   const sidebarProps = {
+    activeTab: sidebarTab,
     onSelectFile: handleSelectFile,
     isOpen: isSidebarOpen,
     onClose: () => setIsSidebarOpen(false),
@@ -317,6 +324,8 @@ function App() {
                   onSave={handleSaveFile}
                 />
               </Suspense>
+            ) : sidebarTab === 'stats' ? (
+              <GlobalStatsPage />
             ) : (
               <>
                 {enableSessionTabs && isDefaultAgent && sidebarTab !== 'agents' && <SessionTabs />}

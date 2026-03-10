@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Eye, Activity, TrendingUp, Monitor, ScrollText } from 'lucide-react';
 import { fileSystem } from '@shared/services/filesystem';
 import { useSessionStore } from '@shared/stores/session';
 import { useAgentStore, DEFAULT_AGENT_ID, getAgentGroupFilesRoot } from '@shared/stores/agent';
@@ -16,7 +17,7 @@ import { AgentList } from './AgentList';
 import { useResizableSidebar } from './useResizableSidebar';
 import type { SessionTypeFilter } from './SessionTypeFilterBar';
 
-type TabType = 'agents' | 'sessions' | 'files';
+type TabType = 'agents' | 'sessions' | 'files' | 'stats';
 type FileScope = { type: 'agent' } | { type: 'group'; groupId: string };
 
 const FILES_SIDEBAR_WIDTH = 270;
@@ -29,12 +30,14 @@ interface SidebarProps {
   onSessionSelect?: () => void;
   onFileBlankClick?: () => void;
   onOpenGraph?: (groupId?: string) => void;
-  onTabChange?: (tab: 'agents' | 'sessions' | 'files') => void;
+  onTabChange?: (tab: TabType) => void;
   onAgentSelect?: (agentId: string, reselected: boolean) => void;
+  onAgentConfig?: (agentId: string) => void;
   onCurrentAgentDeleted?: () => void;
+  activeTab?: TabType;
 }
 
-export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClose, onSessionSelect, onFileBlankClick, onOpenGraph, onTabChange, onAgentSelect, onCurrentAgentDeleted }: SidebarProps) {
+export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClose, onSessionSelect, onFileBlankClick, onOpenGraph, onTabChange, onAgentSelect, onAgentConfig, onCurrentAgentDeleted, activeTab: controlledActiveTab }: SidebarProps) {
   const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('agents');
@@ -63,6 +66,14 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
   const groupRootPath = currentGroup ? getAgentGroupFilesRoot(currentGroup.id) : undefined;
   const displayGroup = currentAgentGroup || currentGroup;
 
+  const statsSections = [
+    { id: 'global-stats-overview', label: t('stats.nav.overview'), hint: t('stats.totalAgents'), icon: Eye },
+    { id: 'global-stats-monitor', label: t('stats.nav.monitor'), hint: t('stats.liveMonitor'), icon: Activity },
+    { id: 'global-stats-trend', label: t('stats.nav.trend'), hint: t('stats.usageTrend'), icon: TrendingUp },
+    { id: 'global-stats-runtime', label: t('stats.nav.runtime'), hint: t('stats.runtime'), icon: Monitor },
+    { id: 'global-stats-logs', label: t('stats.nav.logs'), hint: t('stats.logCategories'), icon: ScrollText },
+  ];
+
   useEffect(() => {
     if (fileScope.type === 'group' && !currentGroup) {
       setFileScope({ type: 'agent' });
@@ -72,6 +83,12 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
   useEffect(() => {
     setFileScope({ type: 'agent' });
   }, [currentAgentId]);
+
+  useEffect(() => {
+    if (controlledActiveTab) {
+      setActiveTab(controlledActiveTab);
+    }
+  }, [controlledActiveTab]);
 
   const getDefaultGroupName = () => {
     const existingNames = new Set(agentGroups.map((group) => group.name.trim()));
@@ -141,6 +158,11 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
     onClose?.();
   };
 
+  const handleScrollToStatsSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    handleItemClick();
+  };
+
   if (isCollapsed) {
     return (
       <CollapsedSidebar
@@ -193,7 +215,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
           onCreateAgent={() => {
             const agent = createAgent({ name: t('sidebar.agent.defaultName'), avatar: '🤖', description: '', systemPrompt: '', color: '#3b82f6' });
             setCurrentAgent(agent.id);
-            onAgentSelect?.(agent.id, false);
+            onAgentConfig?.(agent.id);
           }}
           onCreateGroup={handleCreateGroup}
           onOpenGraph={() => onOpenGraph?.()}
@@ -206,6 +228,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
               onOpenGraph={onOpenGraph}
               onOpenGroupFiles={handleOpenGroupFiles}
               onAgentSelect={onAgentSelect}
+              onAgentConfig={onAgentConfig}
               onCurrentAgentDeleted={onCurrentAgentDeleted}
             />
           ) : activeTab === 'sessions' ? (
@@ -216,7 +239,7 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
               sessionTypeFilter={sessionTypeFilter}
               onSessionTypeFilterChange={setSessionTypeFilter}
             />
-          ) : (
+          ) : activeTab === 'files' ? (
             <div className="h-full flex flex-col">
               {displayGroup && (
                 <div className="px-3 py-2 border-b border-border bg-muted/20 space-y-2">
@@ -261,6 +284,29 @@ export default function Sidebar({ selectedFilePath, onSelectFile, isOpen, onClos
                   onItemClick={handleItemClick}
                   onBlankClick={onFileBlankClick}
                 />
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-2 py-1">
+                {statsSections.map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => handleScrollToStatsSection(section.id)}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                    >
+                      <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{section.label}</div>
+                        <div className="text-xs text-muted-foreground truncate">{section.hint}</div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

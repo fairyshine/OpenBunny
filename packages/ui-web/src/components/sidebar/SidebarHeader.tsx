@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { BarChart3, FolderPlus } from 'lucide-react';
 import { ChevronDown, ChevronLeft, MessageSquare, Plus, FolderOpen, FolderTree, Rabbit, Network } from '../icons';
 import { Button } from '../ui/button';
 import type { FC } from 'react';
-import { FolderPlus } from 'lucide-react';
 
-type TabType = 'agents' | 'sessions' | 'files';
+type TabType = 'agents' | 'sessions' | 'files' | 'stats';
 
 interface SidebarHeaderProps {
   activeTab: TabType;
@@ -22,6 +22,7 @@ const TAB_CONFIG: { key: TabType; icon: FC<{ className?: string }>; labelKey: st
   { key: 'agents', icon: Rabbit, labelKey: 'sidebar.agents' },
   { key: 'sessions', icon: MessageSquare, labelKey: 'sidebar.sessions' },
   { key: 'files', icon: FolderTree, labelKey: 'sidebar.files' },
+  { key: 'stats', icon: BarChart3, labelKey: 'sidebar.stats' },
 ];
 
 export function SidebarHeader({ activeTab, onTabChange, onCollapse, onCreateProject, onCreateSession, onCreateAgent, onCreateGroup, onOpenGraph }: SidebarHeaderProps) {

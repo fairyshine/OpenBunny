@@ -6,7 +6,7 @@ import { Button } from '../ui/button';
 import { MoreHorizontal, Edit2, Trash2, Network, FolderOpen } from '../icons';
 import { useCallback, useMemo, useState } from 'react';
 import type { Agent } from '@shared/types';
-import { ChevronRight, Pencil, ArrowRightLeft, Star } from 'lucide-react';
+import { ChevronRight, Pencil, ArrowRightLeft, Star, Settings } from 'lucide-react';
 import {
   DndContext,
   DragOverlay,
@@ -27,6 +27,7 @@ interface AgentListProps {
   onOpenGraph?: (groupId?: string) => void;
   onOpenGroupFiles?: (groupId: string) => void;
   onAgentSelect?: (agentId: string, reselected: boolean) => void;
+  onAgentConfig?: (agentId: string) => void;
   onCurrentAgentDeleted?: () => void;
 }
 
@@ -61,7 +62,7 @@ function DroppableUngroupedZone({ children }: { children: (isOver: boolean) => R
   return <div ref={setNodeRef}>{children(isOver)}</div>;
 }
 
-export function AgentList({ onItemClick, onOpenGraph, onOpenGroupFiles, onAgentSelect, onCurrentAgentDeleted }: AgentListProps) {
+export function AgentList({ onItemClick, onOpenGraph, onOpenGroupFiles, onAgentSelect, onAgentConfig, onCurrentAgentDeleted }: AgentListProps) {
   const { t } = useTranslation();
   const agents = useAgentStore((s) => s.agents);
   const currentAgentId = useAgentStore((s) => s.currentAgentId);
@@ -134,7 +135,7 @@ export function AgentList({ onItemClick, onOpenGraph, onOpenGroupFiles, onAgentS
 
   const handleEditAgent = (agent: Agent) => {
     setContextMenuAgentId(null);
-    setCurrentAgent(agent.id);
+    onAgentConfig?.(agent.id);
   };
 
   const handleDeleteGroup = (groupId: string) => {
@@ -279,6 +280,16 @@ export function AgentList({ onItemClick, onOpenGraph, onOpenGroupFiles, onAgentS
               </span>
             )}
           </div>
+          {!agent.isDefault && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0 opacity-0 group-hover/agent:opacity-100"
+              onClick={(e) => { e.stopPropagation(); onAgentConfig?.(agent.id); }}
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
