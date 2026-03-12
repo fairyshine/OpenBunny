@@ -26,21 +26,23 @@ Status: In progress
 
 - [x] Consolidate duplicated `useAgentConfig` hook into `shared`
 - [x] Consolidate repeated React app bootstrap between `web` and `desktop`
-- [ ] Audit other near-identical hooks/helpers across `ui-web` and `mobile`
+- [x] Audit other near-identical hooks/helpers across `ui-web` and `mobile`
+- [x] Consolidate shared sound effect identifiers across `ui-web` and `mobile`
+- [x] Consolidate theme preference resolution helper across `ui-web` and `mobile`
 
 #### 1.2 Document current boundaries
 
 - [x] Write this roadmap
-- [ ] Add a short architecture overview describing current layers and intended dependencies
-- [ ] Mark temporary exceptions where `shared` still touches platform globals or stores
+- [x] Add a short architecture overview describing current layers and intended dependencies
+- [x] Mark temporary exceptions where `shared` still touches platform globals or stores
 
 ### Phase 2 — Introduce runtime context
 
-Status: Planned
+Status: In progress
 
 #### 2.1 Define explicit runtime dependencies for AI flows
 
-- [ ] Add a `RuntimeContext` / `AgentRuntimeContext` type in `shared`
+- [x] Add a `RuntimeContext` / `AgentRuntimeContext` type in `shared`
 - [ ] Pass agent, skill, MCP, timeout, and proxy dependencies into AI services
 - [ ] Remove direct store reads from `services/ai/agent.ts`
 - [ ] Remove direct store reads from `services/ai/mind.ts`
@@ -108,3 +110,9 @@ This change set starts with the safest item in Phase 1:
 
 - Consolidate duplicated `useAgentConfig` into `packages/shared/src/hooks/useAgentConfig.ts`
 - Consolidate duplicated React bootstrap into `packages/ui-web/src/bootstrap.tsx`
+- Introduce `services/ai/runtimeContext.ts` and thread optional runtime context through `agent`, `mind`, `skills`, and prompt assembly.
+
+## Audit Notes
+
+- Remaining same-name files such as `MessageList` and `ChatInput` are currently platform-specific and should not be force-merged.
+- Shared extraction should focus on contracts, IDs, selectors, and runtime helpers rather than forcing identical component structures.

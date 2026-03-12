@@ -12,6 +12,7 @@
 import type { SoundEffect, ISoundBackend } from './types';
 import { useSettingsStore } from '../../stores/settings';
 
+export { SOUND_EFFECTS } from './types';
 export type { SoundEffect, ISoundBackend } from './types';
 
 const noopBackend: ISoundBackend = {

@@ -35,6 +35,7 @@ openbunny/
 
 ## 📚 Documentation
 
+- [Architecture Overview](./docs/ARCHITECTURE.md)
 - [CLI Guide](./packages/cli/README.md)
 - [Skill System Design](./docs/SKILLS_DESIGN.md)
 - [Platform Abstraction Layer](./packages/shared/src/platform/)

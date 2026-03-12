@@ -6,8 +6,7 @@
 import { Audio } from 'expo-av';
 import type { ISoundBackend, SoundEffect } from '@shared/services/sound';
 
-// Expo requires static require() for bundled assets
-const SOUND_ASSETS: Record<SoundEffect, any> = {
+const SOUND_ASSETS = {
   'message-send': require('../../assets/sounds/message-send.mp3'),
   'message-receive': require('../../assets/sounds/message-receive.mp3'),
   'tool-start': require('../../assets/sounds/tool-start.mp3'),
@@ -15,7 +14,7 @@ const SOUND_ASSETS: Record<SoundEffect, any> = {
   'error': require('../../assets/sounds/error.mp3'),
   'notification': require('../../assets/sounds/notification.mp3'),
   'click': require('../../assets/sounds/click.mp3'),
-};
+} satisfies Record<SoundEffect, number>;
 
 export class MobileSoundBackend implements ISoundBackend {
   private cache = new Map<SoundEffect, Audio.Sound>();
@@ -25,18 +24,19 @@ export class MobileSoundBackend implements ISoundBackend {
     if (!asset) return;
 
     try {
-      let audioSound = this.cache.get(sound);
+      const audioSound = this.cache.get(sound);
       if (audioSound) {
         await audioSound.setVolumeAsync(volume);
         await audioSound.setPositionAsync(0);
         await audioSound.playAsync();
-      } else {
-        const { sound: created } = await Audio.Sound.createAsync(asset, {
-          shouldPlay: true,
-          volume,
-        });
-        this.cache.set(sound, created);
+        return;
       }
+
+      const { sound: created } = await Audio.Sound.createAsync(asset, {
+        shouldPlay: true,
+        volume,
+      });
+      this.cache.set(sound, created);
     } catch {
       // Silently ignore playback errors
     }

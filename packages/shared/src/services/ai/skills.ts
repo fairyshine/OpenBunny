@@ -13,7 +13,8 @@
 
 import { tool, type Tool } from 'ai';
 import { z } from 'zod';
-import { useSkillStore } from '../../stores/skills';
+import type { SkillRuntimeContext } from './runtimeContext';
+import { resolveSkillRuntimeContext } from './runtimeContext';
 import type { LoadedSkill } from '../skills';
 import { listSkillResources, readSkillResource } from '../skills';
 
@@ -23,8 +24,8 @@ import { listSkillResources, readSkillResource } from '../skills';
  * Returns empty string if no skills are enabled.
  * @param sessionSkillIds - Optional session-level skill overrides. If provided, uses these instead of global enabledSkillIds.
  */
-export function generateSkillsSystemPrompt(sessionSkillIds?: string[]): string {
-  const { skills, enabledSkillIds } = useSkillStore.getState();
+export function generateSkillsSystemPrompt(sessionSkillIds?: string[], runtimeContext?: Partial<SkillRuntimeContext>): string {
+  const { skills, enabledSkillIds } = resolveSkillRuntimeContext(runtimeContext);
   const activeIds = sessionSkillIds ?? enabledSkillIds;
   const enabled = skills.filter(s => activeIds.includes(s.id));
 
@@ -68,8 +69,8 @@ Do not guess or fabricate skill instructions — always activate first.
  * Returns empty object if no skills are enabled (don't register a useless tool).
  * @param sessionSkillIds - Optional session-level skill overrides. If provided, uses these instead of global enabledSkillIds.
  */
-export function getActivateSkillTool(sessionSkillIds?: string[]): Record<string, Tool> {
-  const { skills, enabledSkillIds, markActivated } = useSkillStore.getState();
+export function getActivateSkillTool(sessionSkillIds?: string[], runtimeContext?: Partial<SkillRuntimeContext>): Record<string, Tool> {
+  const { skills, enabledSkillIds, markSkillActivated } = resolveSkillRuntimeContext(runtimeContext);
   const activeIds = sessionSkillIds ?? enabledSkillIds;
   const enabled = skills.filter(s => activeIds.includes(s.id));
 
@@ -132,7 +133,7 @@ ${result.content}
       }
 
       // --- Tier 2: Activate skill — load instructions + list resources ---
-      markActivated(name);
+      markSkillActivated?.(name);
 
       let resourcesXml = '';
       if (!isBuiltin) {
@@ -170,13 +171,13 @@ ${skillDir}${resourcesXml}
 
 export type { LoadedSkill as SkillInfo };
 
-export function getBuiltinSkills(): LoadedSkill[] {
-  return useSkillStore.getState().skills;
+export function getBuiltinSkills(runtimeContext?: Partial<SkillRuntimeContext>): LoadedSkill[] {
+  return resolveSkillRuntimeContext(runtimeContext).skills;
 }
 
 /**
  * @deprecated Use getActivateSkillTool() instead.
  */
-export function getSkillTools(): Record<string, Tool> {
-  return getActivateSkillTool();
+export function getSkillTools(runtimeContext?: Partial<SkillRuntimeContext>): Record<string, Tool> {
+  return getActivateSkillTool(undefined, runtimeContext);
 }

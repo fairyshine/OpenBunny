@@ -52,6 +52,8 @@ export type { AgentCallbacks } from './services/ai/agent';
 export { createMessage, createUserMessage, createAssistantMessage, createSystemMessage, createThoughtMessage, createResponseMessage, createToolCallMessage, createToolResultMessage, tagMessageSpeaker, cloneMessage, normalizeToolResultOutput } from './services/ai/messageFactory';
 export { providerRegistry, getProviderMeta } from './services/ai/providers';
 export type { ProviderMeta } from './services/ai/providers';
+export { resolveAgentRuntimeContext, resolveMCPRuntimeContext, resolveSkillRuntimeContext } from './services/ai/runtimeContext';
+export type { AgentRuntimeContext, MCPRuntimeContext, SkillRuntimeContext } from './services/ai/runtimeContext';
 
 // Services - LLM streaming (simplified with AI SDK)
 export { callLLM } from './services/llm/streaming';

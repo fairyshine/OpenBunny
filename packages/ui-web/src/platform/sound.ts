@@ -4,17 +4,15 @@
  */
 
 import { Howl } from 'howler';
-import type { ISoundBackend, SoundEffect } from '@shared/services/sound';
+import { SOUND_EFFECTS, type ISoundBackend, type SoundEffect } from '@shared/services/sound';
 
-const SOUND_PATHS: Record<SoundEffect, string> = {
-  'message-send': '/sounds/message-send.mp3',
-  'message-receive': '/sounds/message-receive.mp3',
-  'tool-start': '/sounds/tool-start.mp3',
-  'tool-complete': '/sounds/tool-complete.mp3',
-  'error': '/sounds/error.mp3',
-  'notification': '/sounds/notification.mp3',
-  'click': '/sounds/click.mp3',
-};
+const SOUND_PATHS: Record<SoundEffect, string> = SOUND_EFFECTS.reduce(
+  (paths, sound) => {
+    paths[sound] = `/sounds/${sound}.mp3`;
+    return paths;
+  },
+  {} as Record<SoundEffect, string>,
+);
 
 export class WebSoundBackend implements ISoundBackend {
   private cache = new Map<SoundEffect, Howl>();

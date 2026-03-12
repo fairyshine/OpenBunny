@@ -3,14 +3,14 @@ import i18n from '../../i18n';
 import type { LLMConfig, Message, MindDialogueSnapshot, Session } from '../../types';
 import { useAgentStore, DEFAULT_AGENT_ID } from '../../stores/agent';
 import { useSessionStore } from '../../stores/session';
-import { useSettingsStore } from '../../stores/settings';
-import { useToolStore } from '../../stores/tools';
 import { isAbortError } from '../../utils/errors';
 import { END_SESSION_TOKEN, createSnapshotMessage, extractSummaryText, sanitizeTerminalVisibleText, type DialogueVisibleCallbacks } from './dialogue';
 import { createResponseMessage, createUserMessage } from './messageFactory';
 import { getEnabledTools } from './tools';
 import { loadEnabledMCPTools } from './mcp';
 import { getActivateSkillTool } from './skills';
+import type { AgentRuntimeContext } from './runtimeContext';
+import { resolveAgentRuntimeContext } from './runtimeContext';
 import { buildAgentAssistantSystemPrompt } from './prompts';
 import { appendSessionMessage, createDetachedSession, flushSession, setSessionPrompt, setSessionStreaming, updateSessionMessage } from './sessionOps';
 import { runPairedDialogue, type PairedDialogueTrack } from './pairedDialogue';
@@ -27,6 +27,7 @@ export interface MindToolContext {
   projectId?: string;
   currentAgentId?: string;
   onSessionReady?: (sessionId: string) => void;
+  runtimeContext?: Partial<AgentRuntimeContext>;
 }
 
 export interface MindConversationResult {
@@ -46,8 +47,18 @@ export function stopMindConversation(sessionId: string): boolean {
 
 export async function runMindConversation(input: string, context: MindToolContext): Promise<MindConversationResult> {
   const sourceTask = input.trim();
-  const currentAgentId = context.currentAgentId || useAgentStore.getState().currentAgentId || DEFAULT_AGENT_ID;
-  const assistantSystemPrompt = buildAgentAssistantSystemPrompt(currentAgentId, context.sessionSkillIds);
+  const runtimeContext = resolveAgentRuntimeContext({
+    currentAgentId: context.runtimeContext?.currentAgentId ?? context.currentAgentId,
+    mcpConnections: context.runtimeContext?.mcpConnections,
+    onConnectionStatusChange: context.runtimeContext?.onConnectionStatusChange,
+    skills: context.runtimeContext?.skills,
+    enabledSkillIds: context.runtimeContext?.enabledSkillIds,
+    markSkillActivated: context.runtimeContext?.markSkillActivated,
+    proxyUrl: context.runtimeContext?.proxyUrl,
+    toolExecutionTimeout: context.runtimeContext?.toolExecutionTimeout,
+  });
+  const currentAgentId = runtimeContext.currentAgentId || useAgentStore.getState().currentAgentId || DEFAULT_AGENT_ID;
+  const assistantSystemPrompt = buildAgentAssistantSystemPrompt(currentAgentId, context.sessionSkillIds, runtimeContext);
   const userSystemPrompt = buildMindUserSystemPrompt(sourceTask, currentAgentId);
   const session = await createMindSession(currentAgentId, sourceTask, context.projectId);
   const abortController = new AbortController();
@@ -69,21 +80,17 @@ export async function runMindConversation(input: string, context: MindToolContex
     currentAgentId,
     enabledToolIds,
   };
-  const skillActivationTool = getActivateSkillTool(context.sessionSkillIds);
+  const skillActivationTool = getActivateSkillTool(context.sessionSkillIds, runtimeContext);
   const builtinToolSet = getEnabledTools(enabledToolIds, toolContext);
   const mcpToolSet = await loadEnabledMCPTools(
     enabledToolIds,
-    useToolStore.getState().mcpConnections,
+    runtimeContext.mcpConnections,
     {
-      proxyUrl: useSettingsStore.getState().proxyUrl,
-      timeoutMs: useSettingsStore.getState().toolExecutionTimeout || 300000,
+      proxyUrl: runtimeContext.proxyUrl,
+      timeoutMs: runtimeContext.toolExecutionTimeout || 300000,
       abortSignal: abortController.signal,
       reservedToolNames: [...Object.keys(builtinToolSet), ...Object.keys(skillActivationTool)],
-      onConnectionStatusChange: (connectionId, status, error) => {
-        const toolStore = useToolStore.getState();
-        toolStore.updateMCPStatus(connectionId, status);
-        toolStore.setMCPError(connectionId, error || null);
-      },
+      onConnectionStatusChange: runtimeContext.onConnectionStatusChange,
     },
   );
   const tools = {

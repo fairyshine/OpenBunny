@@ -1,14 +1,17 @@
 /**
  * Sound effect identifiers used across the app.
  */
-export type SoundEffect =
-  | 'message-send'
-  | 'message-receive'
-  | 'tool-start'
-  | 'tool-complete'
-  | 'error'
-  | 'notification'
-  | 'click';
+export const SOUND_EFFECTS = [
+  'message-send',
+  'message-receive',
+  'tool-start',
+  'tool-complete',
+  'error',
+  'notification',
+  'click',
+] as const;
+
+export type SoundEffect = typeof SOUND_EFFECTS[number];
 
 /**
  * Platform-specific audio backend interface.

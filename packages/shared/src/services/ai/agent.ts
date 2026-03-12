@@ -6,8 +6,8 @@ import { streamText, stepCountIs, type ToolSet } from 'ai';
 import { createModel } from './provider';
 import { getEnabledTools } from './tools';
 import { loadEnabledMCPTools } from './mcp';
-import { useAgentStore } from '../../stores/agent';
-import { useToolStore } from '../../stores/tools';
+import type { AgentRuntimeContext } from './runtimeContext';
+import { resolveAgentRuntimeContext } from './runtimeContext';
 import { getActivateSkillTool } from './skills';
 import { buildAgentAssistantSystemPrompt } from './prompts';
 import { logLLM, logTool } from '../console/logger';
@@ -59,6 +59,7 @@ export async function runAgentLoop(
   abortSignal?: AbortSignal,
   projectId?: string,
   sessionSkillIds?: string[],
+  runtimeContext?: Partial<AgentRuntimeContext>,
 ): Promise<string> {
   // Validate configuration
   if (!llmConfig.apiKey) {
@@ -75,31 +76,38 @@ export async function runAgentLoop(
     return '';
   }
 
-  const timeout = toolTimeout || 300000; // Default 5 minutes
+  const resolvedRuntime = resolveAgentRuntimeContext({
+    currentAgentId: runtimeContext?.currentAgentId,
+    mcpConnections: runtimeContext?.mcpConnections,
+    onConnectionStatusChange: runtimeContext?.onConnectionStatusChange,
+    skills: runtimeContext?.skills,
+    enabledSkillIds: runtimeContext?.enabledSkillIds,
+    markSkillActivated: runtimeContext?.markSkillActivated,
+    proxyUrl: runtimeContext?.proxyUrl ?? proxyUrl,
+    toolExecutionTimeout: runtimeContext?.toolExecutionTimeout ?? toolTimeout,
+  });
+
+  const timeout = resolvedRuntime.toolExecutionTimeout || 300000; // Default 5 minutes
   const groupId = callbacks.generateId();
-  const model = createModel(llmConfig, proxyUrl);
+  const model = createModel(llmConfig, resolvedRuntime.proxyUrl);
   const builtinToolSet = getEnabledTools(enabledTools, {
     sourceSessionId: sessionId,
     llmConfig,
     enabledToolIds: enabledTools,
     sessionSkillIds,
     projectId,
-    currentAgentId: useAgentStore.getState().currentAgentId,
+    currentAgentId: resolvedRuntime.currentAgentId,
   });
-  const skillActivationTool = getActivateSkillTool(sessionSkillIds);
+  const skillActivationTool = getActivateSkillTool(sessionSkillIds, resolvedRuntime);
   const mcpToolSet = await loadEnabledMCPTools(
     enabledTools,
-    useToolStore.getState().mcpConnections,
+    resolvedRuntime.mcpConnections,
     {
-      proxyUrl,
+      proxyUrl: resolvedRuntime.proxyUrl,
       timeoutMs: timeout,
       abortSignal,
       reservedToolNames: [...Object.keys(builtinToolSet), ...Object.keys(skillActivationTool)],
-      onConnectionStatusChange: (connectionId, status, error) => {
-        const toolStore = useToolStore.getState();
-        toolStore.updateMCPStatus(connectionId, status);
-        toolStore.setMCPError(connectionId, error || null);
-      },
+      onConnectionStatusChange: resolvedRuntime.onConnectionStatusChange,
     },
   );
   const tools = { ...builtinToolSet, ...mcpToolSet, ...skillActivationTool };
@@ -111,8 +119,8 @@ export async function runAgentLoop(
   });
 
   // Build system prompt (tool schemas are passed via the tools parameter, no need to duplicate in prompt)
-  const currentAgentId = useAgentStore.getState().currentAgentId;
-  const systemPrompt = buildAgentAssistantSystemPrompt(currentAgentId, sessionSkillIds);
+  const currentAgentId = resolvedRuntime.currentAgentId;
+  const systemPrompt = buildAgentAssistantSystemPrompt(currentAgentId, sessionSkillIds, resolvedRuntime);
 
   console.log('[Agent] Starting agent loop with config:', {
     provider: llmConfig.provider,
