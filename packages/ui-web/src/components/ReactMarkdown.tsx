@@ -1,4 +1,12 @@
 import { useEffect, useRef } from 'react';
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
+import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
+import javascript from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript';
+import typescript from 'react-syntax-highlighter/dist/esm/languages/hljs/typescript';
+import bash from 'react-syntax-highlighter/dist/esm/languages/hljs/bash';
+import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
+import { atomOneDark, atomOneLight } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { useSettingsStore } from '@shared/stores/settings';
 
 
 declare global {
@@ -10,6 +18,12 @@ declare global {
   }
 }
 
+SyntaxHighlighter.registerLanguage('python', python);
+SyntaxHighlighter.registerLanguage('javascript', javascript);
+SyntaxHighlighter.registerLanguage('typescript', typescript);
+SyntaxHighlighter.registerLanguage('bash', bash);
+SyntaxHighlighter.registerLanguage('json', json);
+
 interface ReactMarkdownProps {
   content: string;
 }
@@ -17,6 +31,11 @@ interface ReactMarkdownProps {
 // 简单的 Markdown 渲染器
 export default function ReactMarkdown({ content }: ReactMarkdownProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isDark = useSettingsStore((s) => {
+    if (s.theme === 'dark') return true;
+    if (s.theme === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
 
   useEffect(() => {
     const element = containerRef.current;
@@ -49,23 +68,48 @@ export default function ReactMarkdown({ content }: ReactMarkdownProps) {
 
   // 渲染代码块
   const renderCodeBlock = (code: string, language?: string) => {
+    const normalizedLanguage = normalizeCodeLanguage(language);
     return (
-      <pre className="my-2 overflow-x-auto">
-        <div className="flex items-center justify-between px-4 py-2 bg-muted text-muted-foreground text-xs rounded-t-lg">
-          <span>{language || 'code'}</span>
+      <div className="my-2 overflow-hidden rounded-lg border border-border bg-muted/30">
+        <div className="flex items-center justify-between px-4 py-2 bg-muted text-muted-foreground text-xs">
+          <span>{normalizedLanguage || language || 'code'}</span>
           <button
             onClick={() => navigator.clipboard.writeText(code)}
-            className="hover:text-white transition-colors"
+            className="hover:text-foreground transition-colors"
           >
             复制
           </button>
         </div>
-        <code className="block p-4 pt-2 bg-secondary text-secondary-foreground overflow-x-auto">
+        <SyntaxHighlighter
+          language={normalizedLanguage}
+          style={isDark ? atomOneDark : atomOneLight}
+          customStyle={{
+            margin: 0,
+            padding: '16px',
+            borderRadius: 0,
+            background: 'transparent',
+            fontSize: '0.875rem',
+            lineHeight: 1.6,
+            overflowX: 'auto',
+          }}
+          wrapLongLines
+        >
           {code}
-        </code>
-      </pre>
+        </SyntaxHighlighter>
+      </div>
     );
   };
+
+function normalizeCodeLanguage(language?: string): string | undefined {
+  if (!language) return undefined;
+  const normalized = language.trim().toLowerCase();
+  if (['js', 'jsx', 'javascript'].includes(normalized)) return 'javascript';
+  if (['ts', 'tsx', 'typescript'].includes(normalized)) return 'typescript';
+  if (['sh', 'shell', 'zsh', 'bash'].includes(normalized)) return 'bash';
+  if (normalized === 'py' || normalized === 'python') return 'python';
+  if (normalized === 'json') return 'json';
+  return normalized;
+}
 
   // 简单的 Markdown 解析
   const parseContent = (text: string) => {
