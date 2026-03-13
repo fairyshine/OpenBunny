@@ -38,7 +38,7 @@ Status: In progress
 
 ### Phase 2 — Introduce runtime context
 
-Status: In progress
+Status: Completed
 
 #### 2.1 Define explicit runtime dependencies for AI flows
 
@@ -52,7 +52,7 @@ Status: In progress
 
 - [x] Extract session/agent message persistence flows into app services or repositories
 - [x] Keep Zustand stores focused on state mutation and selectors
-- [ ] Reuse the same orchestration layer from UI and non-UI clients
+- [x] Reuse the same orchestration layer from UI and non-UI clients
 
 ### Phase 3 — Tighten platform boundaries
 
@@ -119,6 +119,7 @@ This change set starts with the safest item in Phase 1:
 - Extract shared session mutation helpers so `session.ts` and `agent.ts` reuse the same pure message/meta update paths.
 - Extract shared session message persistence helpers so `load*/flush*` flows no longer duplicate storage normalization in both stores.
 - Extract shared session/agent state helpers so trash cleanup, stream interruption, and agent rehydrate flows live outside the Zustand store bodies.
+- Introduce an injectable `sessionOwnerStore` facade so `chat` and `mind` orchestration can run on Zustand today and alternate clients later via the same `sessionOps` surface.
 
 ## Audit Notes
 

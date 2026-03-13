@@ -1,109 +1,61 @@
 import type { Message, Session, SessionType } from '../../types';
-import { useAgentStore, DEFAULT_AGENT_ID } from '../../stores/agent';
-import { useSessionStore } from '../../stores/session';
+import type { SessionRuntimeContext } from './runtimeContext';
+import { resolveSessionRuntimeContext } from './runtimeContext';
+import type { SessionOwnerStore } from './sessionOwnerStore';
 
-export async function createDetachedSession(
-  agentId: string,
-  sessionName: string,
-  sessionType: SessionType,
-  projectId?: string,
-): Promise<Session> {
-  if (agentId === DEFAULT_AGENT_ID) {
-    const store = useSessionStore.getState();
-    const previousCurrentId = store.currentSessionId;
-    const previousOpenIds = [...store.openSessionIds];
-    const session = store.createSession(sessionName, sessionType, projectId);
-    useSessionStore.setState({
-      currentSessionId: previousCurrentId,
-      openSessionIds: previousOpenIds.filter((id) => id !== session.id),
-    });
-    return session;
-  }
-
-  const store = useAgentStore.getState();
-  const previousCurrentId = store.agentCurrentSessionId[agentId] ?? null;
-  const session = store.createAgentSession(agentId, sessionName, projectId, sessionType);
-  useAgentStore.setState((state) => ({
-    agentCurrentSessionId: { ...state.agentCurrentSessionId, [agentId]: previousCurrentId },
-  }));
-  return session;
+export interface SessionOps {
+  createDetachedSession(
+    agentId: string,
+    sessionName: string,
+    sessionType: SessionType,
+    projectId?: string,
+  ): Promise<Session>;
+  appendSessionMessage(agentId: string, sessionId: string, message: Message): void;
+  updateSessionMessage(agentId: string, sessionId: string, messageId: string, updates: Partial<Message>): void;
+  setSessionStreaming(agentId: string, sessionId: string, isStreaming: boolean): void;
+  setSessionPrompt(agentId: string, sessionId: string, systemPrompt: string): void;
+  setSessionMindMeta(agentId: string, sessionId: string, mindMeta: Session['mindSession']): void;
+  setSessionChatMeta(agentId: string, sessionId: string, chatMeta: Session['chatSession']): void;
+  flushSession(agentId: string, sessionId: string): Promise<void>;
+  getSessionByOwner(agentId: string, sessionId: string): Session | null;
+  deleteSessionByOwner(agentId: string, sessionId: string): void;
 }
 
-export function appendSessionMessage(agentId: string, sessionId: string, message: Message): void {
-  if (agentId === DEFAULT_AGENT_ID) {
-    useSessionStore.getState().addMessage(sessionId, message);
-    return;
-  }
-  useAgentStore.getState().addAgentMessage(agentId, sessionId, message);
+export function createSessionOps(sessionOwnerStore: SessionOwnerStore): SessionOps {
+  return {
+    createDetachedSession(agentId, sessionName, sessionType, projectId) {
+      return sessionOwnerStore.createDetachedSession(agentId, sessionName, sessionType, projectId);
+    },
+    appendSessionMessage(agentId, sessionId, message) {
+      sessionOwnerStore.appendMessage(agentId, sessionId, message);
+    },
+    updateSessionMessage(agentId, sessionId, messageId, updates) {
+      sessionOwnerStore.updateMessage(agentId, sessionId, messageId, updates);
+    },
+    setSessionStreaming(agentId, sessionId, isStreaming) {
+      sessionOwnerStore.setStreaming(agentId, sessionId, isStreaming);
+    },
+    setSessionPrompt(agentId, sessionId, systemPrompt) {
+      sessionOwnerStore.setPrompt(agentId, sessionId, systemPrompt);
+    },
+    setSessionMindMeta(agentId, sessionId, mindMeta) {
+      sessionOwnerStore.setMindMeta(agentId, sessionId, mindMeta);
+    },
+    setSessionChatMeta(agentId, sessionId, chatMeta) {
+      sessionOwnerStore.setChatMeta(agentId, sessionId, chatMeta);
+    },
+    async flushSession(agentId, sessionId) {
+      await sessionOwnerStore.flush(agentId, sessionId);
+    },
+    getSessionByOwner(agentId, sessionId) {
+      return sessionOwnerStore.getSession(agentId, sessionId);
+    },
+    deleteSessionByOwner(agentId, sessionId) {
+      sessionOwnerStore.deleteSession(agentId, sessionId);
+    },
+  };
 }
 
-export function updateSessionMessage(agentId: string, sessionId: string, messageId: string, updates: Partial<Message>): void {
-  if (agentId === DEFAULT_AGENT_ID) {
-    useSessionStore.getState().updateMessage(sessionId, messageId, updates);
-    return;
-  }
-  useAgentStore.getState().updateAgentMessage(agentId, sessionId, messageId, updates);
-}
-
-export function setSessionStreaming(agentId: string, sessionId: string, isStreaming: boolean): void {
-  if (agentId === DEFAULT_AGENT_ID) {
-    useSessionStore.getState().setSessionStreaming(sessionId, isStreaming);
-    return;
-  }
-  useAgentStore.getState().setAgentSessionStreaming(agentId, sessionId, isStreaming);
-}
-
-export function setSessionPrompt(agentId: string, sessionId: string, systemPrompt: string): void {
-  if (agentId === DEFAULT_AGENT_ID) {
-    useSessionStore.getState().setSessionSystemPrompt(sessionId, systemPrompt);
-    return;
-  }
-  useAgentStore.getState().setAgentSessionSystemPrompt(agentId, sessionId, systemPrompt);
-}
-
-export function setSessionMindMeta(agentId: string, sessionId: string, mindMeta: Session['mindSession']): void {
-  if (!mindMeta) return;
-
-  if (agentId === DEFAULT_AGENT_ID) {
-    useSessionStore.getState().setSessionMindMeta(sessionId, mindMeta);
-    return;
-  }
-
-  useAgentStore.getState().setAgentSessionMindMeta(agentId, sessionId, mindMeta);
-}
-
-export function setSessionChatMeta(agentId: string, sessionId: string, chatMeta: Session['chatSession']): void {
-  if (!chatMeta) return;
-
-  if (agentId === DEFAULT_AGENT_ID) {
-    useSessionStore.getState().setSessionChatMeta(sessionId, chatMeta);
-    return;
-  }
-
-  useAgentStore.getState().setAgentSessionChatMeta(agentId, sessionId, chatMeta);
-}
-
-export async function flushSession(agentId: string, sessionId: string): Promise<void> {
-  if (agentId === DEFAULT_AGENT_ID) {
-    await useSessionStore.getState().flushMessages(sessionId);
-    return;
-  }
-  await useAgentStore.getState().flushAgentMessages(agentId, sessionId);
-}
-
-export function getSessionByOwner(agentId: string, sessionId: string): Session | null {
-  if (agentId === DEFAULT_AGENT_ID) {
-    return useSessionStore.getState().sessions.find((session) => session.id === sessionId) || null;
-  }
-
-  return (useAgentStore.getState().agentSessions[agentId] || []).find((session) => session.id === sessionId) || null;
-}
-
-export function deleteSessionByOwner(agentId: string, sessionId: string): void {
-  if (agentId === DEFAULT_AGENT_ID) {
-    useSessionStore.getState().permanentlyDeleteSession(sessionId);
-    return;
-  }
-
-  useAgentStore.getState().deleteAgentSession(agentId, sessionId);
+export function resolveSessionOps(overrides: Partial<SessionRuntimeContext> = {}): SessionOps {
+  return createSessionOps(resolveSessionRuntimeContext(overrides).sessionOwnerStore);
 }

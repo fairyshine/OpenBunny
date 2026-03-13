@@ -4,6 +4,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { useSkillStore } from '../../stores/skills';
 import { useToolStore, type MCPConnection } from '../../stores/tools';
 import type { Agent, LLMConfig } from '../../types';
+import { zustandSessionOwnerStore, type SessionOwnerStore } from './sessionOwnerStore';
 import type { LoadedSkill } from '../skills';
 
 export interface SkillRuntimeContext {
@@ -21,7 +22,11 @@ export interface MCPRuntimeContext {
   ) => void;
 }
 
-export interface AgentRuntimeContext extends SkillRuntimeContext, MCPRuntimeContext {
+export interface SessionRuntimeContext {
+  sessionOwnerStore: SessionOwnerStore;
+}
+
+export interface AgentRuntimeContext extends SkillRuntimeContext, MCPRuntimeContext, SessionRuntimeContext {
   currentAgentId: string;
   agents: Agent[];
   defaultLLMConfig: LLMConfig;
@@ -41,6 +46,12 @@ export function resolveSkillRuntimeContext(overrides: Partial<SkillRuntimeContex
   };
 }
 
+export function resolveSessionRuntimeContext(overrides: Partial<SessionRuntimeContext> = {}): SessionRuntimeContext {
+  return {
+    sessionOwnerStore: overrides.sessionOwnerStore ?? zustandSessionOwnerStore,
+  };
+}
+
 export function resolveMCPRuntimeContext(overrides: Partial<MCPRuntimeContext> = {}): MCPRuntimeContext {
   const toolStore = useToolStore.getState();
 
@@ -57,6 +68,7 @@ export function resolveAgentRuntimeContext(overrides: Partial<AgentRuntimeContex
   const settingsStore = useSettingsStore.getState();
   const skillContext = resolveSkillRuntimeContext(overrides);
   const mcpContext = resolveMCPRuntimeContext(overrides);
+  const sessionContext = resolveSessionRuntimeContext(overrides);
 
   return {
     currentAgentId: overrides.currentAgentId ?? useAgentStore.getState().currentAgentId ?? DEFAULT_AGENT_ID,
@@ -68,5 +80,6 @@ export function resolveAgentRuntimeContext(overrides: Partial<AgentRuntimeContex
     toolExecutionTimeout: overrides.toolExecutionTimeout ?? settingsStore.toolExecutionTimeout,
     ...skillContext,
     ...mcpContext,
+    ...sessionContext,
   };
 }

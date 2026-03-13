@@ -10,7 +10,7 @@ import { getActivateSkillTool } from './skills';
 import type { AgentRuntimeContext } from './runtimeContext';
 import { resolveAgentRuntimeContext } from './runtimeContext';
 import { buildAgentAssistantSystemPrompt } from './prompts';
-import { appendSessionMessage, createDetachedSession, flushSession, setSessionMindMeta, setSessionPrompt, setSessionStreaming, updateSessionMessage } from './sessionOps';
+import { createSessionOps, type SessionOps } from './sessionOps';
 import { runPairedDialogue, type PairedDialogueTrack } from './pairedDialogue';
 
 export const MIND_SESSION_NAME = 'mind_session';
@@ -54,11 +54,13 @@ export async function runMindConversation(input: string, context: MindToolContex
     markSkillActivated: context.runtimeContext?.markSkillActivated,
     proxyUrl: context.runtimeContext?.proxyUrl,
     toolExecutionTimeout: context.runtimeContext?.toolExecutionTimeout,
+    sessionOwnerStore: context.runtimeContext?.sessionOwnerStore,
   });
+  const sessionOps = createSessionOps(runtimeContext.sessionOwnerStore);
   const currentAgentId = runtimeContext.currentAgentId;
   const assistantSystemPrompt = buildAgentAssistantSystemPrompt(currentAgentId, context.sessionSkillIds, runtimeContext);
   const userSystemPrompt = buildMindUserSystemPrompt(sourceTask, currentAgentId, runtimeContext);
-  const session = await createMindSession(currentAgentId, sourceTask, context.projectId);
+  const session = await createMindSession(sessionOps, currentAgentId, sourceTask, context.projectId);
   const abortController = new AbortController();
   const assistantTranscript: ModelMessage[] = [{ role: 'user', content: sourceTask }];
   const userTranscript: ModelMessage[] = [];
@@ -70,7 +72,7 @@ export async function runMindConversation(input: string, context: MindToolContex
     systemPrompt: userSystemPrompt,
     messages: [],
   };
-  const sessionCallbacks = createMindVisibleCallbacks(currentAgentId, session.id);
+  const sessionCallbacks = createMindVisibleCallbacks(sessionOps, currentAgentId, session.id);
   const enabledToolIds = (context.enabledToolIds || []).filter((toolId) => toolId !== 'mind');
   const toolContext = {
     ...context,
@@ -98,13 +100,13 @@ export async function runMindConversation(input: string, context: MindToolContex
   };
 
   mindAbortControllers.set(session.id, abortController);
-  setMindSessionStreaming(currentAgentId, session.id, true);
+  setMindSessionStreaming(sessionOps, currentAgentId, session.id, true);
   context.onSessionReady?.(session.id);
 
   let summary = '';
 
   const syncMindState = () => {
-    syncMindMeta(currentAgentId, session.id, {
+    syncMindMeta(sessionOps, currentAgentId, session.id, {
       assistantSystemPrompt,
       userSystemPrompt,
       sourceSessionId: context.sourceSessionId,
@@ -117,7 +119,7 @@ export async function runMindConversation(input: string, context: MindToolContex
   };
 
   try {
-    appendMindMessage(currentAgentId, session.id, createUserMessage(sourceTask, { type: 'normal' }));
+    appendMindMessage(sessionOps, currentAgentId, session.id, createUserMessage(sourceTask, { type: 'normal' }));
     syncMindState();
 
     let finalAssistantReply = '';
@@ -177,7 +179,7 @@ export async function runMindConversation(input: string, context: MindToolContex
     };
   } catch (error) {
     if (isAbortError(error)) {
-      appendMindMessage(currentAgentId, session.id, createResponseMessage(i18n.t('chat.stopped')));
+      appendMindMessage(sessionOps, currentAgentId, session.id, createResponseMessage(i18n.t('chat.stopped')));
       syncMindState();
 
       return {
@@ -194,9 +196,9 @@ export async function runMindConversation(input: string, context: MindToolContex
     if (mindAbortControllers.get(session.id) === abortController) {
       mindAbortControllers.delete(session.id);
     }
-    setMindSessionStreaming(currentAgentId, session.id, false);
+    setMindSessionStreaming(sessionOps, currentAgentId, session.id, false);
     syncMindState();
-    await flushMindSession(currentAgentId, session.id);
+    await flushMindSession(sessionOps, currentAgentId, session.id);
   }
 }
 
@@ -230,9 +232,9 @@ function shouldEndMindSession(content: string): boolean {
   return content.trim() === END_SESSION_TOKEN || content.includes(END_SESSION_TOKEN);
 }
 
-async function createMindSession(currentAgentId: string, sourceTask: string, projectId?: string): Promise<Session> {
+async function createMindSession(sessionOps: SessionOps, currentAgentId: string, sourceTask: string, projectId?: string): Promise<Session> {
   const sessionName = buildMindSessionName(sourceTask);
-  return createDetachedSession(currentAgentId, sessionName, 'mind', projectId);
+  return sessionOps.createDetachedSession(currentAgentId, sessionName, 'mind', projectId);
 }
 
 function buildMindSessionName(sourceTask: string): string {
@@ -241,32 +243,32 @@ function buildMindSessionName(sourceTask: string): string {
   return normalized.length > 60 ? `${normalized.slice(0, 57)}...` : normalized;
 }
 
-function createMindVisibleCallbacks(currentAgentId: string, sessionId: string): DialogueVisibleCallbacks {
+function createMindVisibleCallbacks(sessionOps: SessionOps, currentAgentId: string, sessionId: string): DialogueVisibleCallbacks {
   return {
-    addMessage: (message) => appendMindMessage(currentAgentId, sessionId, message),
-    updateMessage: (messageId, updates) => updateMindMessage(currentAgentId, sessionId, messageId, updates),
+    addMessage: (message) => appendMindMessage(sessionOps, currentAgentId, sessionId, message),
+    updateMessage: (messageId, updates) => updateMindMessage(sessionOps, currentAgentId, sessionId, messageId, updates),
   };
 }
 
-function appendMindMessage(currentAgentId: string, sessionId: string, message: Message): void {
-  appendSessionMessage(currentAgentId, sessionId, message);
+function appendMindMessage(sessionOps: SessionOps, currentAgentId: string, sessionId: string, message: Message): void {
+  sessionOps.appendSessionMessage(currentAgentId, sessionId, message);
 }
 
-function updateMindMessage(currentAgentId: string, sessionId: string, messageId: string, updates: Partial<Message>): void {
-  updateSessionMessage(currentAgentId, sessionId, messageId, updates);
+function updateMindMessage(sessionOps: SessionOps, currentAgentId: string, sessionId: string, messageId: string, updates: Partial<Message>): void {
+  sessionOps.updateSessionMessage(currentAgentId, sessionId, messageId, updates);
 }
 
-function syncMindMeta(currentAgentId: string, sessionId: string, meta: Session['mindSession']): void {
-  setSessionPrompt(currentAgentId, sessionId, meta?.assistantSystemPrompt || '');
+function syncMindMeta(sessionOps: SessionOps, currentAgentId: string, sessionId: string, meta: Session['mindSession']): void {
+  sessionOps.setSessionPrompt(currentAgentId, sessionId, meta?.assistantSystemPrompt || '');
   if (meta) {
-    setSessionMindMeta(currentAgentId, sessionId, meta);
+    sessionOps.setSessionMindMeta(currentAgentId, sessionId, meta);
   }
 }
 
-function setMindSessionStreaming(currentAgentId: string, sessionId: string, isStreaming: boolean): void {
-  setSessionStreaming(currentAgentId, sessionId, isStreaming);
+function setMindSessionStreaming(sessionOps: SessionOps, currentAgentId: string, sessionId: string, isStreaming: boolean): void {
+  sessionOps.setSessionStreaming(currentAgentId, sessionId, isStreaming);
 }
 
-async function flushMindSession(currentAgentId: string, sessionId: string): Promise<void> {
-  await flushSession(currentAgentId, sessionId);
+async function flushMindSession(sessionOps: SessionOps, currentAgentId: string, sessionId: string): Promise<void> {
+  await sessionOps.flushSession(currentAgentId, sessionId);
 }

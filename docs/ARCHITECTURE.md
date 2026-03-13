@@ -162,6 +162,7 @@ These are safe patterns to continue:
 - Re-exporting shared hooks or helpers instead of duplicating implementations
 - Small cross-platform utilities living in `shared/src/utils`
 - Shared React bootstrap utilities living in `ui-web`
+- AI session orchestration flowing through `packages/shared/src/services/ai/sessionOps.ts` with an injectable `sessionOwnerStore` adapter
 
 ## Near-Term Refactor Priorities
 

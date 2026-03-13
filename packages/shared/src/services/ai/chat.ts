@@ -10,8 +10,8 @@ import { loadEnabledMCPTools } from './mcp';
 import { getActivateSkillTool } from './skills';
 import { buildAgentAssistantSystemPrompt } from './prompts';
 import type { AgentRuntimeContext } from './runtimeContext';
-import { resolveAgentRuntimeContext } from './runtimeContext';
-import { appendSessionMessage, createDetachedSession, deleteSessionByOwner, flushSession, getSessionByOwner, setSessionChatMeta, setSessionPrompt, setSessionStreaming, updateSessionMessage } from './sessionOps';
+import { resolveAgentRuntimeContext, resolveSessionRuntimeContext } from './runtimeContext';
+import { createSessionOps, type SessionOps } from './sessionOps';
 import { runPairedDialogue, type PairedDialogueTrack } from './pairedDialogue';
 
 const MAX_CHAT_TURNS = 8;
@@ -45,8 +45,9 @@ export function stopChatConversation(sessionId: string): boolean {
   return true;
 }
 
-export function deleteChatSessionPair(agentId: string, sessionId: string): void {
-  const session = getSessionByOwner(agentId, sessionId);
+export function deleteChatSessionPair(agentId: string, sessionId: string, runtimeContext?: Partial<AgentRuntimeContext>): void {
+  const sessionOps = createSessionOps(resolveSessionRuntimeContext(runtimeContext).sessionOwnerStore);
+  const session = sessionOps.getSessionByOwner(agentId, sessionId);
   if (!session) return;
 
   const targets = [
@@ -62,7 +63,7 @@ export function deleteChatSessionPair(agentId: string, sessionId: string): void 
     if (seen.has(key)) continue;
     seen.add(key);
     stopChatConversation(target.sessionId);
-    deleteSessionByOwner(target.agentId, target.sessionId);
+    sessionOps.deleteSessionByOwner(target.agentId, target.sessionId);
   }
 }
 
@@ -85,7 +86,9 @@ export async function runChatConversation(agentName: string, input: string, cont
     markSkillActivated: context.runtimeContext?.markSkillActivated,
     proxyUrl: context.runtimeContext?.proxyUrl,
     toolExecutionTimeout: context.runtimeContext?.toolExecutionTimeout,
+    sessionOwnerStore: context.runtimeContext?.sessionOwnerStore,
   });
+  const sessionOps = createSessionOps(runtimeContext.sessionOwnerStore);
 
   const sourceAgentId = runtimeContext.currentAgentId;
   const sourceAgent = getAgentById(sourceAgentId, runtimeContext);
@@ -109,11 +112,13 @@ export async function runChatConversation(agentName: string, input: string, cont
   const passiveAssistantSystemPrompt = buildPassiveAssistantSystemPrompt(targetAgent.id, sourceAgentId, targetScope, targetRuntime.skillIds, runtimeContext);
 
   const sourceSession = await createChatSession(
+    sessionOps,
     sourceAgentId,
     buildSourceChatSessionName(targetAgent.name, sourceTask),
     context.projectId,
   );
   const targetSession = await createChatSession(
+    sessionOps,
     targetAgent.id,
     buildTargetChatSessionName(sourceAgent.name, sourceTask),
   );
@@ -131,6 +136,7 @@ export async function runChatConversation(agentName: string, input: string, cont
   };
 
   const sourceCallbacks = createVisibleCallbacks(
+    sessionOps,
     sourceAgentId,
     sourceSession.id,
     sourceAgentId,
@@ -143,6 +149,7 @@ export async function runChatConversation(agentName: string, input: string, cont
     },
   );
   const targetCallbacks = createVisibleCallbacks(
+    sessionOps,
     targetAgent.id,
     targetSession.id,
     targetAgent.id,
@@ -177,7 +184,7 @@ export async function runChatConversation(agentName: string, input: string, cont
   chatAbortControllers.set(sourceSession.id, abortController);
   chatAbortControllers.set(targetSession.id, abortController);
 
-  syncChatMeta(sourceAgentId, sourceSession.id, {
+  syncChatMeta(sessionOps, sourceAgentId, sourceSession.id, {
     role: 'source',
     peerSessionId: targetSession.id,
     peerAgentId: targetAgent.id,
@@ -189,7 +196,7 @@ export async function runChatConversation(agentName: string, input: string, cont
     counterpartAgentName: targetAgent.name,
     updatedAt: Date.now(),
   });
-  syncChatMeta(targetAgent.id, targetSession.id, {
+  syncChatMeta(sessionOps, targetAgent.id, targetSession.id, {
     role: 'target',
     peerSessionId: sourceSession.id,
     peerAgentId: sourceAgentId,
@@ -201,10 +208,10 @@ export async function runChatConversation(agentName: string, input: string, cont
     counterpartAgentName: sourceAgent.name,
     updatedAt: Date.now(),
   });
-  setSessionPrompt(sourceAgentId, sourceSession.id, activeAssistantSystemPrompt);
-  setSessionPrompt(targetAgent.id, targetSession.id, passiveAssistantSystemPrompt);
-  setSessionStreaming(sourceAgentId, sourceSession.id, true);
-  setSessionStreaming(targetAgent.id, targetSession.id, true);
+  sessionOps.setSessionPrompt(sourceAgentId, sourceSession.id, activeAssistantSystemPrompt);
+  sessionOps.setSessionPrompt(targetAgent.id, targetSession.id, passiveAssistantSystemPrompt);
+  sessionOps.setSessionStreaming(sourceAgentId, sourceSession.id, true);
+  sessionOps.setSessionStreaming(targetAgent.id, targetSession.id, true);
   context.onSourceSessionReady?.(sourceSession.id);
 
   let finalTargetReply = '';
@@ -212,8 +219,8 @@ export async function runChatConversation(agentName: string, input: string, cont
 
   try {
     const initialTaskMessage = createAgentSpokenMessage(sourceAgentId, sourceAgent.name, sourceTask);
-    appendSessionMessage(sourceAgentId, sourceSession.id, initialTaskMessage);
-    appendSessionMessage(targetAgent.id, targetSession.id, createAgentSpokenMessage(sourceAgentId, sourceAgent.name, sourceTask));
+    sessionOps.appendSessionMessage(sourceAgentId, sourceSession.id, initialTaskMessage);
+    sessionOps.appendSessionMessage(targetAgent.id, targetSession.id, createAgentSpokenMessage(sourceAgentId, sourceAgent.name, sourceTask));
 
     const passiveTrack: PairedDialogueTrack = {
       llmConfig: targetRuntime.llmConfig,
@@ -255,7 +262,7 @@ export async function runChatConversation(agentName: string, input: string, cont
         if (speaker === 'second' && shouldEndSession(content)) {
           summary = extractSummaryText(content);
           const summaryValue = summary || finalTargetReply;
-          syncChatMeta(sourceAgentId, sourceSession.id, {
+          syncChatMeta(sessionOps, sourceAgentId, sourceSession.id, {
             role: 'source',
             peerSessionId: targetSession.id,
             peerAgentId: targetAgent.id,
@@ -267,7 +274,7 @@ export async function runChatConversation(agentName: string, input: string, cont
             counterpartAgentName: targetAgent.name,
             updatedAt: Date.now(),
           });
-          syncChatMeta(targetAgent.id, targetSession.id, {
+          syncChatMeta(sessionOps, targetAgent.id, targetSession.id, {
             role: 'target',
             peerSessionId: sourceSession.id,
             peerAgentId: sourceAgentId,
@@ -295,8 +302,8 @@ export async function runChatConversation(agentName: string, input: string, cont
   } catch (error) {
     if (!isAbortError(error)) {
       const message = error instanceof Error ? error.message : String(error);
-      appendSessionMessage(sourceAgentId, sourceSession.id, createSystemMessage(`Chat failed: ${message}`));
-      appendSessionMessage(targetAgent.id, targetSession.id, createSystemMessage(`Chat failed: ${message}`));
+      sessionOps.appendSessionMessage(sourceAgentId, sourceSession.id, createSystemMessage(`Chat failed: ${message}`));
+      sessionOps.appendSessionMessage(targetAgent.id, targetSession.id, createSystemMessage(`Chat failed: ${message}`));
     }
     throw error;
   } finally {
@@ -306,10 +313,10 @@ export async function runChatConversation(agentName: string, input: string, cont
     if (chatAbortControllers.get(targetSession.id) === abortController) {
       chatAbortControllers.delete(targetSession.id);
     }
-    setSessionStreaming(sourceAgentId, sourceSession.id, false);
-    setSessionStreaming(targetAgent.id, targetSession.id, false);
-    await flushSession(sourceAgentId, sourceSession.id);
-    await flushSession(targetAgent.id, targetSession.id);
+    sessionOps.setSessionStreaming(sourceAgentId, sourceSession.id, false);
+    sessionOps.setSessionStreaming(targetAgent.id, targetSession.id, false);
+    await sessionOps.flushSession(sourceAgentId, sourceSession.id);
+    await sessionOps.flushSession(targetAgent.id, targetSession.id);
   }
 }
 
@@ -373,8 +380,8 @@ function getAgentById(agentId: string, runtimeContext?: Partial<AgentRuntimeCont
   return agents.find((agent) => agent.id === agentId) || null;
 }
 
-function syncChatMeta(agentId: string, sessionId: string, meta: ChatSessionMeta): void {
-  setSessionChatMeta(agentId, sessionId, meta);
+function syncChatMeta(sessionOps: SessionOps, agentId: string, sessionId: string, meta: ChatSessionMeta): void {
+  sessionOps.setSessionChatMeta(agentId, sessionId, meta);
 }
 
 function getAgentRuntime(agentId: string, runtimeContext?: Partial<AgentRuntimeContext>): { llmConfig: LLMConfig; enabledToolIds: string[]; skillIds: string[] } {
@@ -469,8 +476,8 @@ function createAgentSpokenMessage(agentId: string, agentName: string, content: s
   return tagMessageSpeaker(createUserMessage(content, { type: 'normal' }), agentId, agentName);
 }
 
-async function createChatSession(agentId: string, sessionName: string, projectId?: string): Promise<Session> {
-  return createDetachedSession(agentId, sessionName, 'agent', projectId);
+async function createChatSession(sessionOps: SessionOps, agentId: string, sessionName: string, projectId?: string): Promise<Session> {
+  return sessionOps.createDetachedSession(agentId, sessionName, 'agent', projectId);
 }
 
 function buildSourceChatSessionName(targetAgentName: string, sourceTask: string): string {
@@ -507,6 +514,7 @@ function createMirroredVisibleMessage(message: Message, mirror: MirroredVisibleS
 }
 
 function createVisibleCallbacks(
+  sessionOps: SessionOps,
   agentId: string,
   sessionId: string,
   speakerAgentId: string,
@@ -516,10 +524,10 @@ function createVisibleCallbacks(
   return {
     addMessage: (message) => {
       const taggedMessage = tagMessageSpeaker(message, speakerAgentId, speakerAgentName);
-      appendSessionMessage(agentId, sessionId, taggedMessage);
+      sessionOps.appendSessionMessage(agentId, sessionId, taggedMessage);
 
       if (mirroredVisibleSession && shouldMirrorVisibleMessage(taggedMessage)) {
-        appendSessionMessage(
+        sessionOps.appendSessionMessage(
           mirroredVisibleSession.agentId,
           mirroredVisibleSession.sessionId,
           createMirroredVisibleMessage(taggedMessage, mirroredVisibleSession),
@@ -527,10 +535,10 @@ function createVisibleCallbacks(
       }
     },
     updateMessage: (messageId, updates) => {
-      updateSessionMessage(agentId, sessionId, messageId, updates);
+      sessionOps.updateSessionMessage(agentId, sessionId, messageId, updates);
 
       if (mirroredVisibleSession) {
-        updateSessionMessage(
+        sessionOps.updateSessionMessage(
           mirroredVisibleSession.agentId,
           mirroredVisibleSession.sessionId,
           messageId,
