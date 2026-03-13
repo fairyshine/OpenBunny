@@ -1,7 +1,6 @@
 import type { ModelMessage, Tool } from 'ai';
 import type { ChatSessionMeta, LLMConfig, Message, MindDialogueSnapshot, Session } from '../../types';
 import { useAgentStore, DEFAULT_AGENT_ID } from '../../stores/agent';
-import { useSessionStore } from '../../stores/session';
 import { isAbortError } from '../../utils/errors';
 import { getMessageDisplayType } from '../../utils/messagePresentation';
 import { END_SESSION_TOKEN, createSnapshotMessage, extractSummaryText, sanitizeTerminalVisibleText, type DialogueVisibleCallbacks } from './dialogue';
@@ -12,7 +11,7 @@ import { getActivateSkillTool } from './skills';
 import { buildAgentAssistantSystemPrompt } from './prompts';
 import type { AgentRuntimeContext } from './runtimeContext';
 import { resolveAgentRuntimeContext } from './runtimeContext';
-import { appendSessionMessage, createDetachedSession, flushSession, setSessionPrompt, setSessionStreaming, updateSessionMessage } from './sessionOps';
+import { appendSessionMessage, createDetachedSession, deleteSessionByOwner, flushSession, getSessionByOwner, setSessionChatMeta, setSessionPrompt, setSessionStreaming, updateSessionMessage } from './sessionOps';
 import { runPairedDialogue, type PairedDialogueTrack } from './pairedDialogue';
 
 const MAX_CHAT_TURNS = 8;
@@ -63,7 +62,7 @@ export function deleteChatSessionPair(agentId: string, sessionId: string): void 
     if (seen.has(key)) continue;
     seen.add(key);
     stopChatConversation(target.sessionId);
-    removeSessionByOwner(target.agentId, target.sessionId);
+    deleteSessionByOwner(target.agentId, target.sessionId);
   }
 }
 
@@ -374,33 +373,14 @@ function getAgentById(agentId: string, runtimeContext?: Partial<AgentRuntimeCont
   return agents.find((agent) => agent.id === agentId) || null;
 }
 
-function getSessionByOwner(agentId: string, sessionId: string): Session | null {
-  if (agentId === DEFAULT_AGENT_ID) {
-    return useSessionStore.getState().sessions.find((session) => session.id === sessionId) || null;
-  }
-  return (useAgentStore.getState().agentSessions[agentId] || []).find((session) => session.id === sessionId) || null;
-}
-
-function removeSessionByOwner(agentId: string, sessionId: string): void {
-  if (agentId === DEFAULT_AGENT_ID) {
-    useSessionStore.getState().permanentlyDeleteSession(sessionId);
-    return;
-  }
-  useAgentStore.getState().deleteAgentSession(agentId, sessionId);
-}
-
 function syncChatMeta(agentId: string, sessionId: string, meta: ChatSessionMeta): void {
-  if (agentId === DEFAULT_AGENT_ID) {
-    useSessionStore.getState().setSessionChatMeta(sessionId, meta);
-    return;
-  }
-  useAgentStore.getState().setAgentSessionChatMeta(agentId, sessionId, meta);
+  setSessionChatMeta(agentId, sessionId, meta);
 }
 
 function getAgentRuntime(agentId: string, runtimeContext?: Partial<AgentRuntimeContext>): { llmConfig: LLMConfig; enabledToolIds: string[]; skillIds: string[] } {
   if (agentId === DEFAULT_AGENT_ID) {
     return {
-      llmConfig: runtimeContext?.defaultLLMConfig ?? useSessionStore.getState().llmConfig,
+      llmConfig: resolveAgentRuntimeContext(runtimeContext).defaultLLMConfig,
       enabledToolIds: runtimeContext?.defaultEnabledToolIds ?? [],
       skillIds: runtimeContext?.defaultSkillIds ?? [],
     };

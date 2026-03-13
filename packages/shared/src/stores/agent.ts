@@ -8,7 +8,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Agent, LLMConfig, Session, Message, SessionType, AgentRelationship, AgentGroup, MindSessionMeta, ChatSessionMeta } from '../types';
 import { messageStorage } from '../services/storage/messageStorage';
-import { mergeMessageWithPresentation, normalizeMessagePresentation } from '../utils/messagePresentation';
+import { normalizeMessagePresentation } from '../utils/messagePresentation';
+import { appendSessionMessageState, clearStreamingMessageFlags, stripTransientSessionState, updateSessionChatMetaState, updateSessionMessageState, updateSessionMindMetaState } from './sessionStateHelpers';
 
 const DEFAULT_AGENT_ID = 'default';
 const AGENT_FILES_BASE = '/root/.agents';
@@ -50,24 +51,6 @@ function createDefaultAgent(): Agent {
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
-}
-
-function stripTransientSessionState<T extends Session>(session: T): T {
-  const { isStreaming: _isStreaming, ...rest } = session;
-  return rest as T;
-}
-
-function clearStreamingMessageFlags(messages: Message[]): Message[] {
-  return messages.map((message) => (
-    message.metadata?.streaming
-      ? mergeMessageWithPresentation(message, {
-          metadata: {
-            ...message.metadata,
-            streaming: false,
-          },
-        })
-      : normalizeMessagePresentation(message)
-  ));
 }
 
 interface AgentState {
@@ -353,12 +336,11 @@ export const useAgentStore = create<AgentState>()(
 
       addAgentMessage: (agentId, sessionId, message) => {
         set((state) => {
-          const sessions = (state.agentSessions[agentId] || []).map((s) =>
-            s.id === sessionId
-              ? { ...s, messages: [...s.messages, normalizeMessagePresentation(message)], updatedAt: Date.now() }
-              : s
+          const { sessions, updatedSession: updated } = appendSessionMessageState(
+            state.agentSessions[agentId] || [],
+            sessionId,
+            message,
           );
-          const updated = sessions.find((s) => s.id === sessionId);
           if (updated) {
             messageStorage.save(sessionId, updated.messages);
           }
@@ -368,19 +350,12 @@ export const useAgentStore = create<AgentState>()(
 
       updateAgentMessage: (agentId, sessionId, messageId, updates) => {
         set((state) => {
-          const sessions = (state.agentSessions[agentId] || []).map((s) =>
-            s.id === sessionId
-              ? {
-                  ...s,
-                  messages: s.messages.map((m) =>
-                    m.id === messageId
-                      ? mergeMessageWithPresentation(m, updates)
-                      : m
-                  ),
-                }
-              : s
+          const { sessions, updatedSession: updated } = updateSessionMessageState(
+            state.agentSessions[agentId] || [],
+            sessionId,
+            messageId,
+            updates,
           );
-          const updated = sessions.find((s) => s.id === sessionId);
           if (updated) {
             messageStorage.save(sessionId, updated.messages);
           }
@@ -471,11 +446,7 @@ export const useAgentStore = create<AgentState>()(
         set((state) => ({
           agentSessions: {
             ...state.agentSessions,
-            [agentId]: (state.agentSessions[agentId] || []).map((session) =>
-              session.id === sessionId
-                ? { ...session, mindSession: { ...session.mindSession, ...mindSession }, updatedAt: Date.now() }
-                : session
-            ),
+            [agentId]: updateSessionMindMetaState(state.agentSessions[agentId] || [], sessionId, mindSession),
           },
         }));
       },
@@ -484,11 +455,7 @@ export const useAgentStore = create<AgentState>()(
         set((state) => ({
           agentSessions: {
             ...state.agentSessions,
-            [agentId]: (state.agentSessions[agentId] || []).map((session) =>
-              session.id === sessionId
-                ? { ...session, chatSession: { ...session.chatSession, ...chatSession }, updatedAt: Date.now() }
-                : session
-            ),
+            [agentId]: updateSessionChatMetaState(state.agentSessions[agentId] || [], sessionId, chatSession),
           },
         }));
       },

@@ -50,7 +50,7 @@ Status: In progress
 
 #### 2.2 Centralize session orchestration
 
-- [ ] Extract session/agent message persistence flows into app services or repositories
+- [x] Extract session/agent message persistence flows into app services or repositories
 - [ ] Keep Zustand stores focused on state mutation and selectors
 - [ ] Reuse the same orchestration layer from UI and non-UI clients
 
@@ -115,6 +115,8 @@ This change set starts with the safest item in Phase 1:
 - Make `skills.ts` a pure runtime-context consumer, leaving fallback resolution outside the module.
 - Make prompt assembly prefer runtime-context agent data so the `agent.ts` path stays store-free.
 - Move `mind` session meta persistence behind `sessionOps` so `mind.ts` stays orchestration-only.
+- Route `chat` session lookup/delete/chat-meta persistence through `sessionOps` to consolidate workspace session storage access.
+- Extract shared session mutation helpers so `session.ts` and `agent.ts` reuse the same pure message/meta update paths.
 
 ## Audit Notes
 

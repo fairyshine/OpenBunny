@@ -72,10 +72,38 @@ export function setSessionMindMeta(agentId: string, sessionId: string, mindMeta:
   useAgentStore.getState().setAgentSessionMindMeta(agentId, sessionId, mindMeta);
 }
 
+export function setSessionChatMeta(agentId: string, sessionId: string, chatMeta: Session['chatSession']): void {
+  if (!chatMeta) return;
+
+  if (agentId === DEFAULT_AGENT_ID) {
+    useSessionStore.getState().setSessionChatMeta(sessionId, chatMeta);
+    return;
+  }
+
+  useAgentStore.getState().setAgentSessionChatMeta(agentId, sessionId, chatMeta);
+}
+
 export async function flushSession(agentId: string, sessionId: string): Promise<void> {
   if (agentId === DEFAULT_AGENT_ID) {
     await useSessionStore.getState().flushMessages(sessionId);
     return;
   }
   await useAgentStore.getState().flushAgentMessages(agentId, sessionId);
+}
+
+export function getSessionByOwner(agentId: string, sessionId: string): Session | null {
+  if (agentId === DEFAULT_AGENT_ID) {
+    return useSessionStore.getState().sessions.find((session) => session.id === sessionId) || null;
+  }
+
+  return (useAgentStore.getState().agentSessions[agentId] || []).find((session) => session.id === sessionId) || null;
+}
+
+export function deleteSessionByOwner(agentId: string, sessionId: string): void {
+  if (agentId === DEFAULT_AGENT_ID) {
+    useSessionStore.getState().permanentlyDeleteSession(sessionId);
+    return;
+  }
+
+  useAgentStore.getState().deleteAgentSession(agentId, sessionId);
 }

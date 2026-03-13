@@ -4,7 +4,8 @@ import { Session, Message, LLMConfig, SessionType, Project, MindSessionMeta, Cha
 import { logSettings } from '../services/console/logger';
 import { messageStorage } from '../services/storage/messageStorage';
 import { statsStorage } from '../services/storage/statsStorage';
-import { mergeMessageWithPresentation, normalizeMessagePresentation } from '../utils/messagePresentation';
+import { normalizeMessagePresentation } from '../utils/messagePresentation';
+import { appendSessionMessageState, clearStreamingMessageFlags, stripTransientSessionState, updateSessionChatMetaState, updateSessionMessageState, updateSessionMindMetaState } from './sessionStateHelpers';
 
 /** Cached session statistics — updated incrementally to avoid full recalculation */
 export interface SessionStats {
@@ -88,24 +89,6 @@ function computeStats(sessions: Session[]): SessionStats {
 /** Get token count from a single message */
 function msgTokens(m: Message): number {
   return m.metadata?.tokens ?? 0;
-}
-
-function stripTransientSessionState<T extends Session>(session: T): T {
-  const { isStreaming: _isStreaming, ...rest } = session;
-  return rest as T;
-}
-
-function clearStreamingMessageFlags(messages: Message[]): Message[] {
-  return messages.map((message) => (
-    message.metadata?.streaming
-      ? mergeMessageWithPresentation(message, {
-          metadata: {
-            ...message.metadata,
-            streaming: false,
-          },
-        })
-      : normalizeMessagePresentation(message)
-  ));
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -257,18 +240,14 @@ export const useSessionStore = create<SessionState>()(
         set((state) => {
           const target = state.sessions.find(s => s.id === sessionId);
           const isActive = target && !target.deletedAt;
-          const newSessions = state.sessions.map((session) =>
-            session.id === sessionId && !session.deletedAt
-              ? {
-                  ...session,
-                  messages: [...session.messages, normalizeMessagePresentation(message)],
-                  updatedAt: Date.now(),
-                }
-              : session
+          const { sessions: newSessions, updatedSession: updated } = appendSessionMessageState(
+            state.sessions,
+            sessionId,
+            message,
+            { skipDeleted: true },
           );
 
           // Async persist to IndexedDB (debounced)
-          const updated = newSessions.find((s) => s.id === sessionId);
           if (updated) {
             messageStorage.save(sessionId, updated.messages);
           }
@@ -287,30 +266,21 @@ export const useSessionStore = create<SessionState>()(
         set((state) => {
           // Find old token count for delta calculation
           const session = state.sessions.find(s => s.id === sessionId);
-          const oldMsg = session?.messages.find(m => m.id === messageId);
-          const oldTokens = oldMsg ? msgTokens(oldMsg) : 0;
+          const previousMessage = session?.messages.find(m => m.id === messageId);
+          const oldTokens = previousMessage ? msgTokens(previousMessage) : 0;
 
-          const newSessions = state.sessions.map((session) =>
-            session.id === sessionId && !session.deletedAt
-              ? {
-                  ...session,
-                  messages: session.messages.map((msg) =>
-                    msg.id === messageId
-                      ? mergeMessageWithPresentation(msg, updates)
-                      : msg
-                  ),
-                }
-              : session
-          );
+          const {
+            sessions: newSessions,
+            updatedSession: updated,
+            nextMessage: newMsg,
+          } = updateSessionMessageState(state.sessions, sessionId, messageId, updates, { skipDeleted: true });
 
           // Async persist to IndexedDB (debounced)
-          const updated = newSessions.find((s) => s.id === sessionId);
           if (updated) {
             messageStorage.save(sessionId, updated.messages);
           }
 
           // Calculate new token count from the updated message
-          const newMsg = updated?.messages.find(m => m.id === messageId);
           const newTokens = newMsg ? msgTokens(newMsg) : 0;
           const tokenDelta = newTokens - oldTokens;
 
@@ -466,17 +436,13 @@ export const useSessionStore = create<SessionState>()(
 
       setSessionMindMeta: (sessionId: string, mindSession: MindSessionMeta) => {
         set((state) => ({
-          sessions: state.sessions.map((s) =>
-            s.id === sessionId ? { ...s, mindSession: { ...s.mindSession, ...mindSession }, updatedAt: Date.now() } : s
-          ),
+          sessions: updateSessionMindMetaState(state.sessions, sessionId, mindSession),
         }));
       },
 
       setSessionChatMeta: (sessionId: string, chatSession: ChatSessionMeta) => {
         set((state) => ({
-          sessions: state.sessions.map((s) =>
-            s.id === sessionId ? { ...s, chatSession: { ...s.chatSession, ...chatSession }, updatedAt: Date.now() } : s
-          ),
+          sessions: updateSessionChatMetaState(state.sessions, sessionId, chatSession),
         }));
       },
 
