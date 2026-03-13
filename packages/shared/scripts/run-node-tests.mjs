@@ -11,6 +11,7 @@ const outRoot = path.join(tempRoot, 'src');
 const nodeModulesLink = path.join(tempRoot, 'node_modules');
 const workspaceNodeModules = path.join(packageRoot, 'node_modules');
 await symlink(workspaceNodeModules, nodeModulesLink, 'dir');
+await writeFile(path.join(tempRoot, 'package.json'), JSON.stringify({ type: 'commonjs' }), 'utf8');
 
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });

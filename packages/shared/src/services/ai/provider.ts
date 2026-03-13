@@ -6,9 +6,30 @@ import type { LLMConfig } from '../../types';
 import { getPlatformContext } from '../../platform';
 import { getProviderMeta } from './providers';
 
-function resolveProviderFetch(proxyUrl?: string): typeof globalThis.fetch | undefined {
+export interface ProviderDependencies {
+  createOpenAI: typeof createOpenAI;
+  createAnthropic: typeof createAnthropic;
+  createGoogleGenerativeAI: typeof createGoogleGenerativeAI;
+  generateText: typeof generateText;
+  getPlatformContext: typeof getPlatformContext;
+  getProviderMeta: typeof getProviderMeta;
+}
+
+const defaultProviderDependencies: ProviderDependencies = {
+  createOpenAI,
+  createAnthropic,
+  createGoogleGenerativeAI,
+  generateText,
+  getPlatformContext,
+  getProviderMeta,
+};
+
+function resolveProviderFetch(
+  proxyUrl?: string,
+  deps: Pick<ProviderDependencies, 'getPlatformContext'> = defaultProviderDependencies,
+): typeof globalThis.fetch | undefined {
   try {
-    return getPlatformContext().api.createExternalFetch?.({
+    return deps.getPlatformContext().api.createExternalFetch?.({
       service: 'llm-provider',
       proxyUrl,
     });
@@ -17,9 +38,13 @@ function resolveProviderFetch(proxyUrl?: string): typeof globalThis.fetch | unde
   }
 }
 
-export function createProvider(config: LLMConfig, proxyUrl?: string) {
-  const customFetch = resolveProviderFetch(proxyUrl);
-  const meta = getProviderMeta(config.provider);
+export function createProvider(
+  config: LLMConfig,
+  proxyUrl?: string,
+  deps: ProviderDependencies = defaultProviderDependencies,
+) {
+  const customFetch = resolveProviderFetch(proxyUrl, deps);
+  const meta = deps.getProviderMeta(config.provider);
 
   if (!meta) {
     throw new Error(`Unknown provider: ${config.provider}`);
@@ -38,32 +63,40 @@ export function createProvider(config: LLMConfig, proxyUrl?: string) {
 
   switch (meta.sdkType) {
     case 'anthropic':
-      return createAnthropic({ apiKey: config.apiKey, baseURL, ...fetchOpt });
+      return deps.createAnthropic({ apiKey: config.apiKey, baseURL, ...fetchOpt });
     case 'google':
-      return createGoogleGenerativeAI({ apiKey: config.apiKey, baseURL, ...fetchOpt });
+      return deps.createGoogleGenerativeAI({ apiKey: config.apiKey, baseURL, ...fetchOpt });
     case 'openai':
     case 'openai-compatible':
     default:
-      return createOpenAI({ apiKey: config.apiKey, baseURL, ...fetchOpt });
+      return deps.createOpenAI({ apiKey: config.apiKey, baseURL, ...fetchOpt });
   }
 }
 
-export function createModel(config: LLMConfig, proxyUrl?: string) {
+export function createModel(
+  config: LLMConfig,
+  proxyUrl?: string,
+  deps: ProviderDependencies = defaultProviderDependencies,
+) {
   if (!config.model || !config.model.trim()) {
     throw new Error('Model name is required');
   }
 
-  const provider = createProvider(config, proxyUrl);
-  const meta = getProviderMeta(config.provider);
+  const provider = createProvider(config, proxyUrl, deps);
+  const meta = deps.getProviderMeta(config.provider);
   if (meta?.sdkType === 'openai-compatible') {
     return (provider as any).chat(config.model);
   }
   return provider(config.model);
 }
 
-export async function testConnection(config: LLMConfig, proxyUrl?: string): Promise<string> {
-  const model = createModel(config, proxyUrl);
-  const { text } = await generateText({
+export async function testConnection(
+  config: LLMConfig,
+  proxyUrl?: string,
+  deps: ProviderDependencies = defaultProviderDependencies,
+): Promise<string> {
+  const model = createModel(config, proxyUrl, deps);
+  const { text } = await deps.generateText({
     model,
     messages: [{ role: 'user', content: 'Say "ok" and nothing else.' }],
     maxOutputTokens: 10,

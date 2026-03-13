@@ -91,11 +91,11 @@ Status: In progress
 
 ### Phase 5 — Test coverage for core flows
 
-Status: Planned
+Status: In progress
 
-- [ ] Add targeted tests around session orchestration and persistence
-- [ ] Add targeted tests around AI runtime context assembly
-- [ ] Add targeted tests around provider/proxy selection behavior
+- [x] Add targeted tests around session orchestration and persistence
+- [x] Add targeted tests around AI runtime context assembly
+- [x] Add targeted tests around provider/proxy selection behavior
 - [ ] Add targeted tests for platform initialization invariants
 
 ## Execution order
@@ -135,6 +135,9 @@ This change set starts with the safest item in Phase 1:
 - Expand `@openbunny/shared` package exports for `version`, platform subpaths, and locale bundles so non-web consumers can stay on package contracts instead of filesystem aliases.
 - Add `scripts/check-package-boundaries.mjs` and `scripts/verify-package-contracts.mjs` so the artifact-consuming packages keep their new boundaries under automated verification.
 - Add `scripts/check-package-exports.mjs` and replace wildcard `exports` with explicit package contracts for `shared` and `ui-web`.
+- Add `sessionOps.test.ts` and `sessionPersistence.test.ts` to cover orchestration delegation, persistence forwarding, and interrupted-stream session recovery helpers.
+- Add `runtimeContext.test.ts` to verify skill/MCP/session/agent runtime context assembly, default store fallbacks, and override precedence.
+- Add `provider.test.ts` plus small dependency-injection seams in `provider.ts` to verify proxy fetch wiring, provider SDK branch selection, openai-compatible model resolution, and connection probe behavior.
 
 ## Audit Notes
 
