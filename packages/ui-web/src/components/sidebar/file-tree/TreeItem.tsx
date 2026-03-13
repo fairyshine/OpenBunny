@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileSystemEntry } from '@shared/services/filesystem';
+import { FileSystemEntry } from '@openbunny/shared/services/filesystem';
 import { Folder, File as FileIcon, ChevronRight, ChevronDown, Check } from '../../icons';
 import { TreeNode } from './types';
 import { getFileColor, formatSize, flattenVisible } from './utils';

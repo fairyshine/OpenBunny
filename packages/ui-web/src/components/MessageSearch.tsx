@@ -1,9 +1,9 @@
 // 消息搜索组件
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Message } from '@shared/types';
-import { MessageHistoryManager } from '@shared/utils/messageHistory';
-import { getMessageDisplayType, getMessageToolName } from '@shared/utils/messagePresentation';
+import { Message } from '@openbunny/shared/types';
+import { MessageHistoryManager } from '@openbunny/shared/utils/messageHistory';
+import { getMessageDisplayType, getMessageToolName } from '@openbunny/shared/utils/messagePresentation';
 import { Search, X } from './icons';
 import { Brain, Wrench, CircleCheck, MessageCircle } from './icons';
 import { Input } from './ui/input';

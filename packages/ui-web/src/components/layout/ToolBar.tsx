@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '@shared/stores/settings';
-import { builtinTools } from '@shared/services/ai/tools';
-import { detectPlatform } from '@shared/platform/detect';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
+import { builtinTools } from '@openbunny/shared/services/ai/tools';
+import { detectPlatform } from '@openbunny/shared/platform/detect';
 import { ToolIcon, toolDisplayInfo } from '../ToolIcon';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 

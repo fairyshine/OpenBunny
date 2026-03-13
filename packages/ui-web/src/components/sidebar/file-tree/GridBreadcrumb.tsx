@@ -6,11 +6,11 @@ interface GridBreadcrumbProps {
 }
 
 export function GridBreadcrumb({ gridPath, onNavigate }: GridBreadcrumbProps) {
-  const parts = gridPath.split('/').filter(Boolean);
+  const parts = gridPath.split('/shared/').filter(Boolean);
   const paths: { name: string; path: string }[] = [];
   let acc = '';
   for (const part of parts) {
-    acc += '/' + part;
+    acc += '/shared/' + part;
     paths.push({ name: part, path: acc });
   }
 

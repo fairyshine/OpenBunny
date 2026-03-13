@@ -2,24 +2,70 @@
   "name": "@openbunny/shared",
   "version": "0.1.0",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./types": "./src/types/index.ts",
-    "./services/*": "./src/services/*.ts",
-    "./stores/*": "./src/stores/*.ts",
-    "./hooks/*": "./src/hooks/*.ts",
-    "./utils/*": "./src/utils/*.ts",
-    "./lib/*": "./src/lib/*.ts",
-    "./platform": "./src/platform/index.ts",
-    "./platform/node": "./src/platform/node.ts",
-    "./platform/detect": "./src/platform/detect.ts",
-    "./i18n": "./src/i18n/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    },
+    "./services/*": {
+      "types": "./dist/services/*.d.ts",
+      "import": "./dist/services/*.js"
+    },
+    "./stores/*": {
+      "types": "./dist/stores/*.d.ts",
+      "import": "./dist/stores/*.js"
+    },
+    "./hooks/*": {
+      "types": "./dist/hooks/*.d.ts",
+      "import": "./dist/hooks/*.js"
+    },
+    "./utils/*": {
+      "types": "./dist/utils/*.d.ts",
+      "import": "./dist/utils/*.js"
+    },
+    "./lib/*": {
+      "types": "./dist/lib/*.d.ts",
+      "import": "./dist/lib/*.js"
+    },
+    "./platform": {
+      "types": "./dist/platform/index.d.ts",
+      "import": "./dist/platform/index.js"
+    },
+    "./platform/node": {
+      "types": "./dist/platform/node.d.ts",
+      "import": "./dist/platform/node.js"
+    },
+    "./platform/detect": {
+      "types": "./dist/platform/detect.d.ts",
+      "import": "./dist/platform/detect.js"
+    },
+    "./i18n": {
+      "types": "./dist/i18n/index.d.ts",
+      "import": "./dist/i18n/index.js"
+    },
+    "./platform/*": {
+      "types": "./dist/platform/*.d.ts",
+      "import": "./dist/platform/*.js"
+    },
+    "./i18n/locales/*": {
+      "types": "./dist/i18n/locales/*.d.ts",
+      "import": "./dist/i18n/locales/*.js"
+    },
+    "./version": {
+      "types": "./dist/version.d.ts",
+      "import": "./dist/version.js"
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node ./scripts/run-node-tests.mjs"
+    "test": "node ./scripts/run-node-tests.mjs",
+    "build": "node ./scripts/build.mjs"
   },
   "peerDependencies": {
     "react": "catalog:"

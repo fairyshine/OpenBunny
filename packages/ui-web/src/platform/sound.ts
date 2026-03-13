@@ -4,7 +4,7 @@
  */
 
 import { Howl } from 'howler';
-import { SOUND_EFFECTS, type ISoundBackend, type SoundEffect } from '@shared/services/sound';
+import { SOUND_EFFECTS, type ISoundBackend, type SoundEffect } from '@openbunny/shared/services/sound';
 
 const SOUND_PATHS: Record<SoundEffect, string> = SOUND_EFFECTS.reduce(
   (paths, sound) => {

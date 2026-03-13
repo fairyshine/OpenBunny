@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '@shared/stores/settings';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
-import { getProviderMeta } from '@shared/services/ai';
-import type { LLMConfig, LLMPreset } from '@shared/types';
+import { getProviderMeta } from '@openbunny/shared/services/ai';
+import type { LLMConfig, LLMPreset } from '@openbunny/shared/types';
 import ConnectionTest from './ConnectionTest';
 import ProviderPicker from './ProviderPicker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';

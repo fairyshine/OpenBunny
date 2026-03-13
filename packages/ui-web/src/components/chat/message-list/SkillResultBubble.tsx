@@ -4,7 +4,7 @@ import { File, FileCode, Folder, Sparkles } from 'lucide-react';
 import ReactMarkdown from '../../ReactMarkdown';
 import { Badge } from '../../ui/badge';
 import { MessageColumn, SideSpacer, Timestamp } from './MessageShared';
-import { formatFileSize } from '@shared/utils/messagePresentation';
+import { formatFileSize } from '@openbunny/shared/utils/messagePresentation';
 import type {
   SkillActivationResultRenderMessage,
   SkillResourceResultRenderMessage,

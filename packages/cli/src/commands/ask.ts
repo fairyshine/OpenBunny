@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import { callLLM } from '@shared/services/llm/streaming';
-import { useSessionStore } from '@shared/stores/session';
+import { callLLM } from '@openbunny/shared/services/llm/streaming';
+import { useSessionStore } from '@openbunny/shared/stores/session';
 import type { ModelMessage } from 'ai';
 
 export const askCommand = new Command('ask')
@@ -50,7 +50,6 @@ export const askCommand = new Command('ask')
         process.exit(1);
       }
     } else {
-      // Streaming: write chunks directly to stdout
       let lastLen = 0;
       try {
         await callLLM(config, messages, {

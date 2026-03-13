@@ -137,15 +137,15 @@ function corsProxyPlugin(): Plugin {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react(), corsProxyPlugin()],
   resolve: {
     dedupe: ['react', 'react-dom', 'zustand', 'react-i18next'],
     alias: {
-      '@shared': path.resolve(__dirname, '../shared/src'),
-      '@openbunny/shared': path.resolve(__dirname, '../shared/src/index.ts'),
-      '@openbunny/ui-web/styles': path.resolve(__dirname, '../ui-web/src/index.css'),
-      '@openbunny/ui-web': path.resolve(__dirname, '../ui-web/src'),
+      '@shared': path.resolve(__dirname, command === 'build' ? '../shared/dist' : '../shared/src'),
+      '@openbunny/shared': path.resolve(__dirname, command === 'build' ? '../shared/dist' : '../shared/src'),
+      '@openbunny/ui-web/styles': path.resolve(__dirname, command === 'build' ? '../ui-web/dist/index.css' : '../ui-web/src/index.css'),
+      '@openbunny/ui-web': path.resolve(__dirname, command === 'build' ? '../ui-web/dist' : '../ui-web/src'),
     },
   },
   // GitHub Pages 部署配置 - 根据仓库名自动调整
@@ -161,4 +161,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

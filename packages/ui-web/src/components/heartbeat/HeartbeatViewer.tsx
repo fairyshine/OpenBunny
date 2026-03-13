@@ -7,8 +7,8 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Plus, Trash2, X } from 'lucide-react';
-import { heartbeatManager } from '@shared/services/heartbeat';
-import type { HeartbeatItem, HeartbeatInterval } from '@shared/services/heartbeat';
+import { heartbeatManager } from '@openbunny/shared/services/heartbeat';
+import type { HeartbeatItem, HeartbeatInterval } from '@openbunny/shared/services/heartbeat';
 import { getToolIcon } from '../ToolIcon';
 
 interface HeartbeatViewerProps {

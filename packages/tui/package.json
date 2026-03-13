@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "tsx src/index.tsx",
-    "build": "tsc && chmod +x dist/index.js",
+    "build": "pnpm --filter @openbunny/shared build && tsc -p tsconfig.build.json && chmod +x dist/index.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

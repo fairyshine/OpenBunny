@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import { useSessionStore } from '@shared/stores/session';
+import { useSessionStore } from '@openbunny/shared/stores/session';
 import { Button } from '../ui/button';
 import { Undo2, TrashIcon } from '../icons';
 import { formatDate } from './utils';
-import type { Session } from '@shared/types';
+import type { Session } from '@openbunny/shared/types';
 
 interface TrashListProps {
   deletedSessions: Session[];

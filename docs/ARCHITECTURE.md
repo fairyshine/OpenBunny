@@ -153,6 +153,90 @@ Why this is temporary:
 Planned fix:
 
 - Build `shared` and `ui-web` as artifacts and consume `dist` outputs
+- Migration is now in progress: `web`, `desktop`, `cli`, and `tui` build against package artifacts, while `mobile` still uses source-level aliases pending follow-up cleanup
+
+## Platform Service Contracts
+
+Each client package should treat platform initialization as the place where required services are wired once.
+
+### `packages/web`
+
+Required services:
+
+- `storage`: browser `localStorage` adapter for persisted Zustand state
+- `api.fetch`: browser `fetch`
+- `api.createExternalFetch`: browser-specific LLM proxy routing for localhost / Worker proxy
+- `sound`: `WebSoundBackend`
+- settings handlers: theme + language callbacks
+- storage bootstrap: `initializePlatformStorage()` for IndexedDB-backed message/stats persistence
+
+Optional services:
+
+- `fs`: none
+
+### `packages/desktop`
+
+Required services:
+
+- `storage`: renderer-side persisted storage adapter
+- `fs`: Electron preload filesystem bridge
+- `api.fetch`: renderer `fetch`
+- `sound`: `WebSoundBackend`
+- settings handlers: theme + language callbacks
+- storage bootstrap: `initializePlatformStorage()` for IndexedDB-backed message/stats persistence
+
+Optional services:
+
+- `api.createExternalFetch`: not required because desktop can call providers directly
+
+### `packages/mobile`
+
+Required services:
+
+- `storage`: AsyncStorage-backed adapter
+- `fs`: native filesystem adapter
+- `api.fetch`: React Native `fetch`
+- `sound`: `MobileSoundBackend`
+- settings handlers: language callback and theme no-op hook
+- storage bootstrap: `initializePlatformStorage({ messageBackend, statsBackend })` with SQLite backends
+- filesystem bootstrap: `setFileSystemInstance(mobileFileSystem)`
+
+Optional services:
+
+- `api.createExternalFetch`: not required today
+
+### `packages/cli`
+
+Required services:
+
+- `storage`: injected `Conf` adapter
+- `api.fetch`: Node `fetch`
+- storage bootstrap: `initializePlatformStorage()` using no-op message/stats backends unless a node backend is introduced later
+
+Optional services:
+
+- `fs`: none today
+- `sound`: none today
+- settings handlers: none today
+
+### `packages/tui`
+
+Required services:
+
+- `storage`: injected `Conf` adapter
+- `api.fetch`: Node `fetch`
+- storage bootstrap: `initializePlatformStorage()` using no-op message/stats backends unless a node backend is introduced later
+
+Optional services:
+
+- `fs`: none today
+- `sound`: none today
+- settings handlers: none today
+
+### `worker`
+
+- Does not consume the shared platform context
+- Should stay isolated from client-side storage, sound, and filesystem contracts
 
 ## Current Good Patterns
 

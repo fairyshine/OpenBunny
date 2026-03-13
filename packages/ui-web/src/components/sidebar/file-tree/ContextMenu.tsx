@@ -1,6 +1,6 @@
 import { useRef, useState, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileSystemEntry } from '@shared/services/filesystem';
+import { FileSystemEntry } from '@openbunny/shared/services/filesystem';
 import { Folder, File as FileIcon, Plus, Download, Edit2 } from '../../icons';
 
 interface ContextMenuProps {
@@ -70,7 +70,7 @@ export function ContextMenu({
               <Download className="w-4 h-4" /> {t('common.download')}
             </button>
           )}
-          {contextMenu.entry.path !== '/root' && (
+          {contextMenu.entry.path !== '/shared/root' && (
             <>
               <button onClick={() => { onStartRename(contextMenu.entry); onClose(); }} className="w-full px-3 py-1.5 text-left text-sm hover:bg-accent flex items-center gap-2">
                 <Edit2 className="w-4 h-4" /> {t('common.rename')}

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useSessionStore, selectCurrentSession } from '@shared/stores/session';
-import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
+import { useSessionStore, selectCurrentSession } from '@openbunny/shared/stores/session';
+import { useAgentStore, DEFAULT_AGENT_ID } from '@openbunny/shared/stores/agent';
 
 export function useWorkspaceSession() {
   const currentAgentId = useAgentStore((s) => s.currentAgentId);

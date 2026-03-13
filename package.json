@@ -23,7 +23,9 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "version:sync": "node scripts/sync-version.mjs",
-    "version:set": "node scripts/sync-version.mjs"
+    "version:set": "node scripts/sync-version.mjs",
+    "check:boundaries": "node scripts/check-package-boundaries.mjs",
+    "verify:packages": "node scripts/verify-package-contracts.mjs"
   },
   "devDependencies": {
     "typescript": "catalog:"

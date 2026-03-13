@@ -4,13 +4,13 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "build": "pnpm --filter @openbunny/shared build && pnpm --filter @openbunny/ui-web build && tsc && vite build && electron-builder",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "package": "tsc && vite build && electron-builder --dir",
-    "package:mac": "tsc && vite build && electron-builder --mac",
-    "package:win": "tsc && vite build && electron-builder --win",
-    "package:linux": "tsc && vite build && electron-builder --linux"
+    "package": "pnpm --filter @openbunny/shared build && pnpm --filter @openbunny/ui-web build && tsc && vite build && electron-builder --dir",
+    "package:mac": "pnpm --filter @openbunny/shared build && pnpm --filter @openbunny/ui-web build && tsc && vite build && electron-builder --mac",
+    "package:win": "pnpm --filter @openbunny/shared build && pnpm --filter @openbunny/ui-web build && tsc && vite build && electron-builder --win",
+    "package:linux": "pnpm --filter @openbunny/shared build && pnpm --filter @openbunny/ui-web build && tsc && vite build && electron-builder --linux"
   },
   "dependencies": {
     "@openbunny/shared": "workspace:*",

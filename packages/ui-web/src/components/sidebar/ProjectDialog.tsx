@@ -1,9 +1,9 @@
 // Project management dialog component
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSessionStore } from '@shared/stores/session';
-import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
-import type { Project } from '@shared/types';
+import { useSessionStore } from '@openbunny/shared/stores/session';
+import { useAgentStore, DEFAULT_AGENT_ID } from '@openbunny/shared/stores/agent';
+import type { Project } from '@openbunny/shared/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';

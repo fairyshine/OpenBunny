@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "pnpm --filter @openbunny/shared build && pnpm --filter @openbunny/ui-web build && tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },

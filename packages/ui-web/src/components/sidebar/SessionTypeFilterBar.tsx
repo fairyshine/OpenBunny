@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { SessionType } from '@shared/types';
+import { SessionType } from '@openbunny/shared/types';
 import { HardDrive, MessageSquare, Globe, Lightbulb } from '../icons';
 
 export type SessionTypeFilter = 'all' | SessionType;

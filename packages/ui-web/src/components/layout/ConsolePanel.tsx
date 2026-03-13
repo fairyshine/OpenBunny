@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { consoleLogger, LogEntry, LogCategory, LogLevel } from '@shared/services/console/logger';
+import { consoleLogger, LogEntry, LogCategory, LogLevel } from '@openbunny/shared/services/console/logger';
 import { X } from '../icons';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';

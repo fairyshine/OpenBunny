@@ -1,4 +1,4 @@
-import type { Agent, Message, MessageFileAttachment, MessageSkillResource, Session } from '@shared/types';
+import type { Agent, Message, MessageFileAttachment, MessageSkillResource, Session } from '@openbunny/shared/types';
 
 export interface BubbleAppearance {
   align: 'left' | 'right';

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useToolStore } from '@shared/stores/tools';
+import { useToolStore } from '@openbunny/shared/stores/tools';
 import { useAgentConfig } from '../../../hooks/useAgentConfig';
 import { resolveToolDisplay } from '../../../lib/toolDisplay';
 import { Badge } from '../../ui/badge';

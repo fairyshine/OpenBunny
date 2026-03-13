@@ -1,26 +1,25 @@
 #!/usr/bin/env node
 import React from 'react';
 import { render } from 'ink';
-import { initNodePlatform } from '@shared/platform/node';
-import type { IPlatformStorage } from '@shared/platform';
-import { detectNodeOS } from '@shared/platform/detect';
+import { initNodePlatform } from '@openbunny/shared/platform/node';
+import type { IPlatformStorage } from '@openbunny/shared/platform';
+import { detectNodeOS } from '@openbunny/shared/platform/detect';
 import Conf from 'conf';
-import { useSessionStore } from '@shared/stores/session';
-import App from './App';
+import { useSessionStore } from '@openbunny/shared/stores/session';
+import App from './App.js';
 
-// Initialize platform
 const store = new Conf({ projectName: 'openbunny' });
 const storage: IPlatformStorage = {
   getItem: (key: string) => (store.get(key) as string) ?? null,
   setItem: (key: string, value: string) => store.set(key, value),
   removeItem: (key: string) => store.delete(key),
 };
+
 initNodePlatform(
   { type: 'tui', os: detectNodeOS(), isBrowser: false, isDesktop: false, isMobile: false, isCLI: false, isTUI: true },
   storage,
 );
 
-// Parse CLI args
 const args = process.argv.slice(2);
 let model = 'gpt-4';
 let provider: 'openai' | 'anthropic' = 'openai';
@@ -61,7 +60,6 @@ Commands inside TUI:
   }
 }
 
-// Fallback to stored config
 if (!apiKey) {
   apiKey = useSessionStore.getState().llmConfig.apiKey;
 }

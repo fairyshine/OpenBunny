@@ -1,6 +1,6 @@
 import { Moon, Sun } from "lucide-react"
 import { Button } from "../ui/button"
-import { useSettingsStore } from "@shared/stores/settings"
+import { useSettingsStore } from "@openbunny/shared/stores/settings"
 
 export function ThemeToggle() {
   const { theme, setTheme } = useSettingsStore()

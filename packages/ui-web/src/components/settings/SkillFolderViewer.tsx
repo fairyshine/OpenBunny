@@ -2,7 +2,7 @@
 // 显示完整的 skill 文件夹结构
 
 import { useState, useEffect } from 'react';
-import { fileSystem } from '@shared/services/filesystem';
+import { fileSystem } from '@openbunny/shared/services/filesystem';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
@@ -16,7 +16,7 @@ import {
   Download,
   Upload
 } from 'lucide-react';
-import { cn } from '@shared/lib/utils';
+import { cn } from '@openbunny/shared/lib/utils';
 
 interface FileNode {
   name: string;
@@ -54,7 +54,7 @@ export function SkillFolderViewer({ skillPath, onFileSelect, selectedFile }: Ski
 
   const buildFileTree = async (path: string): Promise<FileNode> => {
     const entries = await fileSystem.readdir(path);
-    const name = path.split('/').pop() || path;
+    const name = path.split('/shared/').pop() || path;
 
     const node: FileNode = {
       name,

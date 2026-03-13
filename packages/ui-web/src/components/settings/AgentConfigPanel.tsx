@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAgentStore } from '@shared/stores/agent';
-import { isImageAvatar } from '@shared/utils/imageUtils';
+import { useAgentStore } from '@openbunny/shared/stores/agent';
+import { isImageAvatar } from '@openbunny/shared/utils/imageUtils';
 import { AvatarPicker } from '../ui/avatar-picker';
 import { ScrollArea } from '../ui/scroll-area';
 import { LLMSection } from './LLMSection';

@@ -1,4 +1,4 @@
-import { isImageAvatar } from '@shared/utils/imageUtils';
+import { isImageAvatar } from '@openbunny/shared/utils/imageUtils';
 
 interface AvatarProps {
   src: string;

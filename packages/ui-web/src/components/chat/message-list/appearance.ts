@@ -1,4 +1,4 @@
-import type { Agent, Message, Session } from '@shared/types';
+import type { Agent, Message, Session } from '@openbunny/shared/types';
 import type { BubbleAppearance } from './types';
 
 function getAgentAvatar(agentId: string | undefined, agents: Agent[]): string | null {

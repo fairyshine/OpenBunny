@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
-import { useSettingsStore } from '@shared/stores/settings';
-import { testConnection as testLLMConnection } from '@shared/services/ai/provider';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
+import { testConnection as testLLMConnection } from '@openbunny/shared/services/ai/provider';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';

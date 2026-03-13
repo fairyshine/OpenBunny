@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { fileSystem, FileSystemEntry } from '@shared/services/filesystem';
+import { fileSystem, FileSystemEntry } from '@openbunny/shared/services/filesystem';
 import { Folder, File as FileIcon, Search, X } from '../../icons';
 import { Input } from '../../ui/input';
 import { Button } from '../../ui/button';
@@ -124,7 +124,7 @@ export default function FileTree({ onSelectFile, selectedPath, onItemClick, onBl
         onDrop={(e: any) => dd.handleDrop(e, rootDir, true)}
         onContextMenu={(e) => {
           e.preventDefault();
-          setContextMenu({ x: e.clientX, y: e.clientY, entry: { path: rootDir, name: rootDir.split('/').pop() || 'root', type: 'directory', size: 0, createdAt: 0, modifiedAt: 0 } });
+          setContextMenu({ x: e.clientX, y: e.clientY, entry: { path: rootDir, name: rootDir.split('/shared/').pop() || 'root', type: 'directory', size: 0, createdAt: 0, modifiedAt: 0 } });
         }}
       >
         {ft.isLoading ? (

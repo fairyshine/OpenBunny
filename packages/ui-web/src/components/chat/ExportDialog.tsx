@@ -1,10 +1,10 @@
 // 消息导出功能组件
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Message } from '@shared/types';
-import { MessageHistoryManager } from '@shared/utils/messageHistory';
-import type { ExportHistoryVariant, ExportOptions } from '@shared/utils/messageHistory';
-import { getEnabledTools } from '@shared/services/ai/tools';
+import { Message } from '@openbunny/shared/types';
+import { MessageHistoryManager } from '@openbunny/shared/utils/messageHistory';
+import type { ExportHistoryVariant, ExportOptions } from '@openbunny/shared/utils/messageHistory';
+import { getEnabledTools } from '@openbunny/shared/services/ai/tools';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';

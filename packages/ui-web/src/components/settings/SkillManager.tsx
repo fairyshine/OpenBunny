@@ -3,9 +3,9 @@
 
 import { useState, useEffect, useCallback, type KeyboardEvent, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSkillStore } from '@shared/stores/skills';
+import { useSkillStore } from '@openbunny/shared/stores/skills';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
-import type { LoadedSkill } from '@shared/services/skills';
+import type { LoadedSkill } from '@openbunny/shared/services/skills';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';

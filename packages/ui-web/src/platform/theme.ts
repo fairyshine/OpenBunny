@@ -2,9 +2,9 @@
  * Theme utility functions
  */
 
-import type { Theme } from '@shared/stores/settings';
-export type { Theme } from '@shared/stores/settings';
-import { resolveThemePreference, type ResolvedTheme } from '@shared/utils/theme';
+import type { Theme } from '@openbunny/shared/stores/settings';
+export type { Theme } from '@openbunny/shared/stores/settings';
+import { resolveThemePreference, type ResolvedTheme } from '@openbunny/shared/utils/theme';
 
 /**
  * Apply theme to document

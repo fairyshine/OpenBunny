@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { Virtuoso } from 'react-virtuoso';
-import type { Message, Session } from '@shared/types';
-import { useSettingsStore } from '@shared/stores/settings';
-import { useSkillStore } from '@shared/stores/skills';
-import { useAgentStore } from '@shared/stores/agent';
+import type { Message, Session } from '@openbunny/shared/types';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
+import { useSkillStore } from '@openbunny/shared/stores/skills';
+import { useAgentStore } from '@openbunny/shared/stores/agent';
 import EmptyState from './message-list/EmptyState';
 import MessageItem from './message-list/MessageItem';
 import { normalizeMessageForRender } from './message-list/normalizeMessage';

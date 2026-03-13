@@ -1,4 +1,4 @@
-import { useSessionStore } from '@shared/stores/session';
+import { useSessionStore } from '@openbunny/shared/stores/session';
 import { useTranslation } from 'react-i18next';
 import { X } from '../icons';
 import { Button } from '../ui/button';

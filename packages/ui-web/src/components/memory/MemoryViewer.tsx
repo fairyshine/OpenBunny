@@ -8,12 +8,12 @@ import { Calendar } from '../ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
 import { Search, Calendar as CalendarIcon, BarChart3, Eye, Edit2, BookOpen, Flame } from 'lucide-react';
-import { fileSystem } from '@shared/services/filesystem';
+import { fileSystem } from '@openbunny/shared/services/filesystem';
 import ReactMarkdown from '../ReactMarkdown';
 import { getToolIcon } from '../ToolIcon';
 
-const MEMORY_DIR = '/root/.memory';
-const MEMORY_FILE = '/root/.memory/MEMORY.md';
+const MEMORY_DIR = '/shared/root/.memory';
+const MEMORY_FILE = '/shared/root/.memory/MEMORY.md';
 
 interface MemoryViewerProps {
   isOpen: boolean;

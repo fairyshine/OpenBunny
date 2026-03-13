@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "allowImportingTsExtensions": false,
+    "emitDeclarationOnly": false,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@openbunny/shared": ["../shared/dist/index.d.ts"],
+      "@openbunny/shared/*": ["../shared/dist/*"],
+      "@shared/*": ["../shared/dist/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["dist"]
+}

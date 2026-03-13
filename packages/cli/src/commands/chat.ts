@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import * as readline from 'readline';
-import { callLLM } from '@shared/services/llm/streaming';
-import { useSessionStore } from '@shared/stores/session';
+import { callLLM } from '@openbunny/shared/services/llm/streaming';
+import { useSessionStore } from '@openbunny/shared/stores/session';
 import type { ModelMessage } from 'ai';
 
 export const chatCommand = new Command('chat')
@@ -36,74 +36,50 @@ export const chatCommand = new Command('chat')
       history.push({ role: 'system', content: opts.system });
     }
 
-    console.log(chalk.cyan('OpenBunny Chat'));
-    console.log(chalk.gray(`Model: ${config.model} | Provider: ${config.provider}`));
-    console.log(chalk.gray('Type /quit to exit, /clear to reset history\n'));
+    console.log(chalk.green('OpenBunny Chat'));
+    console.log(chalk.gray('Type your message and press Enter. Ctrl+C to exit.\n'));
 
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
+      prompt: chalk.blue('> '),
     });
 
-    const prompt = () => {
-      rl.question(chalk.green('> '), async (input) => {
-        const trimmed = input.trim();
+    rl.prompt();
 
-        if (!trimmed) {
-          prompt();
-          return;
-        }
+    rl.on('line', async (line) => {
+      const input = line.trim();
+      if (!input) {
+        rl.prompt();
+        return;
+      }
 
-        if (trimmed === '/quit' || trimmed === '/exit') {
-          console.log(chalk.gray('Bye!'));
-          rl.close();
-          process.exit(0);
-        }
+      history.push({ role: 'user', content: input });
+      let lastLen = 0;
 
-        if (trimmed === '/clear') {
-          history.length = 0;
-          if (opts.system) {
-            history.push({ role: 'system', content: opts.system });
-          }
-          console.log(chalk.gray('History cleared.\n'));
-          prompt();
-          return;
-        }
+      try {
+        const result = await callLLM(config, history, {
+          onChunk: (full) => {
+            const newPart = full.slice(lastLen);
+            process.stdout.write(newPart);
+            lastLen = full.length;
+          },
+          onComplete: () => {
+            process.stdout.write('\n');
+          },
+        });
 
-        if (trimmed === '/history') {
-          const count = history.filter(m => m.role !== 'system').length;
-          console.log(chalk.gray(`${count} messages in history.\n`));
-          prompt();
-          return;
-        }
+        history.push({ role: 'assistant', content: result });
+      } catch (error) {
+        console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+        history.pop();
+      }
 
-        history.push({ role: 'user', content: trimmed });
+      rl.prompt();
+    });
 
-        let lastLen = 0;
-        process.stdout.write(chalk.blue(''));
-
-        try {
-          const result = await callLLM(config, history, {
-            onChunk: (full) => {
-              const newPart = full.slice(lastLen);
-              process.stdout.write(newPart);
-              lastLen = full.length;
-            },
-          });
-
-          process.stdout.write('\n\n');
-          history.push({ role: 'assistant', content: result });
-        } catch (error) {
-          process.stdout.write('\n');
-          console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-          console.log();
-          // Remove the failed user message
-          history.pop();
-        }
-
-        prompt();
-      });
-    };
-
-    prompt();
+    rl.on('close', () => {
+      process.stdout.write('\n');
+      process.exit(0);
+    });
   });

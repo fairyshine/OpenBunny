@@ -1,11 +1,11 @@
-import { detectPlatform, initializePlatformRuntime } from '@shared/platform';
-import type { IPlatformStorage, IPlatformAPI, IPlatformContext } from '@shared/platform';
-import { setThemeHandler, setLanguageHandler } from '@shared/stores/settings';
-import { soundManager } from '@shared/services/sound';
-import { initializePlatformStorage } from '@shared/services/storage/bootstrap';
+import { detectPlatform, initializePlatformRuntime } from '@openbunny/shared/platform';
+import type { IPlatformStorage, IPlatformAPI, IPlatformContext } from '@openbunny/shared/platform';
+import { setThemeHandler, setLanguageHandler } from '@openbunny/shared/stores/settings';
+import { soundManager } from '@openbunny/shared/services/sound';
+import { initializePlatformStorage } from '@openbunny/shared/services/storage/bootstrap';
 import { applyTheme, type Theme } from '@openbunny/ui-web';
 import { WebSoundBackend } from '@openbunny/ui-web/platform/sound';
-import i18n from '@shared/i18n';
+import i18n from '@openbunny/shared/i18n';
 
 // Browser storage implementation (localStorage)
 const browserStorage: IPlatformStorage = {

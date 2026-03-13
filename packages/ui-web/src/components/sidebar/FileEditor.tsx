@@ -37,7 +37,7 @@ export default function FileEditor({ path, content, onClose, onSave }: FileEdito
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = path.split('/').pop() || 'file.txt';
+    a.download = path.split('/shared/').pop() || 'file.txt';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -60,7 +60,7 @@ export default function FileEditor({ path, content, onClose, onSave }: FileEdito
             <X className="w-5 h-5" />
           </Button>
           <div className="flex flex-col">
-            <span className="font-medium text-sm">{path.split('/').pop()}</span>
+            <span className="font-medium text-sm">{path.split('/shared/').pop()}</span>
             <span className="text-xs text-muted-foreground">
               {path}
               {hasChanges && <Badge variant="outline" className="ml-2 text-yellow-500 border-yellow-500">{t('fileEditor.modified')}</Badge>}

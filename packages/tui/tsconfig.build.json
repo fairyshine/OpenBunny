@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "noEmit": false,
+    "declaration": true,
+    "allowImportingTsExtensions": false,
+    "paths": {
+      "@openbunny/shared": ["../shared/dist/index.d.ts"],
+      "@openbunny/shared/*": ["../shared/dist/*"]
+    }
+  },
+  "include": ["src"]
+}

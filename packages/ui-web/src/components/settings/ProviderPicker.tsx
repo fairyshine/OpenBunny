@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { providerRegistry } from '@shared/services/ai';
-import type { ProviderMeta, ProviderCategory } from '@shared/services/ai';
+import { providerRegistry } from '@openbunny/shared/services/ai';
+import type { ProviderMeta, ProviderCategory } from '@openbunny/shared/services/ai';
 import { Input } from '../ui/input';
 import { Search } from 'lucide-react';
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fileSystem } from '@shared/services/filesystem';
+import { fileSystem } from '@openbunny/shared/services/filesystem';
 import { FileSystemEntry_Web } from './types';
 import { readEntryFiles } from './utils';
 
@@ -42,7 +42,7 @@ export function useDragDrop(
         if (isDirectory) {
           setDropTarget(path);
         } else {
-          const parentPath = path.substring(0, path.lastIndexOf('/')) || '/root';
+          const parentPath = path.substring(0, path.lastIndexOf('/shared/')) || '/shared/root';
           setDropTarget(parentPath);
         }
       }
@@ -63,7 +63,7 @@ export function useDragDrop(
         if (isDirectory) {
           setDropTarget(path);
         } else {
-          const parentPath = path.substring(0, path.lastIndexOf('/')) || '/root';
+          const parentPath = path.substring(0, path.lastIndexOf('/shared/')) || '/shared/root';
           setDropTarget(parentPath);
         }
       } else if (e.dataTransfer.types.includes('Files')) {
@@ -82,7 +82,7 @@ export function useDragDrop(
 
     // Handle file/folder upload from OS
     if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      const dest = isDirectory ? targetPath : (targetPath.substring(0, targetPath.lastIndexOf('/')) || '/root');
+      const dest = isDirectory ? targetPath : (targetPath.substring(0, targetPath.lastIndexOf('/shared/')) || '/shared/root');
       const items = Array.from(e.dataTransfer.items);
       const entries = items.map(item => (item as any).webkitGetAsEntry?.() as FileSystemEntry_Web | null).filter(Boolean);
 
@@ -105,7 +105,7 @@ export function useDragDrop(
 
     // Handle flat file upload from OS (fallback)
     if (e.dataTransfer.files.length > 0) {
-      const dest = isDirectory ? targetPath : (targetPath.substring(0, targetPath.lastIndexOf('/')) || '/root');
+      const dest = isDirectory ? targetPath : (targetPath.substring(0, targetPath.lastIndexOf('/shared/')) || '/shared/root');
       const files = Array.from(e.dataTransfer.files);
       for (const file of files) {
         try { await fileSystem.writeFile(`${dest}/${file.name}`, file); } catch (err) { console.error(err); }
@@ -121,11 +121,11 @@ export function useDragDrop(
     if (!dragged || dragged === targetPath) { handleDragEnd(); return; }
 
     // Prevent dropping parent into its own child
-    if (isDirectory && targetPath.startsWith(dragged + '/')) { handleDragEnd(); return; }
+    if (isDirectory && targetPath.startsWith(dragged + '/shared/')) { handleDragEnd(); return; }
 
     try {
-      const draggedName = dragged.split('/').pop()!;
-      const destDir = isDirectory ? targetPath : (targetPath.substring(0, targetPath.lastIndexOf('/')) || '/root');
+      const draggedName = dragged.split('/shared/').pop()!;
+      const destDir = isDirectory ? targetPath : (targetPath.substring(0, targetPath.lastIndexOf('/shared/')) || '/shared/root');
       const newPath = `${destDir}/${draggedName}`;
 
       if (newPath !== dragged) {

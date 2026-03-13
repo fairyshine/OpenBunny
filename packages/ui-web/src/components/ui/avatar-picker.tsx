@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from './avatar';
-import { compressImage, isImageAvatar } from '@shared/utils/imageUtils';
+import { compressImage, isImageAvatar } from '@openbunny/shared/utils/imageUtils';
 import { Upload, X } from 'lucide-react';
 
 interface AvatarPickerProps {

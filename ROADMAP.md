@@ -56,7 +56,7 @@ Status: Completed
 
 ### Phase 3 — Tighten platform boundaries
 
-Status: In progress
+Status: Completed
 
 #### 3.1 Route environment access through platform context
 
@@ -68,23 +68,24 @@ Status: In progress
 
 - [x] Create a shared bootstrap helper for React platforms
 - [x] Make platform initialization idempotent and easy to test
-- [ ] Document required platform services for each client package
+- [x] Document required platform services for each client package
 
 ### Phase 4 — Package boundary hardening
 
-Status: Planned
+Status: In progress
 
 #### 4.1 Move workspace packages to built artifacts
 
-- [ ] Build `@openbunny/shared` to `dist`
-- [ ] Build `@openbunny/ui-web` to `dist`
+- [x] Build `@openbunny/shared` to `dist`
+- [x] Build `@openbunny/ui-web` to `dist`
 - [ ] Update consumers to import compiled outputs instead of raw source
+  - Progress: `ui-web`, `web`, `desktop`, `cli`, and `tui` now build against package contracts/artifacts; `mobile` remains on a source-first Expo workflow for now
 - [ ] Remove duplicated transitive dependency declarations where possible
 
 #### 4.2 Add package contract checks
 
-- [ ] Add typecheck/build verification for each package entrypoint
-- [ ] Add a dependency-boundary rule or script for forbidden imports
+- [x] Add typecheck/build verification for each package entrypoint
+- [x] Add a dependency-boundary rule or script for forbidden imports
 - [ ] Ensure package exports reflect intended public APIs only
 
 ### Phase 5 — Test coverage for core flows
@@ -125,6 +126,13 @@ This change set starts with the safest item in Phase 1:
 - Centralize message/statistics backend registration in `initializePlatformStorage()` so browser, desktop, mobile, CLI, and TUI each use one explicit startup path.
 - Expand `packages/ui-web/src/bootstrap.tsx` so web and desktop share the same platform-init + root-mount bootstrap entry.
 - Add `initializePlatformRuntime()` so browser, desktop, mobile, CLI, and TUI platform init paths are idempotent, return their context, and can be reset in tests.
+- Document each client package's required platform services so new entrypoints can wire `storage`, `fs`, `api`, `sound`, and settings hooks consistently.
+- Add explicit `build` pipelines for `@openbunny/shared` and `@openbunny/ui-web`, emitting ESM artifacts to `dist` with rewritten relative imports for runtime consumption.
+- Make `web` build consume `shared`/`ui-web` dist artifacts via build-time aliases while keeping dev-time aliases pointed at source.
+- Make `desktop` build consume `shared`/`ui-web` dist artifacts via build-time aliases while keeping dev-time aliases pointed at source.
+- Move `cli` and `tui` imports onto `@openbunny/shared` public subpaths and compile them with build-only `tsconfig` files that resolve against `shared/dist` instead of `shared/src`.
+- Expand `@openbunny/shared` package exports for `version`, platform subpaths, and locale bundles so non-web consumers can stay on package contracts instead of filesystem aliases.
+- Add `scripts/check-package-boundaries.mjs` and `scripts/verify-package-contracts.mjs` so the artifact-consuming packages keep their new boundaries under automated verification.
 
 ## Audit Notes
 

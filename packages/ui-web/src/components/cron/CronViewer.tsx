@@ -8,8 +8,8 @@ import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Plus, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { getToolIcon } from '../ToolIcon';
-import { cronManager } from '@shared/services/cron';
-import type { CronJob } from '@shared/services/cron';
+import { cronManager } from '@openbunny/shared/services/cron';
+import type { CronJob } from '@openbunny/shared/services/cron';
 
 interface CronViewerProps {
   isOpen: boolean;

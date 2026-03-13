@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fileSystem } from '@shared/services/filesystem';
+import { fileSystem } from '@openbunny/shared/services/filesystem';
 import { TreeNode } from './types';
 import { collectDescendants } from './utils';
 

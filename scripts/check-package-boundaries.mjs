@@ -1,0 +1,101 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+const repoRoot = process.cwd();
+
+const packageRules = [
+  {
+    name: '@openbunny/ui-web',
+    dir: 'packages/ui-web/src',
+    forbidden: [
+      { pattern: /@shared\//g, message: 'use `@openbunny/shared/*` package imports instead of `@shared/*` aliases' },
+      { pattern: /\.\.\/shared\/src\//g, message: 'do not import shared raw source paths directly' },
+    ],
+  },
+  {
+    name: '@openbunny/web',
+    dir: 'packages/web/src',
+    forbidden: [
+      { pattern: /@shared\//g, message: 'use package imports or build aliases, not `@shared/*` source aliases' },
+      { pattern: /\.\.\/shared\/src\//g, message: 'do not import shared raw source paths directly' },
+      { pattern: /\.\.\/ui-web\/src\//g, message: 'do not import ui-web raw source paths directly' },
+    ],
+  },
+  {
+    name: '@openbunny/desktop',
+    dir: 'packages/desktop/src',
+    forbidden: [
+      { pattern: /@shared\//g, message: 'use package imports or build aliases, not `@shared/*` source aliases' },
+      { pattern: /\.\.\/shared\/src\//g, message: 'do not import shared raw source paths directly' },
+      { pattern: /\.\.\/ui-web\/src\//g, message: 'do not import ui-web raw source paths directly' },
+    ],
+  },
+  {
+    name: '@openbunny/cli',
+    dir: 'packages/cli/src',
+    forbidden: [
+      { pattern: /@shared\//g, message: 'use `@openbunny/shared/*` public subpaths instead of `@shared/*` aliases' },
+      { pattern: /\.\.\/shared\/src\//g, message: 'do not import shared raw source paths directly' },
+    ],
+  },
+  {
+    name: '@openbunny/tui',
+    dir: 'packages/tui/src',
+    forbidden: [
+      { pattern: /@shared\//g, message: 'use `@openbunny/shared/*` public subpaths instead of `@shared/*` aliases' },
+      { pattern: /\.\.\/shared\/src\//g, message: 'do not import shared raw source paths directly' },
+    ],
+  },
+];
+
+const sourceFilePattern = /\.(ts|tsx|js|jsx|mts|cts)$/;
+const violations = [];
+
+function walk(dir) {
+  const fullDir = path.join(repoRoot, dir);
+  if (!fs.existsSync(fullDir)) return [];
+
+  const entries = fs.readdirSync(fullDir, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    if (entry.name === 'dist' || entry.name === 'node_modules') continue;
+    const relPath = path.join(dir, entry.name);
+    const fullPath = path.join(repoRoot, relPath);
+    if (entry.isDirectory()) {
+      files.push(...walk(relPath));
+      continue;
+    }
+    if (entry.isFile() && sourceFilePattern.test(entry.name)) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+for (const rule of packageRules) {
+  for (const file of walk(rule.dir)) {
+    const content = fs.readFileSync(file, 'utf8');
+    for (const forbidden of rule.forbidden) {
+      const match = content.match(forbidden.pattern);
+      if (!match) continue;
+      violations.push({
+        packageName: rule.name,
+        file: path.relative(repoRoot, file),
+        message: forbidden.message,
+      });
+    }
+  }
+}
+
+if (violations.length > 0) {
+  console.error('Package boundary violations found:\n');
+  for (const violation of violations) {
+    console.error(`- [${violation.packageName}] ${violation.file}: ${violation.message}`);
+  }
+  process.exit(1);
+}
+
+console.log('Package boundary check passed for web, desktop, ui-web, cli, and tui.');
+console.log('Note: mobile remains on a source-first Expo workflow and is tracked separately in ROADMAP.md.');

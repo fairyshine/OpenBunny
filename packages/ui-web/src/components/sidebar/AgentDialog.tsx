@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { X } from '../icons';
 import { Button } from '../ui/button';
 import { AvatarPicker } from '../ui/avatar-picker';
-import { useAgentStore } from '@shared/stores/agent';
-import type { Agent } from '@shared/types';
+import { useAgentStore } from '@openbunny/shared/stores/agent';
+import type { Agent } from '@openbunny/shared/types';
 
 interface AgentDialogProps {
   isOpen: boolean;

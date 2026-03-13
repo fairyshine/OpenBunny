@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
-import type { Agent } from '@shared/types';
-import { isImageAvatar } from '@shared/utils/imageUtils';
+import type { Agent } from '@openbunny/shared/types';
+import { isImageAvatar } from '@openbunny/shared/utils/imageUtils';
 
 export const AGENT_NODE_WIDTH = 80;
 export const AGENT_NODE_HEIGHT = 90;

@@ -1,5 +1,5 @@
-import type { Message } from '@shared/types';
-import { deriveMessagePresentation } from '@shared/utils/messagePresentation';
+import type { Message } from '@openbunny/shared/types';
+import { deriveMessagePresentation } from '@openbunny/shared/utils/messagePresentation';
 import { getBubbleAppearance } from './appearance';
 import type {
   MessageRenderContext,

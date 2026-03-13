@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '@shared/stores/settings';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
 import { ToolManager } from './ToolManager';
 import { SkillManager } from './SkillManager';
 import { LLMSection, SettingsGroup } from './LLMSection';
@@ -25,8 +25,8 @@ import {
   Sparkles,
   Globe,
 } from 'lucide-react';
-import { APP_VERSION } from '@shared/version';
-import { isImageAvatar } from '@shared/utils/imageUtils';
+import { APP_VERSION } from '@openbunny/shared/version';
+import { isImageAvatar } from '@openbunny/shared/utils/imageUtils';
 import { AvatarPicker } from '../ui/avatar-picker';
 import type { SettingsSection } from './settingsModalEvents';
 

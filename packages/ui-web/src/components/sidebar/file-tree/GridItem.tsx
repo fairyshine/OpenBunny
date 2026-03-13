@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileSystemEntry } from '@shared/services/filesystem';
+import { FileSystemEntry } from '@openbunny/shared/services/filesystem';
 import { Folder, File as FileIcon, Check } from '../../icons';
 import { TreeNode } from './types';
 import { getFileColor, getFileExt, formatSize } from './utils';

@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '@shared/stores/settings';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { User } from 'lucide-react';
 import { Avatar } from '../ui/avatar';
 import { AvatarPicker } from '../ui/avatar-picker';
-import { isImageAvatar } from '@shared/utils/imageUtils';
+import { isImageAvatar } from '@openbunny/shared/utils/imageUtils';
 
 const AVATAR_EMOJIS = ['🐰', '🤖', '🦊', '🐱', '🐶', '🦉', '🐼', '🦄', '🐲', '🎭', '👾', '🧠'];
 

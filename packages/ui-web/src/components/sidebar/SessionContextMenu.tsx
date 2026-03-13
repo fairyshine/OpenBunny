@@ -1,7 +1,7 @@
 // Session context menu with move to project functionality
 import { useTranslation } from 'react-i18next';
-import { useSessionStore } from '@shared/stores/session';
-import type { Session } from '@shared/types';
+import { useSessionStore } from '@openbunny/shared/stores/session';
+import type { Session } from '@openbunny/shared/types';
 import {
   DropdownMenu,
   DropdownMenuContent,

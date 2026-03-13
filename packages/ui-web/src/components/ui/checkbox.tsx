@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Check } from "lucide-react"
 
-import { cn } from "@shared/lib/utils"
+import { cn } from "@openbunny/shared/lib/utils"
 
 export interface CheckboxProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange"> {

@@ -1,11 +1,11 @@
-import { initializePlatformRuntime } from '@shared/platform';
-import type { IPlatformStorage, IPlatformFS, IPlatformAPI, IPlatformContext, OSType } from '@shared/platform';
-import { setThemeHandler, setLanguageHandler } from '@shared/stores/settings';
-import { soundManager } from '@shared/services/sound';
-import { initializePlatformStorage } from '@shared/services/storage/bootstrap';
+import { initializePlatformRuntime } from '@openbunny/shared/platform';
+import type { IPlatformStorage, IPlatformFS, IPlatformAPI, IPlatformContext, OSType } from '@openbunny/shared/platform';
+import { setThemeHandler, setLanguageHandler } from '@openbunny/shared/stores/settings';
+import { soundManager } from '@openbunny/shared/services/sound';
+import { initializePlatformStorage } from '@openbunny/shared/services/storage/bootstrap';
 import { applyTheme } from '@openbunny/ui-web';
 import { WebSoundBackend } from '@openbunny/ui-web/platform/sound';
-import i18n from '@shared/i18n';
+import i18n from '@openbunny/shared/i18n';
 
 // Type for the electronAPI exposed via preload
 declare global {

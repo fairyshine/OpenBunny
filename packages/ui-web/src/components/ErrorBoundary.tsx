@@ -2,7 +2,7 @@ import { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { AlertTriangle } from './icons';
-import i18n from '@shared/i18n';
+import i18n from '@openbunny/shared/i18n';
 
 interface Props {
   children: ReactNode;

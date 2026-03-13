@@ -1,16 +1,16 @@
 import { useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSessionStore } from '@shared/stores/session';
-import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
-import { useSettingsStore } from '@shared/stores/settings';
-import type { Session } from '@shared/types';
+import { useSessionStore } from '@openbunny/shared/stores/session';
+import { useAgentStore, DEFAULT_AGENT_ID } from '@openbunny/shared/stores/agent';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
+import type { Session } from '@openbunny/shared/types';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { SessionContextMenu } from './SessionContextMenu';
 import { SESSION_TYPE_ICONS } from './SessionTypeFilterBar';
 import { formatDate } from './utils';
 import { useWorkspaceSession } from '../../hooks/useWorkspaceSession';
-import { deleteChatSessionPair } from '@shared/services/ai/chat';
+import { deleteChatSessionPair } from '@openbunny/shared/services/ai/chat';
 
 interface SessionItemProps {
   session: Session;

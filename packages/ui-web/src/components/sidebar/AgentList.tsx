@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
-import { useSessionStore } from '@shared/stores/session';
-import { isImageAvatar } from '@shared/utils/imageUtils';
+import { useAgentStore, DEFAULT_AGENT_ID } from '@openbunny/shared/stores/agent';
+import { useSessionStore } from '@openbunny/shared/stores/session';
+import { isImageAvatar } from '@openbunny/shared/utils/imageUtils';
 import { Button } from '../ui/button';
 import { MoreHorizontal, Edit2, Trash2, Network, FolderOpen } from '../icons';
 import { useCallback, useMemo, useState } from 'react';
-import type { Agent } from '@shared/types';
+import type { Agent } from '@openbunny/shared/types';
 import { ChevronRight, Pencil, ArrowRightLeft, Star, Settings } from 'lucide-react';
 import {
   DndContext,

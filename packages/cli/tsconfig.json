@@ -9,9 +9,19 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {
-      "@shared/*": ["../shared/src/*"]
+      "@openbunny/shared": [
+        "../shared/src/index.ts"
+      ],
+      "@openbunny/shared/*": [
+        "../shared/src/*"
+      ]
     },
-    "types": ["node", "vite/client"]
+    "types": [
+      "node",
+      "vite/client"
+    ]
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

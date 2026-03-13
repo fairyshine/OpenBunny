@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, Plus, Trash2, Plug2 } from 'lucide-react';
-import { useSettingsStore } from '@shared/stores/settings';
-import { useToolStore, type MCPConnection, type MCPTransportType, type MCPToolDescriptor } from '@shared/stores/tools';
-import { discoverMCPConnection, getMCPToolId } from '@shared/services/ai/mcp';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
+import { useToolStore, type MCPConnection, type MCPTransportType, type MCPToolDescriptor } from '@openbunny/shared/stores/tools';
+import { discoverMCPConnection, getMCPToolId } from '@openbunny/shared/services/ai/mcp';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
-import { builtinTools } from '@shared/services/ai/tools';
-import { detectPlatform } from '@shared/platform/detect';
+import { builtinTools } from '@openbunny/shared/services/ai/tools';
+import { detectPlatform } from '@openbunny/shared/platform/detect';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';

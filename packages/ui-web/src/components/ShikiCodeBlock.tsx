@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, Copy } from 'lucide-react';
-import { useSettingsStore } from '@shared/stores/settings';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
 import { highlightCodeBlock, normalizeCodeLanguage } from '../lib/shiki';
 
 interface ShikiCodeBlockProps {

@@ -1,5 +1,5 @@
 import { memo, type ReactNode } from 'react';
-import { isImageAvatar } from '@shared/utils/imageUtils';
+import { isImageAvatar } from '@openbunny/shared/utils/imageUtils';
 import type { BubbleAppearance } from './types';
 
 export const MessageAvatar = memo(function MessageAvatar({ avatar, accent }: { avatar: string; accent: BubbleAppearance['accent'] }) {

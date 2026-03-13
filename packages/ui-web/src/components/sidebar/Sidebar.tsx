@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye, Activity, TrendingUp, Monitor, ScrollText } from 'lucide-react';
-import { fileSystem } from '@shared/services/filesystem';
-import { useSessionStore } from '@shared/stores/session';
-import { useAgentStore, DEFAULT_AGENT_ID, getAgentGroupFilesRoot } from '@shared/stores/agent';
-import { SessionType } from '@shared/types';
-import type { Project } from '@shared/types';
+import { fileSystem } from '@openbunny/shared/services/filesystem';
+import { useSessionStore } from '@openbunny/shared/stores/session';
+import { useAgentStore, DEFAULT_AGENT_ID, getAgentGroupFilesRoot } from '@openbunny/shared/stores/agent';
+import { SessionType } from '@openbunny/shared/types';
+import type { Project } from '@openbunny/shared/types';
 import { FolderOpen } from '../icons';
 import { Button } from '../ui/button';
 import FileTree from './file-tree';

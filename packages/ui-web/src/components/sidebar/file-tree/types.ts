@@ -1,4 +1,4 @@
-import { FileSystemEntry } from '@shared/services/filesystem';
+import { FileSystemEntry } from '@openbunny/shared/services/filesystem';
 
 export interface FileTreeProps {
   onSelectFile?: (path: string) => void;

@@ -29,7 +29,7 @@ export function Toolbar({
   onSelectAll, onDeselectAll, onBatchDelete, onRefresh, onUploadFiles,
 }: ToolbarProps) {
   const { t } = useTranslation();
-  const dest = viewMode === 'grid' ? gridPath : '/root';
+  const dest = viewMode === 'grid' ? gridPath : '/shared/root';
 
   return (
     <TooltipProvider>

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fileSystem, FileSystemEntry } from '@shared/services/filesystem';
-import { useAgentStore } from '@shared/stores/agent';
+import { fileSystem, FileSystemEntry } from '@openbunny/shared/services/filesystem';
+import { useAgentStore } from '@openbunny/shared/stores/agent';
 import { TreeNode, ViewMode } from './types';
 
 export function useFileTree(rootPathOverride?: string) {
@@ -11,7 +11,7 @@ export function useFileTree(rootPathOverride?: string) {
 
   // Get current agent's file root
   const currentAgent = agents.find((a) => a.id === currentAgentId);
-  const rootPath = rootPathOverride || currentAgent?.filesRoot || '/root';
+  const rootPath = rootPathOverride || currentAgent?.filesRoot || '/shared/root';
 
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -137,7 +137,7 @@ export function useFileTree(rootPathOverride?: string) {
     setRenaming(null);
     if (!cur || !name.trim()) return;
     try {
-      const parentPath = cur.path.substring(0, cur.path.lastIndexOf('/')) || rootPath;
+      const parentPath = cur.path.substring(0, cur.path.lastIndexOf('/shared/')) || rootPath;
       const newPath = `${parentPath}/${name.trim()}`;
       if (newPath !== cur.path) { await fileSystem.rename(cur.path, newPath); await loadTree(); }
     } catch (error) {

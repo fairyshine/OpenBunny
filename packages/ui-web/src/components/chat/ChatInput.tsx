@@ -6,12 +6,12 @@ import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
 import { useWorkspaceSession } from '../../hooks/useWorkspaceSession';
-import { useSkillStore } from '@shared/stores/skills';
-import { useSessionStore } from '@shared/stores/session';
-import { useAgentStore } from '@shared/stores/agent';
-import { useToolStore } from '@shared/stores/tools';
-import { builtinTools } from '@shared/services/ai/tools';
-import { detectPlatform } from '@shared/platform/detect';
+import { useSkillStore } from '@openbunny/shared/stores/skills';
+import { useSessionStore } from '@openbunny/shared/stores/session';
+import { useAgentStore } from '@openbunny/shared/stores/agent';
+import { useToolStore } from '@openbunny/shared/stores/tools';
+import { builtinTools } from '@openbunny/shared/services/ai/tools';
+import { detectPlatform } from '@openbunny/shared/platform/detect';
 import { ToolIcon } from '../ToolIcon';
 import { resolveToolDisplay } from '../../lib/toolDisplay';
 

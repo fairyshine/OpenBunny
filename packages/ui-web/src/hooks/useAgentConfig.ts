@@ -1,1 +1,1 @@
-export { useAgentConfig } from '@shared/hooks/useAgentConfig';
+export { useAgentConfig } from '@openbunny/shared/hooks/useAgentConfig';

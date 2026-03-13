@@ -25,9 +25,9 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import ELK from 'elkjs/lib/elk.bundled.js';
-import { useAgentStore, DEFAULT_AGENT_ID } from '@shared/stores/agent';
-import { useSessionStore } from '@shared/stores/session';
-import type { Agent, AgentGroup } from '@shared/types';
+import { useAgentStore, DEFAULT_AGENT_ID } from '@openbunny/shared/stores/agent';
+import { useSessionStore } from '@openbunny/shared/stores/session';
+import type { Agent, AgentGroup } from '@openbunny/shared/types';
 import { Button } from '../ui/button';
 import { AgentNode, AGENT_AVATAR_CENTER_X, AGENT_AVATAR_CENTER_Y, type AgentNodeData } from './AgentNode';
 import { AgentGroupNode } from './AgentGroupNode';

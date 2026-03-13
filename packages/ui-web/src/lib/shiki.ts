@@ -1,4 +1,4 @@
-import type { CodeThemePreset } from '@shared/stores/settings';
+import type { CodeThemePreset } from '@openbunny/shared/stores/settings';
 import { bundledLanguages, createHighlighter } from 'shiki';
 
 const FALLBACK_LANGUAGE = 'plaintext';

@@ -2,8 +2,8 @@ import { useState, useCallback } from 'react';
 import { Box, Text, useApp } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
-import { callLLM } from '@shared/services/llm/streaming';
-import type { LLMConfig } from '@shared/types';
+import { callLLM } from '@openbunny/shared/services/llm/streaming';
+import type { LLMConfig } from '@openbunny/shared/types';
 import type { ModelMessage } from 'ai';
 
 interface AppProps {
@@ -64,7 +64,6 @@ function App({ config, systemPrompt }: AppProps) {
     } catch (err) {
       setStreaming('');
       setError(err instanceof Error ? err.message : String(err));
-      // Remove failed user message from history
       setHistory(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
@@ -73,13 +72,11 @@ function App({ config, systemPrompt }: AppProps) {
 
   return (
     <Box flexDirection="column" padding={1}>
-      {/* Header */}
       <Box marginBottom={1}>
         <Text bold color="cyan">OpenBunny TUI</Text>
         <Text color="gray"> | {config.model} | {config.provider} | /quit to exit</Text>
       </Box>
 
-      {/* Messages */}
       {messages.map((msg, i) => (
         <Box key={i} marginBottom={1} flexDirection="column">
           <Text bold color={msg.role === 'user' ? 'green' : 'blue'}>
@@ -91,7 +88,6 @@ function App({ config, systemPrompt }: AppProps) {
         </Box>
       ))}
 
-      {/* Streaming response */}
       {streaming && (
         <Box marginBottom={1} flexDirection="column">
           <Text bold color="blue">🐰 </Text>
@@ -101,7 +97,6 @@ function App({ config, systemPrompt }: AppProps) {
         </Box>
       )}
 
-      {/* Loading indicator */}
       {isLoading && !streaming && (
         <Box marginBottom={1}>
           <Text color="yellow">
@@ -111,14 +106,12 @@ function App({ config, systemPrompt }: AppProps) {
         </Box>
       )}
 
-      {/* Error */}
       {error && (
         <Box marginBottom={1}>
           <Text color="red">Error: {error}</Text>
         </Box>
       )}
 
-      {/* Input */}
       <Box>
         <Text color="green" bold>{isLoading ? '  ' : '> '}</Text>
         {!isLoading && (
