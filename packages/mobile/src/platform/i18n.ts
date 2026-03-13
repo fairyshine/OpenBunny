@@ -1,8 +1,8 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
-import zhCN from '@shared/i18n/locales/zh-CN';
-import enUS from '@shared/i18n/locales/en-US';
+import zhCN from '@openbunny/shared/i18n/locales/zh-CN';
+import enUS from '@openbunny/shared/i18n/locales/en-US';
 
 /**
  * Get persisted language from Zustand store (via localStorage shim)

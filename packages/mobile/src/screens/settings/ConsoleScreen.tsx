@@ -10,8 +10,8 @@ import {
   Button,
   Divider,
 } from 'react-native-paper';
-import { consoleLogger } from '@shared/services/console/logger';
-import type { LogEntry, LogCategory, LogLevel } from '@shared/services/console/logger';
+import { consoleLogger } from '@openbunny/shared/services/console/logger';
+import type { LogEntry, LogCategory, LogLevel } from '@openbunny/shared/services/console/logger';
 
 const CATEGORIES: LogCategory[] = ['system', 'llm', 'tool', 'file', 'settings', 'mcp', 'python'];
 

@@ -10,8 +10,8 @@ import {
   Menu,
   ActivityIndicator,
 } from 'react-native-paper';
-import { fileSystem } from '@shared/services/filesystem';
-import type { FileSystemEntry } from '@shared/services/filesystem';
+import { fileSystem } from '@openbunny/shared/services/filesystem';
+import type { FileSystemEntry } from '@openbunny/shared/services/filesystem';
 
 interface FileTreeMobileProps {
   onFileSelect: (filePath: string, fileName: string) => void;

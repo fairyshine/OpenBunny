@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { IPlatformStorage } from '@shared/platform';
+import type { IPlatformStorage } from '@openbunny/shared/platform';
 
 /**
  * React Native storage implementation using AsyncStorage

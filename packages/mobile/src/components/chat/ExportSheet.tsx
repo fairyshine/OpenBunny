@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Share, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Modal, Portal, Text, Button, RadioButton, Divider, useTheme } from 'react-native-paper';
-import { MessageHistoryManager } from '@shared/utils/messageHistory';
-import type { ExportHistoryVariant } from '@shared/utils/messageHistory';
-import type { Message } from '@shared/types';
+import { MessageHistoryManager } from '@openbunny/shared/utils/messageHistory';
+import type { ExportHistoryVariant } from '@openbunny/shared/utils/messageHistory';
+import type { Message } from '@openbunny/shared/types';
 
 interface ExportSheetProps {
   messages: Message[];

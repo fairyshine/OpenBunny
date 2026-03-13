@@ -152,6 +152,18 @@
     "./version": {
       "types": "./dist/version.d.ts",
       "import": "./dist/version.js"
+    },
+    "./services/storage/statsTypes": {
+      "types": "./dist/services/storage/statsTypes.d.ts",
+      "import": "./dist/services/storage/statsTypes.js"
+    },
+    "./services/storage/types": {
+      "types": "./dist/services/storage/types.d.ts",
+      "import": "./dist/services/storage/types.js"
+    },
+    "./utils/errors": {
+      "types": "./dist/utils/errors.d.ts",
+      "import": "./dist/utils/errors.js"
     }
   },
   "scripts": {

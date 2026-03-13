@@ -11,11 +11,11 @@ import {
   Button,
   IconButton,
 } from 'react-native-paper';
-import { useSettingsStore } from '@shared/stores/settings';
-import { useToolStore, type MCPConnection } from '@shared/stores/tools';
-import { discoverMCPConnection } from '@shared/services/ai/mcp';
-import { builtinTools } from '@shared/services/ai/tools';
-import { detectPlatform } from '@shared/platform/detect';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
+import { useToolStore, type MCPConnection } from '@openbunny/shared/stores/tools';
+import { discoverMCPConnection } from '@openbunny/shared/services/ai/mcp';
+import { builtinTools } from '@openbunny/shared/services/ai/tools';
+import { detectPlatform } from '@openbunny/shared/platform/detect';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
 import type { SettingsStackNavigationProp } from '../../navigation/types';
 

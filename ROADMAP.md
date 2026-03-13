@@ -79,7 +79,7 @@ Status: In progress
 - [x] Build `@openbunny/shared` to `dist`
 - [x] Build `@openbunny/ui-web` to `dist`
 - [ ] Update consumers to import compiled outputs instead of raw source
-  - Progress: `ui-web`, `web`, `desktop`, `cli`, and `tui` now build against package contracts/artifacts; `mobile` remains on a source-first Expo workflow for now
+  - Progress: `ui-web`, `web`, `desktop`, `cli`, and `tui` now build against package contracts/artifacts; `mobile` now imports `@openbunny/shared/*` package subpaths and contract-typechecks against `shared/dist`, while runtime resolution remains source-first for Expo
 - [ ] Remove duplicated transitive dependency declarations where possible
   - Note: `web`/`desktop` still need shared UI/runtime deps declared locally because Vite currently aliases `@openbunny/shared` and `@openbunny/ui-web` to `dist` directories during build, so Rollup resolves bare imports from the app package context rather than the workspace package manifest
 
@@ -91,12 +91,12 @@ Status: In progress
 
 ### Phase 5 — Test coverage for core flows
 
-Status: In progress
+Status: Completed
 
 - [x] Add targeted tests around session orchestration and persistence
 - [x] Add targeted tests around AI runtime context assembly
 - [x] Add targeted tests around provider/proxy selection behavior
-- [ ] Add targeted tests for platform initialization invariants
+- [x] Add targeted tests for platform initialization invariants
 
 ## Execution order
 
@@ -138,6 +138,7 @@ This change set starts with the safest item in Phase 1:
 - Add `sessionOps.test.ts` and `sessionPersistence.test.ts` to cover orchestration delegation, persistence forwarding, and interrupted-stream session recovery helpers.
 - Add `runtimeContext.test.ts` to verify skill/MCP/session/agent runtime context assembly, default store fallbacks, and override precedence.
 - Add `provider.test.ts` plus small dependency-injection seams in `provider.ts` to verify proxy fetch wiring, provider SDK branch selection, openai-compatible model resolution, and connection probe behavior.
+- Add `packages/mobile/tsconfig.contract.json` and `typecheck:contracts` so the Expo client validates `@openbunny/shared` package contracts against `shared/dist` even while runtime Metro/Babel resolution stays source-first.
 
 ## Audit Notes
 

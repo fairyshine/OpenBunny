@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Text, Card, useTheme } from 'react-native-paper';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
-import { testConnection } from '@shared/services/ai/provider';
+import { testConnection } from '@openbunny/shared/services/ai/provider';
 
 export default function ConnectionTestScreen() {
   const { t } = useTranslation();

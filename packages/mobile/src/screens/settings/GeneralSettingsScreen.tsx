@@ -2,9 +2,9 @@ import React from 'react';
 import { View, ScrollView, StyleSheet, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { List, SegmentedButtons, Text, Divider, TextInput, Button } from 'react-native-paper';
-import { useSettingsStore } from '@shared/stores/settings';
-import { APP_VERSION } from '@shared/version';
-import type { Theme, Language } from '@shared/stores/settings';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
+import { APP_VERSION } from '@openbunny/shared/version';
+import type { Theme, Language } from '@openbunny/shared/stores/settings';
 
 export default function GeneralSettingsScreen() {
   const { t } = useTranslation();

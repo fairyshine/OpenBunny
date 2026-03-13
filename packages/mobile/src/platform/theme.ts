@@ -1,6 +1,6 @@
 import { Appearance } from 'react-native';
-import type { Theme } from '@shared/stores/settings';
-import { resolveThemePreference, type ResolvedTheme } from '@shared/utils/theme';
+import type { Theme } from '@openbunny/shared/stores/settings';
+import { resolveThemePreference, type ResolvedTheme } from '@openbunny/shared/utils/theme';
 
 export function getSystemTheme(): ResolvedTheme {
   const colorScheme = Appearance.getColorScheme();

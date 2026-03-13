@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typecheck:contracts": "pnpm --filter @openbunny/shared build && tsc -p tsconfig.contract.json --noEmit"
   },
   "dependencies": {
     "@openbunny/shared": "workspace:*",

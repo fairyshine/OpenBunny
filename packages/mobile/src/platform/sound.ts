@@ -4,7 +4,7 @@
  */
 
 import { Audio } from 'expo-av';
-import type { ISoundBackend, SoundEffect } from '@shared/services/sound';
+import type { ISoundBackend, SoundEffect } from '@openbunny/shared/services/sound';
 
 const SOUND_ASSETS = {
   'message-send': require('../../assets/sounds/message-send.mp3'),

@@ -17,7 +17,7 @@ config.resolver.nodeModulesPaths = [
 
 // Resolve shared package
 config.resolver.extraNodeModules = {
-  '@shared': path.resolve(projectRoot, '../shared/src'),
+  '@openbunny/shared': path.resolve(projectRoot, '../shared/src'),
 };
 
 module.exports = config;

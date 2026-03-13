@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, useTheme, List, Icon } from 'react-native-paper';
 import Markdown from 'react-native-markdown-display';
-import type { Message } from '@shared/types';
+import type { Message } from '@openbunny/shared/types';
 
 interface MessageBubbleProps {
   message: Message;

@@ -3,7 +3,7 @@ import { View, StyleSheet, Share, Alert, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Appbar, TextInput, Text, useTheme } from 'react-native-paper';
-import { fileSystem } from '@shared/services/filesystem';
+import { fileSystem } from '@openbunny/shared/services/filesystem';
 import type { FileEditorRouteProp } from '../navigation/types';
 
 export default function FileEditorScreen() {

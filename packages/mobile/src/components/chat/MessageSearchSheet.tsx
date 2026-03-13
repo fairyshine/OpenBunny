@@ -11,8 +11,8 @@ import {
   List,
   Divider,
 } from 'react-native-paper';
-import { MessageHistoryManager } from '@shared/utils/messageHistory';
-import type { Message } from '@shared/types';
+import { MessageHistoryManager } from '@openbunny/shared/utils/messageHistory';
+import type { Message } from '@openbunny/shared/types';
 
 interface MessageSearchSheetProps {
   messages: Message[];

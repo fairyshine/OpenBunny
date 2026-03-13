@@ -13,7 +13,7 @@ import {
   Card,
   IconButton,
 } from 'react-native-paper';
-import { fileSystem } from '@shared/services/filesystem';
+import { fileSystem } from '@openbunny/shared/services/filesystem';
 import Markdown from 'react-native-markdown-display';
 
 const MEMORY_PATH = '/root/memory/MEMORY.md';

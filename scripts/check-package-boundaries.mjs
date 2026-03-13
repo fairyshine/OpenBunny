@@ -46,6 +46,14 @@ const packageRules = [
       { pattern: /\.\.\/shared\/src\//g, message: 'do not import shared raw source paths directly' },
     ],
   },
+  {
+    name: '@openbunny/mobile',
+    dir: 'packages/mobile/src',
+    forbidden: [
+      { pattern: /@shared\//g, message: 'use `@openbunny/shared/*` public subpaths instead of `@shared/*` aliases' },
+      { pattern: /\.\.\/shared\/src\//g, message: 'do not import shared raw source paths directly' },
+    ],
+  },
 ];
 
 const sourceFilePattern = /\.(ts|tsx|js|jsx|mts|cts)$/;
@@ -97,5 +105,5 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log('Package boundary check passed for web, desktop, ui-web, cli, and tui.');
-console.log('Note: mobile remains on a source-first Expo workflow and is tracked separately in ROADMAP.md.');
+console.log('Package boundary check passed for web, desktop, ui-web, cli, tui, and mobile.');
+console.log('Note: mobile still uses a source-first Expo resolver path, but app code now imports `@openbunny/shared/*` package subpaths.');

@@ -26,7 +26,8 @@
     "version:set": "node scripts/sync-version.mjs",
     "check:boundaries": "node scripts/check-package-boundaries.mjs",
     "verify:packages": "node scripts/verify-package-contracts.mjs",
-    "check:exports": "node scripts/check-package-exports.mjs"
+    "check:exports": "node scripts/check-package-exports.mjs",
+    "check:app-runtime-deps": "node scripts/check-app-runtime-deps.mjs"
   },
   "devDependencies": {
     "typescript": "catalog:"

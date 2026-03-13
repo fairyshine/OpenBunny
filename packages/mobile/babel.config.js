@@ -9,7 +9,7 @@ module.exports = function(api) {
           root: ['./src'],
           extensions: ['.ios.js', '.android.js', '.js', '.ts', '.tsx', '.json'],
           alias: {
-            '@shared': '../shared/src',
+            '@openbunny/shared': '../shared/src',
           },
         },
       ],

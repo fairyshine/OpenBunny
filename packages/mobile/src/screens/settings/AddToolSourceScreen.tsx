@@ -3,9 +3,9 @@ import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { TextInput, Button, Text, SegmentedButtons } from 'react-native-paper';
-import { useSettingsStore } from '@shared/stores/settings';
-import { useToolStore, type MCPTransportType } from '@shared/stores/tools';
-import { discoverMCPConnection } from '@shared/services/ai/mcp';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
+import { useToolStore, type MCPTransportType } from '@openbunny/shared/stores/tools';
+import { discoverMCPConnection } from '@openbunny/shared/services/ai/mcp';
 
 export default function AddToolSourceScreen() {
   const { t } = useTranslation();

@@ -1,10 +1,10 @@
 import { Platform } from 'react-native';
-import { initializePlatformRuntime } from '@shared/platform';
-import type { IPlatformAPI, IPlatformContext, OSType } from '@shared/platform';
-import { setThemeHandler, setLanguageHandler } from '@shared/stores/settings';
-import { setFileSystemInstance } from '@shared/services/filesystem';
-import { initializePlatformStorage } from '@shared/services/storage/bootstrap';
-import { soundManager } from '@shared/services/sound';
+import { initializePlatformRuntime } from '@openbunny/shared/platform';
+import type { IPlatformAPI, IPlatformContext, OSType } from '@openbunny/shared/platform';
+import { setThemeHandler, setLanguageHandler } from '@openbunny/shared/stores/settings';
+import { setFileSystemInstance } from '@openbunny/shared/services/filesystem';
+import { initializePlatformStorage } from '@openbunny/shared/services/storage/bootstrap';
+import { soundManager } from '@openbunny/shared/services/sound';
 import { nativeStorage } from './storage';
 import { nativeFS } from './filesystem';
 import { mobileFileSystem } from './mobileFileSystem';

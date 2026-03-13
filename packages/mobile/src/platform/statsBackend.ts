@@ -3,7 +3,7 @@
  */
 
 import * as SQLite from 'expo-sqlite';
-import type { IStatsStorageBackend, StatsRecord } from '@shared/services/storage/statsTypes';
+import type { IStatsStorageBackend, StatsRecord } from '@openbunny/shared/services/storage/statsTypes';
 
 const DB_NAME = 'openbunny_stats.db';
 

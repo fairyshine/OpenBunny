@@ -4,7 +4,10 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": [
+      "@openbunny/shared": [
+        "../shared/src/index.ts"
+      ],
+      "@openbunny/shared/*": [
         "../shared/src/*"
       ]
     },

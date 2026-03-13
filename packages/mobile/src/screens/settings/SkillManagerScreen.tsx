@@ -6,7 +6,7 @@ import {
   Text,
   useTheme,
 } from 'react-native-paper';
-import { useSkillStore } from '@shared/stores/skills';
+import { useSkillStore } from '@openbunny/shared/stores/skills';
 
 export default function SkillManagerScreen() {
   const { t } = useTranslation();

@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRoute } from '@react-navigation/native';
 import { Text, useTheme, ActivityIndicator } from 'react-native-paper';
-import { useSkillStore } from '@shared/stores/skills';
+import { useSkillStore } from '@openbunny/shared/stores/skills';
 import type { SkillViewerRouteProp } from '../../navigation/types';
 
 export default function SkillViewerScreen() {

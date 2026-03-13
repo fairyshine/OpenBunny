@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { Text, Card, useTheme, Button } from 'react-native-paper';
-import { useSessionStore } from '@shared/stores/session';
+import { useSessionStore } from '@openbunny/shared/stores/session';
 import type { ChatStackNavigationProp } from '../navigation/types';
 
 export default function WelcomeScreen() {

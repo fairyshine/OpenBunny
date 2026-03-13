@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { MD3LightTheme, MD3DarkTheme } from 'react-native-paper';
-import { useSettingsStore } from '@shared/stores/settings';
+import { useSettingsStore } from '@openbunny/shared/stores/settings';
 import { resolveTheme } from '../platform/theme';
 
 export function useAppTheme() {

@@ -6,10 +6,12 @@ const steps = [
   ['pnpm', ['--filter', '@openbunny/web', 'build']],
   ['pnpm', ['--filter', '@openbunny/desktop', 'typecheck']],
   ['pnpm', ['--filter', '@openbunny/mobile', 'typecheck']],
+  ['pnpm', ['--filter', '@openbunny/mobile', 'typecheck:contracts']],
   ['pnpm', ['--filter', '@openbunny/cli', 'build']],
   ['pnpm', ['--filter', '@openbunny/tui', 'build']],
   ['node', ['scripts/check-package-boundaries.mjs']],
   ['node', ['scripts/check-package-exports.mjs']],
+  ['node', ['scripts/check-app-runtime-deps.mjs']],
 ];
 
 for (const [command, args] of steps) {

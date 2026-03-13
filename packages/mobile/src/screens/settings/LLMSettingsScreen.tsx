@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { TextInput, Text, Button, Divider, List, Menu } from 'react-native-paper';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
-import { providerRegistry, getProviderMeta } from '@shared/services/ai';
+import { providerRegistry, getProviderMeta } from '@openbunny/shared/services/ai';
 
 export default function LLMSettingsScreen() {
   const { t } = useTranslation();

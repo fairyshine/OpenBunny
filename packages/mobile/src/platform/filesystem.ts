@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system';
-import type { IPlatformFS } from '@shared/platform';
+import type { IPlatformFS } from '@openbunny/shared/platform';
 
 const SANDBOX_DIR = FileSystem.documentDirectory!;
 

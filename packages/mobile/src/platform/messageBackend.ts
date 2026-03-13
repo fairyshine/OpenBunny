@@ -3,8 +3,8 @@
  */
 
 import * as SQLite from 'expo-sqlite';
-import type { IMessageStorageBackend } from '@shared/services/storage/types';
-import type { Message } from '@shared/types';
+import type { IMessageStorageBackend } from '@openbunny/shared/services/storage/types';
+import type { Message } from '@openbunny/shared/types';
 
 const DB_NAME = 'openbunny_messages.db';
 

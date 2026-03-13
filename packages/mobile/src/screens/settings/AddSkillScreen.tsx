@@ -3,8 +3,8 @@ import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { TextInput, Button, Text } from 'react-native-paper';
-import { useSkillStore } from '@shared/stores/skills';
-import { generateSkillTemplate } from '@shared/services/skills';
+import { useSkillStore } from '@openbunny/shared/stores/skills';
+import { generateSkillTemplate } from '@openbunny/shared/services/skills';
 
 export default function AddSkillScreen() {
   const { t } = useTranslation();

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { FlatList, StyleSheet } from 'react-native';
 import MessageBubble from './MessageBubble';
-import type { Message } from '@shared/types';
+import type { Message } from '@openbunny/shared/types';
 
 interface MessageListProps {
   messages: Message[];
