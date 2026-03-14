@@ -37,6 +37,9 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
   const updateMessage = useSessionStore((s) => s.updateMessage);
   const loadSessionMessages = useSessionStore((s) => s.loadSessionMessages);
   const setSessionStreaming = useSessionStore((s) => s.setSessionStreaming);
+  const renameSession = useSessionStore((s) => s.renameSession);
+  const setSessionSystemPrompt = useSessionStore((s) => s.setSessionSystemPrompt);
+  const flushMessages = useSessionStore((s) => s.flushMessages);
   const addAgentMessage = useAgentStore((s) => s.addAgentMessage);
   const updateAgentMessage = useAgentStore((s) => s.updateAgentMessage);
   const loadAgentSessionMessages = useAgentStore((s) => s.loadAgentSessionMessages);
@@ -139,7 +142,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     setIsLoading(false);
     setCurrentStatus('');
     if (isDefaultAgent) {
-      useSessionStore.getState().setSessionStreaming(sessionId, false);
+      setSessionStreaming(sessionId, false);
       addMessage(sessionId, createAssistantMessage(t('chat.stopped'), { id: crypto.randomUUID() }));
       return;
     }
@@ -221,7 +224,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     if (session && session.messages.length === 0) {
       const sessionName = content.trim().slice(0, 50);
       if (isDefaultAgent) {
-        useSessionStore.getState().renameSession(sessionId, sessionName);
+        renameSession(sessionId, sessionName);
       } else {
         renameAgentSession(currentAgentId, sessionId, sessionName);
       }
@@ -230,7 +233,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
     setIsLoading(true);
     setCurrentStatus('');
     if (isDefaultAgent) {
-      useSessionStore.getState().setSessionStreaming(sessionId, true);
+      setSessionStreaming(sessionId, true);
     } else {
       setAgentSessionStreaming(currentAgentId, sessionId, true);
     }
@@ -259,7 +262,7 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
       );
       // Save system prompt to session
       if (isDefaultAgent) {
-        useSessionStore.getState().setSessionSystemPrompt(sessionId, systemPrompt);
+        setSessionSystemPrompt(sessionId, systemPrompt);
       } else {
         setAgentSessionSystemPrompt(currentAgentId, sessionId, systemPrompt);
       }
@@ -278,8 +281,8 @@ export default function ChatContainer({ sessionId }: ChatContainerProps) {
       setIsLoading(false);
       setCurrentStatus('');
       if (isDefaultAgent) {
-        useSessionStore.getState().setSessionStreaming(sessionId, false);
-        useSessionStore.getState().flushMessages(sessionId);
+        setSessionStreaming(sessionId, false);
+        flushMessages(sessionId);
       } else {
         setAgentSessionStreaming(currentAgentId, sessionId, false);
         flushAgentMessages(currentAgentId, sessionId);

@@ -15,6 +15,7 @@ export { useToolStore, getBuiltinToolIds, getMCPToolIds } from './stores/tools';
 export type { MCPConnection, MCPToolDescriptor, MCPTransportType } from './stores/tools';
 export { useSkillStore } from './stores/skills';
 export { useAgentStore, DEFAULT_AGENT_ID } from './stores/agent';
+export { createZustandAIRuntimeDefaultsResolver, createZustandSessionOwnerStore, registerZustandAIRuntimeAdapters, zustandAIRuntimeDefaultsResolver, zustandSessionOwnerStore } from './stores/aiRuntimeAdapters';
 
 // Services - Message Storage (IndexedDB / AsyncStorage)
 export { messageStorage } from './services/storage/messageStorage';

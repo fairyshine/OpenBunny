@@ -17,6 +17,10 @@
       "types": "./dist/platform/sound.d.ts",
       "import": "./dist/platform/sound.js"
     },
+    "./platform/runtime": {
+      "types": "./dist/platform/runtime.d.ts",
+      "import": "./dist/platform/runtime.js"
+    },
     "./styles": "./dist/index.css"
   },
   "scripts": {

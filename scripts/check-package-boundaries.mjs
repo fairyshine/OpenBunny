@@ -13,6 +13,17 @@ const packageRules = [
     ],
   },
   {
+    name: '@openbunny/shared ai services',
+    dir: 'packages/shared/src/services/ai',
+    exclude: [/\.test\.ts$/],
+    forbidden: [
+      {
+        pattern: /use(?:Agent|Session|Settings|Skill|Tool)Store[\s\S]*from ['"]\.\.\/\.\.\/stores\/(?:agent|session|settings|skills|tools)['"]/g,
+        message: 'resolve shared AI runtime data through runtime context or platform-registered adapters; keep direct Zustand hook imports out of shared AI service files',
+      },
+    ],
+  },
+  {
     name: '@openbunny/ui-web',
     dir: 'packages/ui-web/src',
     forbidden: [
@@ -92,13 +103,17 @@ function walk(dir) {
 
 for (const rule of packageRules) {
   for (const file of walk(rule.dir)) {
+    const relativeFile = path.relative(repoRoot, file);
+    if (rule.exclude?.some((pattern) => pattern.test(relativeFile))) {
+      continue;
+    }
     const content = fs.readFileSync(file, 'utf8');
     for (const forbidden of rule.forbidden) {
       const match = content.match(forbidden.pattern);
       if (!match) continue;
       violations.push({
         packageName: rule.name,
-        file: path.relative(repoRoot, file),
+        file: relativeFile,
         message: forbidden.message,
       });
     }

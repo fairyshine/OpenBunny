@@ -39,6 +39,7 @@ interface SessionState {
   permanentlyDeleteSession: (id: string) => void;
   clearTrash: () => void;
   setCurrentSession: (id: string) => void;
+  clearCurrentSession: () => void;
   addMessage: (sessionId: string, message: Message) => void;
   updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => void;
   setLLMConfig: (config: Partial<LLMConfig>) => void;
@@ -162,6 +163,10 @@ export const useSessionStore = create<SessionState>()(
         if (session) {
           set({ currentSessionId: id });
         }
+      },
+
+      clearCurrentSession: () => {
+        set({ currentSessionId: null });
       },
 
       addMessage: (sessionId: string, message: Message) => {

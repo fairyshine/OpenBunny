@@ -42,7 +42,7 @@ export function SessionItem({
   onSessionSelect,
 }: SessionItemProps) {
   const { t } = useTranslation();
-  const { setCurrentSession, deleteSession } = useSessionStore();
+  const { setCurrentSession, clearCurrentSession, deleteSession, openSession, closeSession } = useSessionStore();
   const currentAgentId = useAgentStore((s) => s.currentAgentId);
   const setAgentCurrentSession = useAgentStore((s) => s.setAgentCurrentSession);
   const deleteAgentSession = useAgentStore((s) => s.deleteAgentSession);
@@ -72,13 +72,13 @@ export function SessionItem({
     if (enableSessionTabs) {
       if (currentSession?.id === session.id) {
         if (isDefaultAgent) {
-          useSessionStore.getState().closeSession(session.id);
+          closeSession(session.id);
         } else {
           setAgentCurrentSession(currentAgentId, null);
         }
       } else {
         if (isDefaultAgent) {
-          useSessionStore.getState().openSession(session.id);
+          openSession(session.id);
         } else {
           setAgentCurrentSession(currentAgentId, session.id);
         }
@@ -87,7 +87,7 @@ export function SessionItem({
     } else {
       if (currentSession?.id === session.id) {
         if (isDefaultAgent) {
-          useSessionStore.setState({ currentSessionId: null });
+          clearCurrentSession();
         } else {
           setAgentCurrentSession(currentAgentId, null);
         }

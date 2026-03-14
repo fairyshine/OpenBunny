@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { initNodePlatform } from '@openbunny/shared/platform/node';
 import type { IPlatformStorage } from '@openbunny/shared/platform';
 import { detectNodeOS } from '@openbunny/shared/platform/detect';
+import { registerZustandAIRuntimeAdapters } from '@openbunny/shared/stores/aiRuntimeAdapters';
 import { APP_VERSION } from '@openbunny/shared/version';
 import Conf from 'conf';
 import { chatCommand } from './commands/chat.js';
@@ -19,6 +20,7 @@ initNodePlatform(
   { type: 'cli', os: detectNodeOS(), isBrowser: false, isDesktop: false, isMobile: false, isCLI: true, isTUI: false },
   storage,
 );
+registerZustandAIRuntimeAdapters();
 
 const program = new Command();
 

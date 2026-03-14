@@ -1,11 +1,6 @@
 import { initializePlatformRuntime } from '../platform';
 import type { IPlatformStorage, IPlatformAPI, IPlatformContext, PlatformInfo } from '../platform';
 import { initializePlatformStorage } from '../services/storage/bootstrap';
-import {
-  setDefaultAIRuntimeDefaultsResolver,
-  zustandAIRuntimeDefaultsResolver,
-} from '../services/ai/runtimeDefaults';
-import { setDefaultSessionOwnerStore, zustandSessionOwnerStore } from '../services/ai/sessionOwnerStore';
 
 /**
  * Initialize a Node.js-based platform (CLI or TUI).
@@ -25,8 +20,6 @@ export function initNodePlatform(info: PlatformInfo, storage: IPlatformStorage):
     }),
     initialize: () => {
       initializePlatformStorage();
-      setDefaultAIRuntimeDefaultsResolver(zustandAIRuntimeDefaultsResolver);
-      setDefaultSessionOwnerStore(zustandSessionOwnerStore);
     },
   });
 }

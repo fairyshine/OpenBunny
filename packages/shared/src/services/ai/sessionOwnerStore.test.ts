@@ -4,17 +4,25 @@ import {
   getDefaultSessionOwnerStore,
   resetDefaultSessionOwnerStoreForTests,
   setDefaultSessionOwnerStore,
-  zustandSessionOwnerStore,
 } from './sessionOwnerStore';
+import { zustandSessionOwnerStore } from '../../stores/aiRuntimeAdapters';
+
+test('unconfigured session owner store fails fast', () => {
+  resetDefaultSessionOwnerStoreForTests();
+  assert.throws(
+    () => getDefaultSessionOwnerStore().getSession('agent-1', 'session-1'),
+    /AI session owner store is not configured/,
+  );
+});
 
 test('default session owner store can be overridden and reset', () => {
-  resetDefaultSessionOwnerStoreForTests();
-  assert.equal(getDefaultSessionOwnerStore(), zustandSessionOwnerStore);
-
   const customStore = { ...zustandSessionOwnerStore };
   setDefaultSessionOwnerStore(customStore);
   assert.equal(getDefaultSessionOwnerStore(), customStore);
 
   resetDefaultSessionOwnerStoreForTests();
-  assert.equal(getDefaultSessionOwnerStore(), zustandSessionOwnerStore);
+  assert.throws(
+    () => getDefaultSessionOwnerStore().getSession('agent-1', 'session-1'),
+    /AI session owner store is not configured/,
+  );
 });

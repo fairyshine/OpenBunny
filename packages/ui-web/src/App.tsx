@@ -34,6 +34,7 @@ function App() {
   const loadSkills = useSkillStore(s => s.loadSkills);
   const currentAgentId = useAgentStore(s => s.currentAgentId);
   const createAgentSession = useAgentStore(s => s.createAgentSession);
+  const setCurrentAgent = useAgentStore(s => s.setCurrentAgent);
   const { currentSession, currentSessionId, isDefaultAgent, sessions } = useWorkspaceSession();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
@@ -239,9 +240,8 @@ function App() {
 
   const handleAgentConfig = (agentId: string) => {
     // Open config panel for the given agent
-    const store = useAgentStore.getState();
-    if (store.currentAgentId !== agentId) {
-      store.setCurrentAgent(agentId);
+    if (currentAgentId !== agentId) {
+      setCurrentAgent(agentId);
     }
     setShowStatusPage(false);
     setShowAgentConfig(true);

@@ -37,6 +37,17 @@ export interface AgentRuntimeContext extends SkillRuntimeContext, MCPRuntimeCont
   braveApiKey?: string;
 }
 
+export function resolveRuntimeAgents(runtimeContext: Pick<Partial<AgentRuntimeContext>, 'agents'> = {}): Agent[] {
+  return runtimeContext.agents ?? getDefaultAIRuntimeDefaultsResolver().getDefaults().agents;
+}
+
+export function findRuntimeAgent(
+  agentId: string,
+  runtimeContext: Pick<Partial<AgentRuntimeContext>, 'agents'> = {},
+): Agent | null {
+  return resolveRuntimeAgents(runtimeContext).find((agent) => agent.id === agentId) || null;
+}
+
 export function resolveSkillRuntimeContext(overrides: Partial<SkillRuntimeContext> = {}): SkillRuntimeContext {
   const defaults = getDefaultAIRuntimeDefaultsResolver().getDefaults();
 

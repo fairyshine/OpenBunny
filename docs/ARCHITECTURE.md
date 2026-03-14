@@ -102,6 +102,23 @@ Use this guide when adding code:
 
 These are the remaining architecture leaks worth tracking in the current slice.
 
+### Browser-like platform initialization still carries some duplicated app wiring
+
+Examples:
+
+- `packages/web/src/platform/browser.ts`
+- `packages/desktop/src/platform/electron.ts`
+
+Why this is temporary:
+
+- Browser and Electron now share most of their service registration path, but some app-entry boilerplate still exists while the boundary is being normalized
+- The duplication is low-risk, but it is still an avoidable source of drift across browser-like clients
+
+Planned fix:
+
+- Keep browser/Electron-specific context creation in app packages
+- Move shared browser-like service registration behind a reusable `ui-web` platform helper
+
 ### Rich syntax highlighting still ships many optional async language/theme chunks
 
 Examples:
@@ -192,6 +209,7 @@ Required services:
 - `storage`: injected `Conf` adapter
 - `api.fetch`: Node `fetch`
 - storage bootstrap: `initializePlatformStorage()` using no-op message/stats backends unless a node backend is introduced later
+- AI runtime/session adapters: registered from the CLI entry after platform init
 
 Optional services:
 
@@ -206,6 +224,7 @@ Required services:
 - `storage`: injected `Conf` adapter
 - `api.fetch`: Node `fetch`
 - storage bootstrap: `initializePlatformStorage()` using no-op message/stats backends unless a node backend is introduced later
+- AI runtime/session adapters: registered from the TUI entry after platform init
 
 Optional services:
 
@@ -228,7 +247,12 @@ These are safe patterns to continue:
 - Shared React bootstrap utilities living in `ui-web`, including the common DOM app bootstrap used by `web` and `desktop`
 - AI session orchestration flowing through `packages/shared/src/services/ai/sessionOps.ts` with an injectable `sessionOwnerStore` adapter
 - Built-in AI tools receiving timeout, search, and exec settings through runtime context instead of reading Zustand or `localStorage` directly
+- Shared AI prompt/chat helpers resolving agent identity through runtime-context utilities rather than importing Zustand hooks directly
 - Default AI session-owner behavior being registered during platform init instead of being hard-coded inside runtime-context resolution
+- Zustand-backed AI runtime/session adapters living in `packages/shared/src/stores/aiRuntimeAdapters.ts`, outside the core AI service files
+- Store-facing helper registration for the Zustand-backed AI adapters so app entrypoints reuse a single explicit wiring path
+- Boundary checks that keep direct Zustand hook imports out of shared AI service files entirely
+- Node platform helpers in `shared` only establish runtime context/storage; CLI/TUI entrypoints own any remaining adapter registration
 - Platform-owned external fetch policies for LLM providers, exposed through `IPlatformAPI.createExternalFetch()` instead of browser-global checks in shared services
 - Platform-owned storage backend bootstrap via `initializePlatformStorage()` rather than per-service environment auto-detection
 - App-owned sound settings injection so `packages/shared/src/services/sound/index.ts` stays store-agnostic while platforms wire live preferences

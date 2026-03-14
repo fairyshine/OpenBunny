@@ -1,16 +1,6 @@
 import { initializePlatformRuntime } from '@openbunny/shared/platform';
 import type { IPlatformStorage, IPlatformFS, IPlatformAPI, IPlatformContext, OSType } from '@openbunny/shared/platform';
-import { setThemeHandler, setLanguageHandler, useSettingsStore } from '@openbunny/shared/stores/settings';
-import { soundManager } from '@openbunny/shared/services/sound';
-import {
-  setDefaultAIRuntimeDefaultsResolver,
-  zustandAIRuntimeDefaultsResolver,
-} from '@openbunny/shared/services/ai/runtimeDefaults';
-import { setDefaultSessionOwnerStore, zustandSessionOwnerStore } from '@openbunny/shared/services/ai/sessionOwnerStore';
-import { initializePlatformStorage } from '@openbunny/shared/services/storage/bootstrap';
-import { applyTheme } from '@openbunny/ui-web';
-import { WebSoundBackend } from '@openbunny/ui-web/platform/sound';
-import i18n from '@openbunny/shared/i18n';
+import { initializeBrowserLikePlatformServices } from '@openbunny/ui-web/platform/runtime';
 
 // Type for the electronAPI exposed via preload
 declare global {
@@ -98,18 +88,7 @@ export function initDesktopPlatform(): IPlatformContext {
       };
     },
     initialize: (context) => {
-      initializePlatformStorage();
-      setDefaultAIRuntimeDefaultsResolver(zustandAIRuntimeDefaultsResolver);
-      setDefaultSessionOwnerStore(zustandSessionOwnerStore);
-      setThemeHandler(applyTheme);
-      setLanguageHandler((lang: string) => {
-        i18n.changeLanguage(lang);
-      });
-      soundManager.setSettingsResolver(() => {
-        const { masterMuted, soundEffectsEnabled, masterVolume } = useSettingsStore.getState();
-        return { masterMuted, soundEffectsEnabled, masterVolume };
-      });
-      soundManager.setBackend(new WebSoundBackend());
+      initializeBrowserLikePlatformServices();
       console.log(`[Platform] Initialized: desktop (Electron) on ${context.info.os}`);
     },
   });

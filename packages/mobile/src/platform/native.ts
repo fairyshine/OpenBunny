@@ -5,11 +5,7 @@ import { setThemeHandler, setLanguageHandler, useSettingsStore } from '@openbunn
 import { setFileSystemInstance } from '@openbunny/shared/services/filesystem';
 import { initializePlatformStorage } from '@openbunny/shared/services/storage/bootstrap';
 import { soundManager } from '@openbunny/shared/services/sound';
-import {
-  setDefaultAIRuntimeDefaultsResolver,
-  zustandAIRuntimeDefaultsResolver,
-} from '@openbunny/shared/services/ai/runtimeDefaults';
-import { setDefaultSessionOwnerStore, zustandSessionOwnerStore } from '@openbunny/shared/services/ai/sessionOwnerStore';
+import { registerZustandAIRuntimeAdapters } from '@openbunny/shared/stores/aiRuntimeAdapters';
 import { nativeStorage } from './storage';
 import { nativeFS } from './filesystem';
 import { mobileFileSystem } from './mobileFileSystem';
@@ -48,8 +44,7 @@ export function initMobilePlatform(): IPlatformContext {
     },
     initialize: () => {
       setFileSystemInstance(mobileFileSystem);
-      setDefaultAIRuntimeDefaultsResolver(zustandAIRuntimeDefaultsResolver);
-      setDefaultSessionOwnerStore(zustandSessionOwnerStore);
+      registerZustandAIRuntimeAdapters();
       initializePlatformStorage({
         messageBackend: new SQLiteMessageBackend(),
         statsBackend: new SQLiteStatsBackend(),

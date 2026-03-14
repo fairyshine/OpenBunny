@@ -1,8 +1,4 @@
-import { DEFAULT_AGENT_ID, useAgentStore } from '../../stores/agent';
-import { useSessionStore } from '../../stores/session';
-import { useSettingsStore } from '../../stores/settings';
-import { useSkillStore } from '../../stores/skills';
-import { useToolStore, type MCPConnection } from '../../stores/tools';
+import type { MCPConnection } from '../../stores/tools';
 import type { Agent, LLMConfig } from '../../types';
 import type { LoadedSkill } from '../skills';
 
@@ -32,38 +28,16 @@ export interface AIRuntimeDefaultsResolver {
   getDefaults(): AIRuntimeDefaults;
 }
 
-export const zustandAIRuntimeDefaultsResolver: AIRuntimeDefaultsResolver = {
-  getDefaults() {
-    const agentStore = useAgentStore.getState();
-    const sessionStore = useSessionStore.getState();
-    const settingsStore = useSettingsStore.getState();
-    const skillStore = useSkillStore.getState();
-    const toolStore = useToolStore.getState();
+const UNCONFIGURED_RUNTIME_DEFAULTS_MESSAGE =
+  'AI runtime defaults resolver is not configured. Initialize platform runtime or call setDefaultAIRuntimeDefaultsResolver().';
 
-    return {
-      currentAgentId: agentStore.currentAgentId ?? DEFAULT_AGENT_ID,
-      agents: agentStore.agents,
-      defaultLLMConfig: sessionStore.llmConfig,
-      defaultEnabledToolIds: settingsStore.enabledTools,
-      proxyUrl: settingsStore.proxyUrl,
-      toolExecutionTimeout: settingsStore.toolExecutionTimeout,
-      execLoginShell: settingsStore.execLoginShell,
-      searchProvider: settingsStore.searchProvider,
-      exaApiKey: settingsStore.exaApiKey,
-      braveApiKey: settingsStore.braveApiKey,
-      skills: skillStore.skills,
-      enabledSkillIds: skillStore.enabledSkillIds,
-      markSkillActivated: skillStore.markActivated,
-      mcpConnections: toolStore.mcpConnections,
-      onConnectionStatusChange: (connectionId, status, error) => {
-        toolStore.updateMCPStatus(connectionId, status);
-        toolStore.setMCPError(connectionId, error || null);
-      },
-    };
+const unconfiguredAIRuntimeDefaultsResolver: AIRuntimeDefaultsResolver = {
+  getDefaults() {
+    throw new Error(UNCONFIGURED_RUNTIME_DEFAULTS_MESSAGE);
   },
 };
 
-let defaultAIRuntimeDefaultsResolver: AIRuntimeDefaultsResolver = zustandAIRuntimeDefaultsResolver;
+let defaultAIRuntimeDefaultsResolver: AIRuntimeDefaultsResolver = unconfiguredAIRuntimeDefaultsResolver;
 
 export function setDefaultAIRuntimeDefaultsResolver(runtimeDefaultsResolver: AIRuntimeDefaultsResolver): void {
   defaultAIRuntimeDefaultsResolver = runtimeDefaultsResolver;
@@ -74,5 +48,5 @@ export function getDefaultAIRuntimeDefaultsResolver(): AIRuntimeDefaultsResolver
 }
 
 export function resetDefaultAIRuntimeDefaultsResolverForTests(): void {
-  defaultAIRuntimeDefaultsResolver = zustandAIRuntimeDefaultsResolver;
+  defaultAIRuntimeDefaultsResolver = unconfiguredAIRuntimeDefaultsResolver;
 }

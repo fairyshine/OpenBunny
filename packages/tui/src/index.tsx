@@ -4,6 +4,7 @@ import { render } from 'ink';
 import { initNodePlatform } from '@openbunny/shared/platform/node';
 import type { IPlatformStorage } from '@openbunny/shared/platform';
 import { detectNodeOS } from '@openbunny/shared/platform/detect';
+import { registerZustandAIRuntimeAdapters } from '@openbunny/shared/stores/aiRuntimeAdapters';
 import Conf from 'conf';
 import { useSessionStore } from '@openbunny/shared/stores/session';
 import App from './App.js';
@@ -19,6 +20,7 @@ initNodePlatform(
   { type: 'tui', os: detectNodeOS(), isBrowser: false, isDesktop: false, isMobile: false, isCLI: false, isTUI: true },
   storage,
 );
+registerZustandAIRuntimeAdapters();
 
 const args = process.argv.slice(2);
 let model = 'gpt-4';

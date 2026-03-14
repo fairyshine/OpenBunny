@@ -117,6 +117,10 @@
       "types": "./dist/stores/agent.d.ts",
       "import": "./dist/stores/agent.js"
     },
+    "./stores/aiRuntimeAdapters": {
+      "types": "./dist/stores/aiRuntimeAdapters.d.ts",
+      "import": "./dist/stores/aiRuntimeAdapters.js"
+    },
     "./stores/session": {
       "types": "./dist/stores/session.d.ts",
       "import": "./dist/stores/session.js"

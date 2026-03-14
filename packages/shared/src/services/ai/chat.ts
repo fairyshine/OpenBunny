@@ -1,6 +1,6 @@
 import type { ModelMessage, Tool } from 'ai';
 import type { ChatSessionMeta, LLMConfig, Message, MindDialogueSnapshot, Session } from '../../types';
-import { useAgentStore, DEFAULT_AGENT_ID } from '../../stores/agent';
+import { DEFAULT_AGENT_ID } from '../../stores/agent';
 import { isAbortError } from '../../utils/errors';
 import { getMessageDisplayType } from '../../utils/messagePresentation';
 import { END_SESSION_TOKEN, createSnapshotMessage, extractSummaryText, sanitizeTerminalVisibleText, type DialogueVisibleCallbacks } from './dialogue';
@@ -10,7 +10,7 @@ import { loadEnabledMCPTools } from './mcp';
 import { getActivateSkillTool } from './skills';
 import { buildAgentAssistantSystemPrompt } from './prompts';
 import type { AgentRuntimeContext } from './runtimeContext';
-import { resolveAgentRuntimeContext, resolveSessionRuntimeContext } from './runtimeContext';
+import { findRuntimeAgent, resolveAgentRuntimeContext, resolveRuntimeAgents, resolveSessionRuntimeContext } from './runtimeContext';
 import { createSessionOps, type SessionOps } from './sessionOps';
 import { runPairedDialogue, type PairedDialogueTrack } from './pairedDialogue';
 
@@ -354,7 +354,7 @@ function resolveTargetAgent(agentName: string, sourceAgentId: string, runtimeCon
     throw new Error('Target agent name is required.');
   }
 
-  const agents = runtimeContext?.agents ?? useAgentStore.getState().agents;
+  const agents = resolveRuntimeAgents(runtimeContext);
 
   const matches = agents.filter((agent) => agent.id !== sourceAgentId && agent.name.trim().toLowerCase() === normalized);
   if (matches.length === 1) {
@@ -376,8 +376,7 @@ function resolveTargetAgent(agentName: string, sourceAgentId: string, runtimeCon
 }
 
 function getAgentById(agentId: string, runtimeContext?: Partial<AgentRuntimeContext>) {
-  const agents = runtimeContext?.agents ?? useAgentStore.getState().agents;
-  return agents.find((agent) => agent.id === agentId) || null;
+  return findRuntimeAgent(agentId, runtimeContext);
 }
 
 function syncChatMeta(sessionOps: SessionOps, agentId: string, sessionId: string, meta: ChatSessionMeta): void {

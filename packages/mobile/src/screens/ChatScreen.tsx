@@ -24,7 +24,14 @@ export default function ChatScreen() {
   const navigation = useNavigation<ChatScreenNavigationProp>();
   const { sessionId } = route.params;
 
-  const { sessions, addMessage, updateMessage, loadSessionMessages } = useSessionStore();
+  const sessions = useSessionStore((s) => s.sessions);
+  const addMessage = useSessionStore((s) => s.addMessage);
+  const updateMessage = useSessionStore((s) => s.updateMessage);
+  const loadSessionMessages = useSessionStore((s) => s.loadSessionMessages);
+  const renameSession = useSessionStore((s) => s.renameSession);
+  const setSessionStreaming = useSessionStore((s) => s.setSessionStreaming);
+  const setSessionSystemPrompt = useSessionStore((s) => s.setSessionSystemPrompt);
+  const flushMessages = useSessionStore((s) => s.flushMessages);
   const { llmConfig, enabledTools, enabledSkills } = useAgentConfig();
   const { proxyUrl, toolExecutionTimeout } = useSettingsStore();
   const session = sessions.find((s) => s.id === sessionId);
@@ -62,12 +69,12 @@ export default function ChatScreen() {
     updateMessage,
     setStatus: setCurrentStatus,
     generateId: () => crypto.randomUUID(),
-    streamToolOutput: (sessionId, msgId, chunk) => {
-      const session = useSessionStore.getState().sessions.find(s => s.id === sessionId);
-      if (!session) return;
-      const message = session.messages.find(m => m.id === msgId);
+    streamToolOutput: (targetSessionId, msgId, chunk) => {
+      const targetSession = sessions.find((candidate) => candidate.id === targetSessionId);
+      if (!targetSession) return;
+      const message = targetSession.messages.find(m => m.id === msgId);
       if (!message) return;
-      updateMessage(sessionId, msgId, {
+      updateMessage(targetSessionId, msgId, {
         content: (message.content || '') + chunk,
         toolOutput: (message.toolOutput || '') + chunk,
       });
@@ -93,12 +100,12 @@ export default function ChatScreen() {
 
     // Auto-rename session with first user message
     if (session.messages.length === 0) {
-      useSessionStore.getState().renameSession(sessionId, content.trim().slice(0, 50));
+      renameSession(sessionId, content.trim().slice(0, 50));
     }
 
     setIsLoading(true);
     setCurrentStatus('');
-    useSessionStore.getState().setSessionStreaming(sessionId, true);
+    setSessionStreaming(sessionId, true);
     logLLM('info', `User message: ${content.trim().slice(0, 100)}${content.length > 100 ? '...' : ''}`);
 
     const abortController = new AbortController();
@@ -123,7 +130,7 @@ export default function ChatScreen() {
         effectiveSkills,
       );
       // Save system prompt to session
-      useSessionStore.getState().setSessionSystemPrompt(sessionId, systemPrompt);
+      setSessionSystemPrompt(sessionId, systemPrompt);
     } catch (error) {
       if (isAbortError(error)) return;
       console.error('[Chat] Agent loop error:', error);
@@ -139,9 +146,9 @@ export default function ChatScreen() {
       abortControllerRef.current = null;
       setIsLoading(false);
       setCurrentStatus('');
-      useSessionStore.getState().setSessionStreaming(sessionId, false);
+      setSessionStreaming(sessionId, false);
       // Force-flush messages to IndexedDB after agent loop completes
-      useSessionStore.getState().flushMessages(sessionId);
+      flushMessages(sessionId);
     }
   };
 
@@ -152,7 +159,7 @@ export default function ChatScreen() {
     }
     setIsLoading(false);
     setCurrentStatus('');
-    useSessionStore.getState().setSessionStreaming(sessionId, false);
+    setSessionStreaming(sessionId, false);
     addMessage(sessionId, {
       id: crypto.randomUUID(),
       role: 'assistant',

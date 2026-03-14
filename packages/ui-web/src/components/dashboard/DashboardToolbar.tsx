@@ -20,6 +20,7 @@ export default function DashboardToolbar() {
   const dashboardVisibleCards = useSettingsStore((s) => s.dashboardVisibleCards);
   const toggleDashboardCard = useSettingsStore((s) => s.toggleDashboardCard);
   const resetDashboardLayout = useSettingsStore((s) => s.resetDashboardLayout);
+  const setDashboardVisibleCards = useSettingsStore((s) => s.setDashboardVisibleCards);
 
   const effectiveVisible = useMemo(() => {
     return dashboardVisibleCards.length > 0 ? dashboardVisibleCards : DEFAULT_VISIBLE_CARDS;
@@ -42,7 +43,7 @@ export default function DashboardToolbar() {
       } else {
         current.push(cardId);
       }
-      useSettingsStore.getState().setDashboardVisibleCards(current);
+      setDashboardVisibleCards(current);
     } else {
       toggleDashboardCard(cardId);
     }

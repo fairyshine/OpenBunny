@@ -41,9 +41,10 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
   const deleteAgentProject = useAgentStore((s) => s.deleteAgentProject);
   const moveAgentSessionToProject = useAgentStore((s) => s.moveAgentSessionToProject);
   const setAgentCurrentSession = useAgentStore((s) => s.setAgentCurrentSession);
+  const setCurrentAgent = useAgentStore((s) => s.setCurrentAgent);
 
   // Fallback to default session store for default agent
-  const { deleteSession, createSession, deleteProject, moveSessionToProject, clearTrash, setCurrentSession, openSession } = useSessionStore();
+  const { deleteSession, createSession, deleteProject, moveSessionToProject, clearTrash, setCurrentSession, openSession, renameSession } = useSessionStore();
   const globalSessions = useSessionStore(s => s.sessions);
   const globalProjects = useSessionStore(s => s.projects);
   const { currentSession } = useWorkspaceSession();
@@ -160,7 +161,7 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
   const handleContactClick = (agentId: string) => {
     if (agentId !== currentAgentId) {
       setAgentCurrentSession(currentAgentId, null);
-      useAgentStore.getState().setCurrentAgent(agentId);
+      setCurrentAgent(agentId);
     }
     onSessionTypeFilterChange('all');
     onSessionSelect?.();
@@ -353,7 +354,7 @@ export function SessionList({ onItemClick, onSessionSelect, onEditProject, sessi
   const commitRename = () => {
     if (editingId && editingName.trim()) {
       if (isDefaultAgent) {
-        useSessionStore.getState().renameSession(editingId, editingName);
+        renameSession(editingId, editingName);
       } else {
         renameAgentSession(currentAgentId, editingId, editingName);
       }

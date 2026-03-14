@@ -8,12 +8,15 @@ import {
   type AIRuntimeDefaultsResolver,
 } from './runtimeDefaults';
 import {
+  findRuntimeAgent,
   resolveAgentRuntimeContext,
   resolveMCPRuntimeContext,
+  resolveRuntimeAgents,
   resolveSessionRuntimeContext,
   resolveSkillRuntimeContext,
 } from './runtimeContext';
-import { resetDefaultSessionOwnerStoreForTests, zustandSessionOwnerStore } from './sessionOwnerStore';
+import { resetDefaultSessionOwnerStoreForTests, setDefaultSessionOwnerStore } from './sessionOwnerStore';
+import { zustandSessionOwnerStore } from '../../stores/aiRuntimeAdapters';
 
 function createConnection(overrides: Partial<MCPConnection> = {}): MCPConnection {
   return {
@@ -129,12 +132,41 @@ test('resolveMCPRuntimeContext exposes injected defaults and status callback', (
   assert.deepEqual(overrideCalls, [['conn-override', 'connecting', null]]);
 });
 
-test('resolveSessionRuntimeContext uses injected store or zustand default', () => {
-  const context = resolveSessionRuntimeContext();
-  assert.equal(context.sessionOwnerStore, zustandSessionOwnerStore);
-
+test('resolveSessionRuntimeContext uses injected store or registered default', () => {
   const customStore = { ...zustandSessionOwnerStore };
   assert.equal(resolveSessionRuntimeContext({ sessionOwnerStore: customStore }).sessionOwnerStore, customStore);
+});
+
+test('resolveSessionRuntimeContext returns the registered default session owner store', () => {
+  const customStore = { ...zustandSessionOwnerStore };
+  setDefaultSessionOwnerStore(customStore);
+  assert.equal(resolveSessionRuntimeContext().sessionOwnerStore, customStore);
+});
+
+test('resolveRuntimeAgents and findRuntimeAgent prefer overrides and fall back to injected defaults', () => {
+  const resolver = createRuntimeDefaultsResolver();
+  setDefaultAIRuntimeDefaultsResolver(resolver);
+
+  const defaultAgents = resolveRuntimeAgents();
+  assert.deepEqual(defaultAgents.map((agent) => agent.id), [DEFAULT_AGENT_ID, 'agent-2']);
+  assert.equal(findRuntimeAgent('agent-2')?.name, 'Agent 2');
+  assert.equal(findRuntimeAgent('missing'), null);
+
+  const overrideAgents = [{
+    id: 'agent-override',
+    name: 'Override',
+    avatar: '🛠',
+    systemPrompt: '',
+    description: 'override',
+    color: '#123456',
+    llmConfig: undefined,
+    enabledTools: [],
+    enabledSkills: [],
+    createdAt: new Date(2).toISOString(),
+    isDefault: false,
+  }];
+  assert.deepEqual(resolveRuntimeAgents({ agents: overrideAgents }), overrideAgents);
+  assert.equal(findRuntimeAgent('agent-override', { agents: overrideAgents })?.name, 'Override');
 });
 
 test('resolveAgentRuntimeContext assembles values from injected defaults and respects overrides', () => {
