@@ -232,6 +232,7 @@ These are safe patterns to continue:
 - Platform-owned external fetch policies for LLM providers, exposed through `IPlatformAPI.createExternalFetch()` instead of browser-global checks in shared services
 - Platform-owned storage backend bootstrap via `initializePlatformStorage()` rather than per-service environment auto-detection
 - App-owned sound settings injection so `packages/shared/src/services/sound/index.ts` stays store-agnostic while platforms wire live preferences
+- Platform-owned i18n bootstrap so `packages/shared/src/i18n/index.ts` stays React- and browser-agnostic while DOM and React Native clients register their own bindings and initial language resolution
 - Shared Vite chunk rules in `scripts/vite-chunks.mjs` so `web` and `desktop` split heavy dependencies consistently
 - Bundle budget verification in `scripts/check-bundle-budgets.mjs` so main entry chunks stay bounded while heavy features remain async
 - Lightweight first-render graph layout via `circleLayout()` with a built-in relaxation relayout helper only on explicit relayout

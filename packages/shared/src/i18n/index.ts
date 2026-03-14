@@ -1,40 +1,44 @@
 import i18n from 'i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
 import zhCN from './locales/zh-CN';
 import enUS from './locales/en-US';
 import './types';
 import type { Module, Newable, NewableModule } from 'i18next';
 
-// Read persisted language from Zustand store in localStorage
-function getPersistedLanguage(): string | null {
-  try {
-    if (typeof localStorage === 'undefined') return null;
-    const raw = localStorage.getItem('webagent-settings');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const lang = parsed?.state?.language;
-      if (lang && lang !== 'system') return lang;
-    }
-  } catch {
-    // ignore
-  }
-  return null;
-}
-
-// Resolve system language to supported locale
-function resolveSystemLanguage(): string {
-  if (typeof navigator === 'undefined') return 'en-US';
-  const nav = navigator.language || '';
-  return nav.startsWith('zh') ? 'zh-CN' : 'en-US';
-}
-
-const persistedLang = getPersistedLanguage();
-const initialLang = persistedLang || resolveSystemLanguage();
-
 type I18nPlugin = Module | NewableModule<Module> | Newable<Module>;
+type SharedLanguage = 'zh-CN' | 'en-US';
+
+const DEFAULT_LANGUAGE: SharedLanguage = 'en-US';
+const FALLBACK_LANGUAGE: SharedLanguage = 'zh-CN';
+const SUPPORTED_LANGUAGES: SharedLanguage[] = ['zh-CN', 'en-US'];
 
 const registeredPlugins = new Set<I18nPlugin>();
 let initPromise: Promise<typeof i18n> | null = null;
+
+export interface SharedI18nInitOptions {
+  plugins?: I18nPlugin[];
+  initialLanguage?: string | null;
+}
+
+export function resolveSupportedLanguage(language: string | null | undefined): SharedLanguage {
+  return language?.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en-US';
+}
+
+export function readPersistedLanguage(settingsSnapshot: string | null | undefined): SharedLanguage | null {
+  if (!settingsSnapshot) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(settingsSnapshot);
+    const language = parsed?.state?.language;
+    if (typeof language !== 'string' || language === 'system') {
+      return null;
+    }
+    return resolveSupportedLanguage(language);
+  } catch {
+    return null;
+  }
+}
 
 function registerPlugin(plugin: I18nPlugin): void {
   if (registeredPlugins.has(plugin)) {
@@ -45,7 +49,9 @@ function registerPlugin(plugin: I18nPlugin): void {
   registeredPlugins.add(plugin);
 }
 
-export function initializeSharedI18n(plugins: I18nPlugin[] = []): Promise<typeof i18n> {
+export function initializeSharedI18n(options: SharedI18nInitOptions = {}): Promise<typeof i18n> {
+  const { plugins = [], initialLanguage } = options;
+
   if (initPromise) {
     const hasLatePlugins = plugins.some((plugin) => !registeredPlugins.has(plugin));
     if (hasLatePlugins) {
@@ -54,7 +60,6 @@ export function initializeSharedI18n(plugins: I18nPlugin[] = []): Promise<typeof
     return initPromise;
   }
 
-  registerPlugin(LanguageDetector);
   plugins.forEach(registerPlugin);
 
   initPromise = i18n.init({
@@ -62,14 +67,11 @@ export function initializeSharedI18n(plugins: I18nPlugin[] = []): Promise<typeof
       'zh-CN': { translation: zhCN },
       'en-US': { translation: enUS },
     },
-    lng: initialLang,
-    fallbackLng: 'zh-CN',
-    supportedLngs: ['zh-CN', 'en-US'],
+    lng: initialLanguage ? resolveSupportedLanguage(initialLanguage) : DEFAULT_LANGUAGE,
+    fallbackLng: FALLBACK_LANGUAGE,
+    supportedLngs: SUPPORTED_LANGUAGES,
     interpolation: {
       escapeValue: false,
-    },
-    detection: {
-      order: [], // We handle detection ourselves above
     },
   }).then(() => i18n);
 

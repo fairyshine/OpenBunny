@@ -5,6 +5,14 @@ const repoRoot = process.cwd();
 
 const packageRules = [
   {
+    name: '@openbunny/shared',
+    dir: 'packages/shared/src',
+    forbidden: [
+      { pattern: /from ['"]react-i18next['"]/g, message: 'keep React-specific i18n bindings out of shared; register them from platform/UI bootstrap code' },
+      { pattern: /from ['"]i18next-browser-languagedetector['"]/g, message: 'keep browser-only language detection out of shared; resolve initial language from platform bootstrap code' },
+    ],
+  },
+  {
     name: '@openbunny/ui-web',
     dir: 'packages/ui-web/src',
     forbidden: [
@@ -105,5 +113,5 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log('Package boundary check passed for web, desktop, ui-web, cli, tui, and mobile.');
+console.log('Package boundary check passed for shared, web, desktop, ui-web, cli, tui, and mobile.');
 console.log('Note: mobile app code now imports `@openbunny/shared/*` package subpaths and runtime resolution is guarded separately by `scripts/check-mobile-runtime-contracts.mjs`.');

@@ -111,6 +111,15 @@ Status: Completed
 - [x] Reduce remaining large async chunks such as `vendor-elk` and `vendor-shiki`
 - [x] Improve Expo package-artifact development ergonomics so mobile no longer depends on a paired watch process
 
+### Phase 7 — Isolate i18n bootstrap
+
+Status: Completed
+
+- [x] Remove React/browser-specific i18n bootstrap work from `@openbunny/shared`
+- [x] Move initial language resolution to DOM and React Native platform bootstrap code
+- [x] Reuse the same shared i18n resources and singleton across `ui-web` and `mobile`
+- [x] Add tests and boundary checks so `shared` does not regress back to `react-i18next` or browser detector imports
+
 ## Execution order
 
 1. Stop duplication and document intended boundaries
@@ -119,6 +128,7 @@ Status: Completed
 4. Compile workspace packages to artifacts and enforce public contracts
 5. Backfill tests around the stabilized boundaries
 6. Add build-time and bundle-time guardrails for performance-sensitive surfaces
+7. Keep shared singletons platform-agnostic and register UI/runtime bindings at bootstrap time
 
 ## Current increment
 
@@ -139,6 +149,9 @@ This roadmap slice now includes the following completed work:
 - Replace the parallel `@openbunny/shared` watch worker in `scripts/dev-mobile.mjs` with a single-process supervisor that prebuilds once, watches shared inputs, and rebuilds on demand while Expo keeps running
 - Add placeholder mobile sound assets and static native sound loading so `expo export` succeeds
 - Trim MCP-heavy imports from shared/mobile entry paths and lazy-load MCP connection setup where appropriate
+- Remove `react-i18next` and browser language detection from `@openbunny/shared/i18n`, leaving shared with a platform-agnostic singleton initializer
+- Move DOM language resolution into `packages/ui-web/src/platform/i18n.ts` and reuse the same shared initializer from `packages/mobile/src/platform/i18n.ts`
+- Add `packages/shared/src/i18n/index.test.ts` plus a boundary rule preventing `packages/shared/src` from importing `react-i18next` or `i18next-browser-languagedetector`
 - Share Vite chunk strategy through `scripts/vite-chunks.mjs` for `web` and `desktop`
 - Lazy-load Shiki rendering and the agent graph surface so the main `index-*.js` bundle stays materially smaller
 - Split Shiki into finer async `core` / `langs` / `themes` chunks with the JavaScript regex engine so opening code blocks no longer pulls the full bundled payload at once
@@ -153,3 +166,4 @@ This roadmap slice now includes the following completed work:
 - Remaining same-name files such as `MessageList` and `ChatInput` are still platform-specific and should not be force-merged.
 - Shared extraction should focus on contracts, IDs, selectors, runtime helpers, and platform seams rather than forcing identical component structures.
 - The ELK payload has been removed from graph relayout entirely; the next performance work is now about incremental UI polish and keeping bundle contracts from regressing.
+- Shared i18n now expects platform-owned bootstrap to provide environment-specific language resolution or UI bindings instead of reading browser globals directly.
