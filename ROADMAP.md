@@ -141,7 +141,8 @@ This roadmap slice now includes the following completed work:
 - Share Vite chunk strategy through `scripts/vite-chunks.mjs` for `web` and `desktop`
 - Lazy-load Shiki rendering and the agent graph surface so the main `index-*.js` bundle stays materially smaller
 - Split Shiki into finer async `core` / `langs` / `themes` chunks with the JavaScript regex engine so opening code blocks no longer pulls the full bundled payload at once
-- Change `packages/ui-web/src/components/agent-graph/AgentGraphDialog.tsx` to default to `circleLayout()` on first render and only pull ELK on manual auto-layout
+- Replace ELK-based manual relayout with a lightweight built-in graph relaxation helper so graph editing no longer ships any ELK runtime or worker payload
+- Change `packages/ui-web/src/components/agent-graph/AgentGraphDialog.tsx` to default to `circleLayout()` on first render and use a lightweight built-in relayout helper only on explicit user action
 - Add `scripts/check-bundle-budgets.mjs` and wire it into `verify:packages` to keep `web`/`desktop` entry bundles and async heavy chunks under contract
 - Rename `packages/desktop/postcss.config.mjs` to native ESM config naming so Vite builds stay warning-free
 
@@ -149,4 +150,4 @@ This roadmap slice now includes the following completed work:
 
 - Remaining same-name files such as `MessageList` and `ChatInput` are still platform-specific and should not be force-merged.
 - Shared extraction should focus on contracts, IDs, selectors, runtime helpers, and platform seams rather than forcing identical component structures.
-- The biggest remaining performance hotspot is now `vendor-elk`; Shiki has been split into smaller async `core` / `langs` / `themes` chunks, but graph auto-layout still carries a very large on-demand payload.
+- The ELK payload has been removed from graph relayout entirely; the next performance work is now about incremental UI polish and keeping bundle contracts from regressing.

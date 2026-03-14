@@ -102,19 +102,18 @@ Use this guide when adding code:
 
 These are the remaining architecture leaks worth tracking in the current slice.
 
-### Web and desktop still ship very large async UI chunks
+### Rich syntax highlighting still ships many optional async language/theme chunks
 
 Examples:
 
-- `packages/ui-web/src/components/agent-graph/AgentGraphDialog.tsx`
 - `packages/ui-web/src/lib/shiki.ts`
 - `scripts/vite-chunks.mjs`
 
 Why this is temporary:
 
-- Main entry bundles are now much smaller, and Shiki has been split into smaller async core/language/theme chunks, but `vendor-elk` is still large when graph auto-layout is opened
-- Initial graph render now avoids ELK unless the user explicitly asks for auto-layout, but the heavy library still exists as an on-demand chunk
-- Rich syntax highlighting is lazy-loaded and now fine-grained, so the remaining hotspot is dominated by graph layout rather than code rendering
+- Main entry bundles are now much smaller, and graph relayout no longer ships ELK at all
+- Rich syntax highlighting is lazy-loaded and fine-grained, but some common languages still produce medium-sized optional async chunks when opened
+- The remaining work is now optimization polish rather than a structural blocker
 
 Planned fix:
 
@@ -241,10 +240,10 @@ These are safe patterns to continue:
 - App-owned sound settings injection so `packages/shared/src/services/sound/index.ts` stays store-agnostic while platforms wire live preferences
 - Shared Vite chunk rules in `scripts/vite-chunks.mjs` so `web` and `desktop` split heavy dependencies consistently
 - Bundle budget verification in `scripts/check-bundle-budgets.mjs` so main entry chunks stay bounded while heavy features remain async
-- Lightweight first-render graph layout via `circleLayout()` with ELK only loaded on explicit relayout
+- Lightweight first-render graph layout via `circleLayout()` with a built-in relaxation relayout helper only on explicit relayout
 
 ## Near-Term Refactor Priorities
 
-1. Reduce large async bundle chunks such as `vendor-elk`
-2. Improve Expo package-artifact development ergonomics
-3. Keep package and bundle contracts enforced in verification/CI
+1. Improve Expo package-artifact development ergonomics
+2. Keep package and bundle contracts enforced in verification/CI
+3. Continue trimming optional UI feature chunks where it is low-risk

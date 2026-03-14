@@ -49,7 +49,6 @@
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "date-fns": "catalog:",
-    "elkjs": "^0.11.1",
     "howler": "^2.2.4",
     "lucide-react": "catalog:",
     "react-day-picker": "catalog:",

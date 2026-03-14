@@ -9,14 +9,14 @@ const contracts = [
     assetsDir: 'packages/web/dist/assets',
     entryPrefix: 'index-',
     maxEntrySizeBytes: 550 * 1024,
-    requiredAsyncChunkPrefixes: ['vendor-elk-', 'vendor-shiki-core-', 'vendor-shiki-lang-', 'vendor-shiki-theme-'],
+    requiredAsyncChunkPrefixes: ['vendor-shiki-core-', 'vendor-shiki-lang-', 'vendor-shiki-theme-'],
   },
   {
     name: '@openbunny/desktop',
     assetsDir: 'packages/desktop/dist/assets',
     entryPrefix: 'index-',
     maxEntrySizeBytes: 550 * 1024,
-    requiredAsyncChunkPrefixes: ['vendor-elk-', 'vendor-shiki-core-', 'vendor-shiki-lang-', 'vendor-shiki-theme-'],
+    requiredAsyncChunkPrefixes: ['vendor-shiki-core-', 'vendor-shiki-lang-', 'vendor-shiki-theme-'],
   },
 ];
 

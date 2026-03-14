@@ -31,13 +31,7 @@ import { Button } from '../ui/button';
 import { AgentNode, AGENT_AVATAR_CENTER_X, AGENT_AVATAR_CENTER_Y, type AgentNodeData } from './AgentNode';
 import { AgentGroupNode } from './AgentGroupNode';
 import { Maximize2, Trash2, X, Link2 } from 'lucide-react';
-
-let elkPromise: Promise<any> | undefined;
-
-async function getElk(): Promise<any> {
-  elkPromise ??= import('elkjs/lib/elk.bundled.js').then((module) => new module.default());
-  return elkPromise;
-}
+import { runGraphRelayout } from './layout';
 
 const NODE_WIDTH = 86;
 const NODE_HEIGHT = 78;
@@ -142,40 +136,6 @@ function CenterConnectionLine({ fromNode, toX, toY }: ConnectionLineComponentPro
 }
 
 interface AgentLike { id: string }
-interface RelLike { id: string; sourceAgentId: string; targetAgentId: string }
-
-async function runElkLayout(
-  agents: AgentLike[],
-  relationships: RelLike[],
-): Promise<Map<string, { x: number; y: number }>> {
-  const graph = {
-    id: 'root',
-    layoutOptions: {
-      'elk.algorithm': 'stress',
-      'elk.stress.desiredEdgeLength': '180',
-      'elk.spacing.nodeNode': '60',
-      'elk.padding': '[top=40,left=40,bottom=40,right=40]',
-    },
-    children: agents.map((agent) => ({ id: agent.id, width: NODE_WIDTH, height: NODE_HEIGHT })),
-    edges: relationships.map((relationship) => ({
-      id: relationship.id,
-      sources: [relationship.sourceAgentId],
-      targets: [relationship.targetAgentId],
-    })),
-  };
-
-  const elk = await getElk();
-  const result = await elk.layout(graph);
-  const positions = new Map<string, { x: number; y: number }>();
-
-  for (const node of result.children ?? []) {
-    if (node.x != null && node.y != null) {
-      positions.set(node.id, { x: node.x, y: node.y });
-    }
-  }
-
-  return positions;
-}
 
 function circleLayout(agents: AgentLike[]): Map<string, { x: number; y: number }> {
   const cx = 400;
@@ -638,7 +598,7 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
     }
 
     nodePositionsRef.current.clear();
-    runElkLayout(agents, relationships)
+    Promise.resolve(runGraphRelayout(agents, relationships))
       .then((positions) => {
         applyPositions(positions);
         setTimeout(() => fitView({ padding: 0.3, duration: 300 }), 50);

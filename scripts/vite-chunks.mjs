@@ -27,7 +27,6 @@ export function createOpenBunnyManualChunks(id) {
     ['vendor-markdown', ['/node_modules/react-markdown/', '/node_modules/remark-breaks/', '/node_modules/remark-gfm/']],
     ['vendor-shiki-core', ['/node_modules/shiki/', '/node_modules/@shikijs/core/', '/node_modules/@shikijs/engine-', '/node_modules/@shikijs/primitive/', '/node_modules/@shikijs/types/', '/node_modules/@shikijs/vscode-textmate/']],
     ['vendor-reactflow', ['/node_modules/reactflow/']],
-    ['vendor-elk', ['/node_modules/elkjs/']],
     ['vendor-dnd', ['/@dnd-kit/']],
     ['vendor-radix', ['/@radix-ui/']],
     ['vendor-i18n', ['/node_modules/i18next/', '/node_modules/react-i18next/', '/node_modules/i18next-browser-languagedetector/']],
