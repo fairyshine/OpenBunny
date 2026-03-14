@@ -137,25 +137,25 @@ Planned fix:
 
 - Move environment decisions behind `getPlatformContext()` and explicit backend registration
 
-### Workspace packages are consumed as source, not artifacts
+### Mobile Expo development still relies on a parallel shared build process
 
 Examples:
 
-- `packages/shared/package.json`
-- `packages/ui-web/package.json`
+- `packages/mobile/package.json`
+- `packages/mobile/metro.config.js`
+- `packages/mobile/tsconfig.contract.json`
 
 Why this is temporary:
 
-- Consumers must redeclare transitive dependencies from source imports
-- Package boundaries are softer than they look
-- Build behavior depends on Vite aliasing and workspace layout details
+- Expo runtime now resolves `@openbunny/shared` through the workspace package exports, so `shared/dist` must stay fresh during development
+- Root `dev:mobile` now starts a parallel `@openbunny/shared` watch build plus Expo, but the workflow still spans two coordinated processes
+- Package contract alignment is complete, while development ergonomics still depend on that companion shared build worker
 
 Planned fix:
 
-- Build `shared` and `ui-web` as artifacts and consume `dist` outputs
-- Migration is now in progress: `web`, `desktop`, `cli`, and `tui` build against package artifacts, while `mobile` still uses source-level aliases pending follow-up cleanup
-- Current limitation: `web` and `desktop` still duplicate several runtime dependencies because their Vite build aliases point directly at `shared/dist` and `ui-web/dist`, which makes Rollup resolve bare imports from the app package context instead of the workspace package manifests
-- `shared` and `ui-web` now publish explicit `exports` maps and are checked by `scripts/check-package-exports.mjs` so package consumers cannot silently drift onto undeclared subpaths
+- Keep the shared watch/build flow running alongside Expo development through `node scripts/dev-mobile.mjs`
+- Keep mobile imports on public package subpaths so future tooling can stay package-contract based
+- Keep `typecheck:contracts`, `scripts/check-package-exports.mjs`, `scripts/check-app-runtime-deps.mjs`, and `scripts/check-mobile-runtime-contracts.mjs` guarding the package contracts while the dev workflow catches up
 
 ## Platform Service Contracts
 

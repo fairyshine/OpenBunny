@@ -164,12 +164,17 @@
     "./utils/errors": {
       "types": "./dist/utils/errors.d.ts",
       "import": "./dist/utils/errors.js"
+    },
+    "./services/ai/mcpToolId": {
+      "types": "./dist/services/ai/mcpToolId.d.ts",
+      "import": "./dist/services/ai/mcpToolId.js"
     }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node ./scripts/run-node-tests.mjs",
-    "build": "node ./scripts/build.mjs"
+    "build": "node ./scripts/build.mjs",
+    "watch": "node ./scripts/watch.mjs"
   },
   "peerDependencies": {
     "react": "catalog:"

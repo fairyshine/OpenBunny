@@ -1,7 +1,21 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type AliasOptions } from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
 import path from 'path'
+import { createOpenBunnyManualChunks } from '../../scripts/vite-chunks.mjs'
+
+function createWorkspaceAliases(command: 'build' | 'serve'): AliasOptions {
+  if (command === 'build') {
+    return {}
+  }
+
+  return {
+    '@shared': path.resolve(__dirname, '../shared/src'),
+    '@openbunny/shared': path.resolve(__dirname, '../shared/src'),
+    '@openbunny/ui-web/styles': path.resolve(__dirname, '../ui-web/src/index.css'),
+    '@openbunny/ui-web': path.resolve(__dirname, '../ui-web/src'),
+  }
+}
 
 export default defineConfig(({ command }) => ({
   plugins: [
@@ -27,21 +41,13 @@ export default defineConfig(({ command }) => ({
   ],
   resolve: {
     dedupe: ['react', 'react-dom', 'zustand', 'react-i18next'],
-    alias: {
-      '@shared': path.resolve(__dirname, command === 'build' ? '../shared/dist' : '../shared/src'),
-      '@openbunny/shared': path.resolve(__dirname, command === 'build' ? '../shared/dist' : '../shared/src'),
-      '@openbunny/ui-web/styles': path.resolve(__dirname, command === 'build' ? '../ui-web/dist/index.css' : '../ui-web/src/index.css'),
-      '@openbunny/ui-web': path.resolve(__dirname, command === 'build' ? '../ui-web/dist' : '../ui-web/src'),
-    },
+    alias: createWorkspaceAliases(command),
   },
   build: {
     target: 'esnext',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-state': ['zustand'],
-        },
+        manualChunks: createOpenBunnyManualChunks,
       },
     },
   },

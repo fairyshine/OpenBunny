@@ -20,7 +20,7 @@ Last updated: 2026-03-13
 
 ### Phase 1 — Stop architecture drift
 
-Status: In progress
+Status: Completed
 
 #### 1.1 Remove obvious duplicate implementations
 
@@ -72,16 +72,16 @@ Status: Completed
 
 ### Phase 4 — Package boundary hardening
 
-Status: In progress
+Status: Completed
 
 #### 4.1 Move workspace packages to built artifacts
 
 - [x] Build `@openbunny/shared` to `dist`
 - [x] Build `@openbunny/ui-web` to `dist`
-- [ ] Update consumers to import compiled outputs instead of raw source
-  - Progress: `ui-web`, `web`, `desktop`, `cli`, and `tui` now build against package contracts/artifacts; `mobile` now imports `@openbunny/shared/*` package subpaths and contract-typechecks against `shared/dist`, while runtime resolution remains source-first for Expo
-- [ ] Remove duplicated transitive dependency declarations where possible
-  - Note: `web`/`desktop` still need shared UI/runtime deps declared locally because Vite currently aliases `@openbunny/shared` and `@openbunny/ui-web` to `dist` directories during build, so Rollup resolves bare imports from the app package context rather than the workspace package manifest
+- [x] Update consumers to import compiled outputs instead of raw source
+  - Progress: `ui-web`, `web`, `desktop`, `cli`, `tui`, and `mobile` now resolve `@openbunny/shared` through package contracts/artifacts; `mobile` startup prebuilds `shared` so Expo runtime can consume the workspace package exports instead of source aliases
+- [x] Remove duplicated transitive dependency declarations where possible
+  - Progress: `web` and `desktop` now resolve `@openbunny/shared` / `@openbunny/ui-web` through workspace package manifests during build, so their app manifests only keep direct dependencies (`@openbunny/*`, `react`, `react-dom`)
 
 #### 4.2 Add package contract checks
 
@@ -129,16 +129,19 @@ This change set starts with the safest item in Phase 1:
 - Add `initializePlatformRuntime()` so browser, desktop, mobile, CLI, and TUI platform init paths are idempotent, return their context, and can be reset in tests.
 - Document each client package's required platform services so new entrypoints can wire `storage`, `fs`, `api`, `sound`, and settings hooks consistently.
 - Add explicit `build` pipelines for `@openbunny/shared` and `@openbunny/ui-web`, emitting ESM artifacts to `dist` with rewritten relative imports for runtime consumption.
-- Make `web` build consume `shared`/`ui-web` dist artifacts via build-time aliases while keeping dev-time aliases pointed at source.
-- Make `desktop` build consume `shared`/`ui-web` dist artifacts via build-time aliases while keeping dev-time aliases pointed at source.
+- Make `web` dev resolve `shared`/`ui-web` against source aliases while production builds resolve through workspace package exports to the compiled artifacts.
+- Make `desktop` dev resolve `shared`/`ui-web` against source aliases while production builds resolve through workspace package exports to the compiled artifacts.
 - Move `cli` and `tui` imports onto `@openbunny/shared` public subpaths and compile them with build-only `tsconfig` files that resolve against `shared/dist` instead of `shared/src`.
 - Expand `@openbunny/shared` package exports for `version`, platform subpaths, and locale bundles so non-web consumers can stay on package contracts instead of filesystem aliases.
 - Add `scripts/check-package-boundaries.mjs` and `scripts/verify-package-contracts.mjs` so the artifact-consuming packages keep their new boundaries under automated verification.
 - Add `scripts/check-package-exports.mjs` and replace wildcard `exports` with explicit package contracts for `shared` and `ui-web`.
+- Add `scripts/check-app-runtime-deps.mjs` so `web` and `desktop` keep lean runtime manifests instead of re-declaring `shared` / `ui-web` transitive dependencies.
 - Add `sessionOps.test.ts` and `sessionPersistence.test.ts` to cover orchestration delegation, persistence forwarding, and interrupted-stream session recovery helpers.
 - Add `runtimeContext.test.ts` to verify skill/MCP/session/agent runtime context assembly, default store fallbacks, and override precedence.
 - Add `provider.test.ts` plus small dependency-injection seams in `provider.ts` to verify proxy fetch wiring, provider SDK branch selection, openai-compatible model resolution, and connection probe behavior.
-- Add `packages/mobile/tsconfig.contract.json` and `typecheck:contracts` so the Expo client validates `@openbunny/shared` package contracts against `shared/dist` even while runtime Metro/Babel resolution stays source-first.
+- Add `packages/mobile/tsconfig.contract.json` and `typecheck:contracts` so the Expo client validates `@openbunny/shared` package contracts against `shared/dist`, then remove Metro/Babel source aliases so runtime resolution also flows through the workspace package exports.
+- Add `scripts/check-mobile-runtime-contracts.mjs` so Expo config and startup scripts cannot silently drift back to raw-source resolution.
+- Add `scripts/dev-mobile.mjs` plus `@openbunny/shared` watch mode so Expo development can keep package-artifact resolution without manual rebuild steps.
 
 ## Audit Notes
 

@@ -7,39 +7,48 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(path.join(repoRoot, file), 'utf8'));
 }
 
-const shared = readJson('packages/shared/package.json');
-const uiWeb = readJson('packages/ui-web/package.json');
-const appPackages = [
-  ['@openbunny/web', 'packages/web/package.json'],
-  ['@openbunny/desktop', 'packages/desktop/package.json'],
+const appContracts = [
+  {
+    name: '@openbunny/web',
+    file: 'packages/web/package.json',
+    allowedDependencies: {
+      '@openbunny/shared': 'workspace:*',
+      '@openbunny/ui-web': 'workspace:*',
+      react: 'catalog:',
+      'react-dom': 'catalog:',
+    },
+  },
+  {
+    name: '@openbunny/desktop',
+    file: 'packages/desktop/package.json',
+    allowedDependencies: {
+      '@openbunny/shared': 'workspace:*',
+      '@openbunny/ui-web': 'workspace:*',
+      react: 'catalog:',
+      'react-dom': 'catalog:',
+    },
+  },
 ];
 
-const requiredDependencies = {
-  '@openbunny/shared': 'workspace:*',
-  '@openbunny/ui-web': 'workspace:*',
-  ...shared.dependencies,
-  ...uiWeb.dependencies,
-};
-
-for (const source of [shared.peerDependencies ?? {}, uiWeb.peerDependencies ?? {}]) {
-  for (const [name, version] of Object.entries(source)) {
-    if (name.startsWith('@openbunny/')) continue;
-    requiredDependencies[name] ??= version;
-  }
-}
-
 const failures = [];
-for (const [pkgName, file] of appPackages) {
-  const manifest = readJson(file);
+for (const contract of appContracts) {
+  const manifest = readJson(contract.file);
   const deps = manifest.dependencies ?? {};
 
-  for (const [name, version] of Object.entries(requiredDependencies)) {
+  for (const [name, version] of Object.entries(contract.allowedDependencies)) {
     if (!(name in deps)) {
-      failures.push(`- ${pkgName} is missing dependency ${name}@${version}`);
+      failures.push(`- ${contract.name} is missing dependency ${name}@${version}`);
       continue;
     }
+
     if (deps[name] !== version) {
-      failures.push(`- ${pkgName} has ${name}@${deps[name]} but expected ${version}`);
+      failures.push(`- ${contract.name} has ${name}@${deps[name]} but expected ${version}`);
+    }
+  }
+
+  for (const name of Object.keys(deps)) {
+    if (!(name in contract.allowedDependencies)) {
+      failures.push(`- ${contract.name} should not declare transitive runtime dependency ${name}`);
     }
   }
 }

@@ -4,12 +4,14 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "build:shared": "pnpm --filter @openbunny/shared build",
+    "start": "pnpm build:shared && expo start",
+    "android": "pnpm build:shared && expo start --android",
+    "ios": "pnpm build:shared && expo start --ios",
+    "web": "pnpm build:shared && expo start --web",
     "typecheck": "tsc --noEmit",
-    "typecheck:contracts": "pnpm --filter @openbunny/shared build && tsc -p tsconfig.contract.json --noEmit"
+    "typecheck:contracts": "pnpm --filter @openbunny/shared build && tsc -p tsconfig.contract.json --noEmit",
+    "start:runtime": "expo start"
   },
   "dependencies": {
     "@openbunny/shared": "workspace:*",
@@ -42,7 +44,6 @@
   "devDependencies": {
     "@babel/core": "catalog:",
     "@types/react": "catalog:",
-    "babel-plugin-module-resolver": "catalog:",
     "typescript": "catalog:"
   }
 }

@@ -38,6 +38,7 @@ export { MemoryViewer } from './components/memory/MemoryViewer';
 // Components - Standalone
 export { default as ErrorBoundary } from './components/ErrorBoundary';
 export { default as ReactMarkdown } from './components/ReactMarkdown';
+export { default as LazyShikiCodeBlock } from './components/LazyShikiCodeBlock';
 export { default as MessageSearch } from './components/MessageSearch';
 export { default as ShortcutsHelp } from './components/ShortcutsHelp';
 export { ToolIcon } from './components/ToolIcon';

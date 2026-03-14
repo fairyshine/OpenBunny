@@ -7,7 +7,7 @@
     "dev": "pnpm --filter @openbunny/web dev",
     "dev:desktop": "pnpm --filter @openbunny/desktop dev",
     "dev:tui": "pnpm --filter @openbunny/tui dev",
-    "dev:mobile": "pnpm --filter @openbunny/mobile start",
+    "dev:mobile": "node scripts/dev-mobile.mjs",
     "cli": "pnpm --filter @openbunny/cli dev --",
     "build": "pnpm --filter @openbunny/web build",
     "build:desktop": "pnpm --filter @openbunny/desktop build",
@@ -27,7 +27,8 @@
     "check:boundaries": "node scripts/check-package-boundaries.mjs",
     "verify:packages": "node scripts/verify-package-contracts.mjs",
     "check:exports": "node scripts/check-package-exports.mjs",
-    "check:app-runtime-deps": "node scripts/check-app-runtime-deps.mjs"
+    "check:app-runtime-deps": "node scripts/check-app-runtime-deps.mjs",
+    "check:mobile-runtime": "node scripts/check-mobile-runtime-contracts.mjs"
   },
   "devDependencies": {
     "typescript": "catalog:"

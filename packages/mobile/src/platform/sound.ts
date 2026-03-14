@@ -1,19 +1,19 @@
 /**
  * Mobile Sound Backend — uses expo-av for audio playback.
- * Sound files are bundled as require() assets.
+ * Sound files are bundled as local wav assets.
  */
 
 import { Audio } from 'expo-av';
 import type { ISoundBackend, SoundEffect } from '@openbunny/shared/services/sound';
 
 const SOUND_ASSETS = {
-  'message-send': require('../../assets/sounds/message-send.mp3'),
-  'message-receive': require('../../assets/sounds/message-receive.mp3'),
-  'tool-start': require('../../assets/sounds/tool-start.mp3'),
-  'tool-complete': require('../../assets/sounds/tool-complete.mp3'),
-  'error': require('../../assets/sounds/error.mp3'),
-  'notification': require('../../assets/sounds/notification.mp3'),
-  'click': require('../../assets/sounds/click.mp3'),
+  'message-send': require('../../assets/sounds/message-send.wav'),
+  'message-receive': require('../../assets/sounds/message-receive.wav'),
+  'tool-start': require('../../assets/sounds/tool-start.wav'),
+  'tool-complete': require('../../assets/sounds/tool-complete.wav'),
+  'error': require('../../assets/sounds/error.wav'),
+  'notification': require('../../assets/sounds/notification.wav'),
+  'click': require('../../assets/sounds/click.wav'),
 } satisfies Record<SoundEffect, number>;
 
 export class MobileSoundBackend implements ISoundBackend {

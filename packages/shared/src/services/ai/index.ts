@@ -3,6 +3,7 @@ export { builtinTools, getEnabledTools } from './tools';
 export { generateSkillsSystemPrompt, getActivateSkillTool, getBuiltinSkills, getSkillTools } from './skills';
 export type { SkillInfo } from './skills';
 export { connectMCPServer } from './mcp';
+export { getMCPToolId, isMCPToolId, parseMCPToolId } from './mcpToolId';
 export type { MCPClient } from './mcp';
 export { runAgentLoop } from './agent';
 export type { AgentCallbacks } from './agent';

@@ -3,7 +3,7 @@ import ReactMarkdownCore from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
-import ShikiCodeBlock from './ShikiCodeBlock';
+import LazyShikiCodeBlock from './LazyShikiCodeBlock';
 
 declare global {
   interface Window {
@@ -74,7 +74,7 @@ export default function ReactMarkdown({ content }: ReactMarkdownProps) {
 
       if (isBlock) {
         return (
-          <ShikiCodeBlock
+          <LazyShikiCodeBlock
             code={rawCode}
             language={className?.replace(/^language-/, '')}
           />

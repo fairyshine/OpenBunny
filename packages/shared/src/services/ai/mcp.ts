@@ -2,15 +2,14 @@
  * MCP Client integration using @ai-sdk/mcp
  */
 
-import { createMCPClient } from '@ai-sdk/mcp';
 import type { Tool, ToolExecutionOptions } from 'ai';
 import { logMCP } from '../console/logger';
 import { getErrorMessage } from '../../utils/errors';
 import type { MCPConnection, MCPToolDescriptor, MCPTransportType } from '../../stores/tools';
+import { getMCPToolId, parseMCPToolId } from './mcpToolId';
 
-export type MCPClient = Awaited<ReturnType<typeof createMCPClient>>;
-
-const MCP_TOOL_ID_PREFIX = 'mcp:';
+type CreateMCPClient = (typeof import('@ai-sdk/mcp'))['createMCPClient'];
+export type MCPClient = Awaited<ReturnType<CreateMCPClient>>;
 
 interface MCPConnectionInput {
   id: string;
@@ -32,6 +31,13 @@ interface LoadEnabledMCPToolsOptions extends MCPConnectionOptions {
     status: MCPConnection['status'],
     error?: string | null,
   ) => void;
+}
+
+let createMCPClientPromise: Promise<CreateMCPClient> | null = null;
+
+async function getCreateMCPClient(): Promise<CreateMCPClient> {
+  createMCPClientPromise ??= import('@ai-sdk/mcp').then((module) => module.createMCPClient);
+  return createMCPClientPromise;
 }
 
 function raceWithAbort<T>(promise: Promise<T>, abortSignal?: AbortSignal): Promise<T> {
@@ -139,31 +145,6 @@ function makeUniqueToolName(baseName: string, connectionName: string, usedNames:
   return candidate;
 }
 
-export function isMCPToolId(toolId: string): boolean {
-  return toolId.startsWith(MCP_TOOL_ID_PREFIX);
-}
-
-export function getMCPToolId(connectionId: string, toolName: string): string {
-  return `${MCP_TOOL_ID_PREFIX}${connectionId}:${encodeURIComponent(toolName)}`;
-}
-
-export function parseMCPToolId(toolId: string): { connectionId: string; toolName: string } | null {
-  if (!isMCPToolId(toolId)) {
-    return null;
-  }
-
-  const payload = toolId.slice(MCP_TOOL_ID_PREFIX.length);
-  const separatorIndex = payload.indexOf(':');
-  if (separatorIndex === -1) {
-    return null;
-  }
-
-  return {
-    connectionId: payload.slice(0, separatorIndex),
-    toolName: decodeURIComponent(payload.slice(separatorIndex + 1)),
-  };
-}
-
 export async function connectMCPServer(connection: string | MCPConnectionInput, options?: MCPConnectionOptions) {
   const normalized = typeof connection === 'string'
     ? {
@@ -177,6 +158,7 @@ export async function connectMCPServer(connection: string | MCPConnectionInput, 
         transport: toTransportType(connection.transport),
       };
 
+  const createMCPClient = await getCreateMCPClient();
   const client = await createMCPClient({
     transport: {
       type: normalized.transport,

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import ShikiCodeBlock from '../../ShikiCodeBlock';
+import LazyShikiCodeBlock from '../../LazyShikiCodeBlock';
 
 type ToolParamKind = 'string' | 'number' | 'boolean' | 'null' | 'array' | 'object' | 'unknown';
 
@@ -81,7 +81,7 @@ const ToolInputDisplay = memo(function ToolInputDisplay({ input, toolName }: { i
               <div className="text-xs font-mono text-foreground/85">
                 {typeof value === 'string' ? (
                   language ? (
-                    <ShikiCodeBlock code={value} language={language} compact maxHeightClassName="max-h-64" />
+                    <LazyShikiCodeBlock code={value} language={language} compact maxHeightClassName="max-h-64" />
                   ) : isMultilineString ? (
                     <pre className={getToolParamValueClassName(kind, true)}>{value}</pre>
                   ) : (

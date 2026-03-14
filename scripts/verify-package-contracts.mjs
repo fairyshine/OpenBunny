@@ -12,6 +12,7 @@ const steps = [
   ['node', ['scripts/check-package-boundaries.mjs']],
   ['node', ['scripts/check-package-exports.mjs']],
   ['node', ['scripts/check-app-runtime-deps.mjs']],
+  ['node', ['scripts/check-mobile-runtime-contracts.mjs']],
 ];
 
 for (const [command, args] of steps) {

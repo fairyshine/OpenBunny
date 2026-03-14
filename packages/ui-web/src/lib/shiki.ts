@@ -1,5 +1,4 @@
 import type { CodeThemePreset } from '@openbunny/shared/stores/settings';
-import { bundledLanguages, createHighlighter } from 'shiki';
 
 const FALLBACK_LANGUAGE = 'plaintext';
 
@@ -29,14 +28,15 @@ const PRELOADED_LANGUAGES = [
   'sql',
 ] as const;
 
-let highlighterPromise: Promise<Awaited<ReturnType<typeof createHighlighter>>> | null = null;
+type Highlighter = Awaited<ReturnType<(typeof import('shiki'))['createHighlighter']>>;
+let highlighterPromise: Promise<Highlighter> | null = null;
 
-function getHighlighter() {
+async function getHighlighter() {
   if (!highlighterPromise) {
-    highlighterPromise = createHighlighter({
+    highlighterPromise = import('shiki').then(({ createHighlighter }) => createHighlighter({
       themes: Array.from(new Set(Object.values(CODE_THEME_MAP).flatMap((theme) => [theme.light, theme.dark]))),
-      langs: PRELOADED_LANGUAGES.filter((language) => language in bundledLanguages),
-    });
+      langs: [...PRELOADED_LANGUAGES],
+    }));
   }
 
   return highlighterPromise;
@@ -54,7 +54,7 @@ export function normalizeCodeLanguage(language?: string): string {
   if (['py', 'python'].includes(normalized)) return 'python';
   if (['yml', 'yaml'].includes(normalized)) return 'yaml';
   if (normalized === 'md') return 'markdown';
-  if (normalized in bundledLanguages) return normalized;
+  if ((PRELOADED_LANGUAGES as readonly string[]).includes(normalized)) return normalized;
 
   return FALLBACK_LANGUAGE;
 }

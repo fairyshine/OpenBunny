@@ -80,9 +80,9 @@ packages/mobile/
 ├── App.tsx                    # Entry point (init platform → render)
 ├── index.js                   # registerRootComponent + shim import
 ├── app.json                   # Expo configuration
-├── babel.config.js            # Babel + module-resolver
+├── babel.config.js            # Expo Babel config
 ├── metro.config.js            # Metro monorepo config
-├── assets/                    # App icons and splash
+├── assets/                    # App icons, splash, and sound assets
 └── src/
     ├── components/
     │   ├── chat/              # MessageList, MessageBubble, ChatInput
@@ -101,7 +101,11 @@ packages/mobile/
         └── global.d.ts        # ImportMeta type extension
 ```
 
-## Shared Package Fixes
+## Shared Package Notes
+
+The mobile app now resolves `@openbunny/shared` through workspace package exports. `pnpm dev:mobile` keeps `shared/dist` fresh by running the shared watch build alongside Expo.
+
+`expo export` smoke validation now passes after bundling local mobile sound assets. The remaining Metro warning comes from the upstream `@ai-sdk/mcp` → `pkce-challenge` conditional export path on iOS and does not currently block bundling.
 
 The following compatibility fixes were made to `@openbunny/shared` for React Native:
 

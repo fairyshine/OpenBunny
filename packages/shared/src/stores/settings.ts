@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { logSettings } from '../services/console/logger';
-import { isMCPToolId } from '../services/ai/mcp';
+import { isMCPToolId } from '../services/ai/mcpToolId';
 import type { UserProfile, AgentProfile, LLMPreset } from '../types';
 
 export type Theme = 'light' | 'dark' | 'system';

@@ -24,7 +24,6 @@ import ReactFlow, {
   BaseEdge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import ELK from 'elkjs/lib/elk.bundled.js';
 import { useAgentStore, DEFAULT_AGENT_ID } from '@openbunny/shared/stores/agent';
 import { useSessionStore } from '@openbunny/shared/stores/session';
 import type { Agent, AgentGroup } from '@openbunny/shared/types';
@@ -33,7 +32,12 @@ import { AgentNode, AGENT_AVATAR_CENTER_X, AGENT_AVATAR_CENTER_Y, type AgentNode
 import { AgentGroupNode } from './AgentGroupNode';
 import { Maximize2, Trash2, X, Link2 } from 'lucide-react';
 
-const elk = new ELK();
+let elkPromise: Promise<any> | undefined;
+
+async function getElk(): Promise<any> {
+  elkPromise ??= import('elkjs/lib/elk.bundled.js').then((module) => new module.default());
+  return elkPromise;
+}
 
 const NODE_WIDTH = 86;
 const NODE_HEIGHT = 78;
@@ -160,6 +164,7 @@ async function runElkLayout(
     })),
   };
 
+  const elk = await getElk();
   const result = await elk.layout(graph);
   const positions = new Map<string, { x: number; y: number }>();
 

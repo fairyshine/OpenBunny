@@ -106,4 +106,4 @@ if (violations.length > 0) {
 }
 
 console.log('Package boundary check passed for web, desktop, ui-web, cli, tui, and mobile.');
-console.log('Note: mobile still uses a source-first Expo resolver path, but app code now imports `@openbunny/shared/*` package subpaths.');
+console.log('Note: mobile app code now imports `@openbunny/shared/*` package subpaths and runtime resolution is guarded separately by `scripts/check-mobile-runtime-contracts.mjs`.');

@@ -6,7 +6,6 @@ import Sidebar from './components/sidebar/Sidebar';
 import Header from './components/layout/Header';
 import GlobalStatsPage from './components/layout/GlobalStatsPage';
 import StatusScreen from './components/layout/StatusScreen';
-import { AgentGraph } from './components/agent-graph/AgentGraphDialog';
 import { AgentConfigPanel } from './components/settings/AgentConfigPanel';
 import { useSessionStore } from '@openbunny/shared/stores/session';
 import { useAgentStore, DEFAULT_AGENT_ID } from '@openbunny/shared/stores/agent';
@@ -23,6 +22,7 @@ import { useWorkspaceSession } from './hooks/useWorkspaceSession';
 // Lazy load non-critical components
 const FileEditor = lazy(() => import('./components/sidebar/FileEditor'));
 const ConsolePanel = lazy(() => import('./components/layout/ConsolePanel'));
+const AgentGraph = lazy(() => import('./components/agent-graph/AgentGraphDialog').then((module) => ({ default: module.AgentGraph })));
 
 function App() {
   const { t } = useTranslation();
@@ -314,7 +314,7 @@ function App() {
             {showAgentConfig ? (
               <AgentConfigPanel agentId={currentAgentId} />
             ) : showGraph ? (
-              <AgentGraph onClose={handleCloseGraph} groupId={graphGroupId} />
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center">Loading...</div>}><AgentGraph onClose={handleCloseGraph} groupId={graphGroupId} /></Suspense>
             ) : selectedFile ? (
               <Suspense fallback={<div className="flex-1 flex items-center justify-center">Loading...</div>}>
                 <FileEditor

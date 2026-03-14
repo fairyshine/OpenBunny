@@ -5,7 +5,6 @@ import { useNavigation } from '@react-navigation/native';
 import { TextInput, Button, Text, SegmentedButtons } from 'react-native-paper';
 import { useSettingsStore } from '@openbunny/shared/stores/settings';
 import { useToolStore, type MCPTransportType } from '@openbunny/shared/stores/tools';
-import { discoverMCPConnection } from '@openbunny/shared/services/ai/mcp';
 
 export default function AddToolSourceScreen() {
   const { t } = useTranslation();
@@ -31,6 +30,7 @@ export default function AddToolSourceScreen() {
     try {
       updateMCPStatus(id, 'connecting');
       setMCPError(id, null);
+      const { discoverMCPConnection } = await import('@openbunny/shared/services/ai/mcp');
       const { descriptors } = await discoverMCPConnection(connection, { proxyUrl });
       setMCPTools(id, descriptors);
       navigation.goBack();

@@ -1,4 +1,4 @@
-import { parseMCPToolId } from '@openbunny/shared/services/ai/mcp';
+import { parseMCPToolId } from '@openbunny/shared/services/ai/mcpToolId';
 import type { MCPConnection } from '@openbunny/shared/stores/tools';
 import { toolDisplayInfo } from '../components/ToolIcon';
 

@@ -13,7 +13,6 @@ import {
 } from 'react-native-paper';
 import { useSettingsStore } from '@openbunny/shared/stores/settings';
 import { useToolStore, type MCPConnection } from '@openbunny/shared/stores/tools';
-import { discoverMCPConnection } from '@openbunny/shared/services/ai/mcp';
 import { builtinTools } from '@openbunny/shared/services/ai/tools';
 import { detectPlatform } from '@openbunny/shared/platform/detect';
 import { useAgentConfig } from '../../hooks/useAgentConfig';
@@ -54,6 +53,7 @@ export default function ToolManagerScreen() {
     setMCPError(connection.id, null);
 
     try {
+      const { discoverMCPConnection } = await import('@openbunny/shared/services/ai/mcp');
       const { descriptors } = await discoverMCPConnection(connection, { proxyUrl });
       setMCPTools(connection.id, descriptors);
     } catch (error) {
