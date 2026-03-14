@@ -245,19 +245,19 @@ export function AgentList({ onItemClick, onOpenGraph, onOpenGroupFiles, onAgentS
     return (
       <div key={agent.id} className="relative">
         <div
+          role="button"
+          tabIndex={0}
+          aria-pressed={isActive}
+          onClick={() => handleAgentClick(agent.id)}
+          onKeyDown={(event) => handleAgentKeyDown(event, agent.id)}
           className={`
-            w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors
+            w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-left outline-none
             ${isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50'}
             ${isStreaming ? 'streaming-border' : ''}
           `}
         >
           <div
-            role="button"
-            tabIndex={0}
-            aria-pressed={isActive}
-            onClick={() => handleAgentClick(agent.id)}
-            onKeyDown={(event) => handleAgentKeyDown(event, agent.id)}
-            className="flex min-w-0 flex-1 items-center gap-3 text-left outline-none"
+            className="flex min-w-0 flex-1 items-center gap-3"
           >
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-base shrink-0 overflow-hidden"
@@ -298,7 +298,10 @@ export function AgentList({ onItemClick, onOpenGraph, onOpenGroupFiles, onAgentS
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 shrink-0 opacity-0 group-hover/agent:opacity-100"
+              className={`
+                h-6 w-6 shrink-0 transition-opacity
+                ${showCtx ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none group-hover/agent:opacity-100 group-hover/agent:pointer-events-auto'}
+              `}
               onClick={(e) => { e.stopPropagation(); onAgentConfig?.(agent.id); }}
             >
               <Settings className="w-3.5 h-3.5" />
@@ -307,7 +310,10 @@ export function AgentList({ onItemClick, onOpenGraph, onOpenGroupFiles, onAgentS
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 shrink-0 opacity-0 group-hover/agent:opacity-100"
+            className={`
+              h-6 w-6 shrink-0 transition-opacity
+              ${showCtx ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none group-hover/agent:opacity-100 group-hover/agent:pointer-events-auto'}
+            `}
             onClick={(e) => { e.stopPropagation(); setContextMenuAgentId(showCtx ? null : agent.id); }}
           >
             <MoreHorizontal className="w-3.5 h-3.5" />
