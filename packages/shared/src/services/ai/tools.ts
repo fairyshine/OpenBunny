@@ -10,6 +10,7 @@ import { runMindConversation, type MindToolContext } from './mind';
 import { runChatConversation, type ChatToolContext } from './chat';
 import { getErrorMessage } from '../../utils/errors';
 import type { AgentRuntimeContext } from './runtimeContext';
+import { snapshotScheduledTaskContext } from './scheduledTaskContext';
 import i18n from '../../i18n';
 
 const t = () => i18n.t.bind(i18n);
@@ -516,9 +517,9 @@ function createExecTool(context?: ToolExecutionContext) {
   });
 }
 
-function createCronTool() {
+function createCronTool(context?: ToolExecutionContext) {
   return tool({
-    description: 'Schedule periodic tasks using cron expressions. Supports add, remove, list, and clear operations.',
+    description: 'Schedule periodic tasks using cron expressions. When a job fires, OpenBunny launches a background mind session to execute the task. Supports add, remove, list, and clear operations.',
     inputSchema: z.object({
       operation: z.enum(['add', 'remove', 'list', 'clear']).describe('Cron operation to perform'),
       expression: z.string().optional().describe('Cron expression for scheduling (e.g. "*/5 * * * *" for every 5 minutes, "0 9 * * *" for daily at 9am). Required for add operation.'),
@@ -531,7 +532,7 @@ function createCronTool() {
           case 'add': {
             if (!expression) return t()('tools.exec.cronNeedExpression');
             if (!description) return t()('tools.exec.cronNeedDescription');
-            const job = await cronManager.add(expression, description);
+            const job = await cronManager.add(expression, description, snapshotScheduledTaskContext(context));
             logTool('success', t()('tools.exec.cronAdded', { description, expression }));
             const nextStr = job.nextRun ? new Date(job.nextRun).toLocaleString() : '-';
             return t()('tools.exec.cronAddedResult', { id: job.id, expression, description, nextRun: nextStr });
@@ -568,9 +569,9 @@ function createCronTool() {
   });
 }
 
-function createHeartbeatTool() {
+function createHeartbeatTool(context?: ToolExecutionContext) {
   return tool({
-    description: 'Manage a heartbeat watchlist. Add/remove/list text items, and set a periodic interval (30/60/120 minutes) to process all items.',
+    description: 'Manage a heartbeat watchlist. On each tick, OpenBunny launches a background mind session to review the tracked items. Add/remove/list text items, and set a periodic interval (30/60/120 minutes) to process all items.',
     inputSchema: z.object({
       operation: z.enum(['add', 'remove', 'list', 'clear', 'set_interval', 'status']).describe('Heartbeat operation'),
       text: z.string().optional().describe('Text content for add operation'),
@@ -582,7 +583,7 @@ function createHeartbeatTool() {
         switch (operation) {
           case 'add': {
             if (!text) return t()('tools.exec.heartbeatNeedText');
-            const item = heartbeatManager.add(text);
+            const item = heartbeatManager.add(text, snapshotScheduledTaskContext(context));
             logTool('success', t()('tools.exec.heartbeatAdded', { text }));
             return t()('tools.exec.heartbeatAddedResult', { id: item.id, text });
           }

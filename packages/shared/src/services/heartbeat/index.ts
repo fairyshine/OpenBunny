@@ -1,7 +1,11 @@
+import type { ScheduledTaskContext } from '../ai/scheduledTaskContext';
+import { snapshotScheduledTaskContext } from '../ai/scheduledTaskContext';
+
 export interface HeartbeatItem {
   id: string;
   text: string;
   createdAt: number;
+  taskContext?: ScheduledTaskContext;
 }
 
 export type HeartbeatInterval = 30 | 60 | 120; // minutes
@@ -24,7 +28,7 @@ class HeartbeatManager {
   private initialized = false;
   private lastTick: number | null = null;
 
-  setTickHandler(handler: (items: HeartbeatItem[]) => void) {
+  setTickHandler(handler: ((items: HeartbeatItem[]) => void) | null) {
     this.onTick = handler;
   }
 
@@ -42,12 +46,13 @@ class HeartbeatManager {
     this.restartTimer();
   }
 
-  add(text: string): HeartbeatItem {
+  add(text: string, taskContext?: ScheduledTaskContext): HeartbeatItem {
     this.initialize();
     const item: HeartbeatItem = {
       id: crypto.randomUUID(),
       text,
       createdAt: Date.now(),
+      taskContext: snapshotScheduledTaskContext(taskContext),
     };
     this.items.push(item);
     this.persist();
@@ -112,6 +117,7 @@ class HeartbeatManager {
       this.notify();
       this.onTick?.(this.list());
     }, this.interval * 60 * 1000);
+    (this.timer as { unref?: () => void } | null)?.unref?.();
   }
 
   private persist() {

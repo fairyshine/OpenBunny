@@ -7,6 +7,7 @@ import { useSkillStore } from './skills';
 import { useToolStore, type MCPConnection } from './tools';
 import { resetDefaultAIRuntimeDefaultsResolverForTests, getDefaultAIRuntimeDefaultsResolver } from '../services/ai/runtimeDefaults';
 import { getDefaultSessionOwnerStore, resetDefaultSessionOwnerStoreForTests } from '../services/ai/sessionOwnerStore';
+import { resetScheduledMindBridgeForTests } from '../services/ai/scheduledMind';
 import { registerZustandAIRuntimeAdapters, zustandAIRuntimeDefaultsResolver, zustandSessionOwnerStore } from './aiRuntimeAdapters';
 
 function createConnection(overrides: Partial<MCPConnection> = {}): MCPConnection {
@@ -24,6 +25,7 @@ function createConnection(overrides: Partial<MCPConnection> = {}): MCPConnection
 test.afterEach(() => {
   resetDefaultAIRuntimeDefaultsResolverForTests();
   resetDefaultSessionOwnerStoreForTests();
+  resetScheduledMindBridgeForTests();
 });
 
 test('zustandAIRuntimeDefaultsResolver reads current store-backed defaults', () => {

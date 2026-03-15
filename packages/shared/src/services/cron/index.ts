@@ -1,5 +1,7 @@
 import { Cron } from 'croner';
 import { getPlatformContext, type IPlatformStorage } from '../../platform';
+import type { ScheduledTaskContext } from '../ai/scheduledTaskContext';
+import { snapshotScheduledTaskContext } from '../ai/scheduledTaskContext';
 
 export interface CronJob {
   id: string;
@@ -9,6 +11,7 @@ export interface CronJob {
   nextRun: number | null;
   lastRun: number | null;
   runCount: number;
+  taskContext?: ScheduledTaskContext;
 }
 
 interface PersistedJob {
@@ -18,6 +21,7 @@ interface PersistedJob {
   createdAt: number;
   lastRun: number | null;
   runCount: number;
+  taskContext?: ScheduledTaskContext;
 }
 
 const STORAGE_KEY = 'openbunny-cron-jobs';
@@ -31,7 +35,7 @@ class CronManager {
   private initialized = false;
   private initPromise: Promise<void> | null = null;
 
-  setTriggerHandler(handler: (job: CronJob) => void) {
+  setTriggerHandler(handler: ((job: CronJob) => void) | null) {
     this.onTrigger = handler;
   }
 
@@ -50,7 +54,15 @@ class CronManager {
         const persisted: PersistedJob[] = JSON.parse(raw);
         for (const job of persisted) {
           if (this.jobs.has(job.id)) continue;
-          this.startJob(job.id, job.expression, job.description, job.createdAt, job.lastRun, job.runCount);
+          this.startJob(
+            job.id,
+            job.expression,
+            job.description,
+            job.createdAt,
+            job.lastRun,
+            job.runCount,
+            job.taskContext,
+          );
         }
       } catch {
         // ignore corrupt data or unavailable storage
@@ -64,10 +76,10 @@ class CronManager {
     return this.initPromise;
   }
 
-  async add(expression: string, description: string): Promise<CronJob> {
+  async add(expression: string, description: string, taskContext?: ScheduledTaskContext): Promise<CronJob> {
     await this.initialize();
     const id = crypto.randomUUID();
-    const meta = this.startJob(id, expression, description, Date.now(), null, 0);
+    const meta = this.startJob(id, expression, description, Date.now(), null, 0, taskContext);
     await this.persist();
     this.notify();
     return meta;
@@ -127,6 +139,7 @@ class CronManager {
     createdAt: number,
     lastRun: number | null,
     runCount: number,
+    taskContext?: ScheduledTaskContext,
   ): CronJob {
     const cron = new Cron(expression, () => {
       const entry = this.jobs.get(id);
@@ -147,6 +160,7 @@ class CronManager {
       nextRun: cron.nextRun()?.getTime() ?? null,
       lastRun,
       runCount,
+      taskContext: snapshotScheduledTaskContext(taskContext),
     };
 
     this.jobs.set(id, { cron, meta });
@@ -165,6 +179,7 @@ class CronManager {
         createdAt: meta.createdAt,
         lastRun: meta.lastRun,
         runCount: meta.runCount,
+        taskContext: snapshotScheduledTaskContext(meta.taskContext),
       }));
       await storage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {

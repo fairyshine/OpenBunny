@@ -5,6 +5,7 @@ import { useSkillStore } from './skills';
 import { useToolStore } from './tools';
 import { setDefaultAIRuntimeDefaultsResolver } from '../services/ai/runtimeDefaults';
 import { setDefaultSessionOwnerStore } from '../services/ai/sessionOwnerStore';
+import { initializeScheduledMindBridge } from '../services/ai/scheduledMind';
 import type { AIRuntimeDefaultsResolver } from '../services/ai/runtimeDefaults';
 import type { SessionOwnerStore } from '../services/ai/sessionOwnerStore';
 
@@ -158,4 +159,5 @@ export const zustandSessionOwnerStore = createZustandSessionOwnerStore();
 export function registerZustandAIRuntimeAdapters(): void {
   setDefaultAIRuntimeDefaultsResolver(zustandAIRuntimeDefaultsResolver);
   setDefaultSessionOwnerStore(zustandSessionOwnerStore);
+  initializeScheduledMindBridge();
 }
