@@ -5,6 +5,7 @@ import { generateText } from 'ai';
 import type { LLMConfig } from '../../types';
 import { getPlatformContext } from '../../platform';
 import { getProviderMeta } from './providers';
+import { logLLM } from '../console/logger';
 
 export interface ProviderDependencies {
   createOpenAI: typeof createOpenAI;
@@ -54,7 +55,7 @@ export function createProvider(
   const fetchOpt = customFetch ? { fetch: customFetch } : {};
   const apiKey = config.apiKey || (meta.requiresApiKey ? '' : 'openbunny-local');
 
-  console.log('[Provider] Creating provider:', {
+  logLLM('debug', 'Creating provider', {
     provider: config.provider,
     sdkType: meta.sdkType,
     baseURL,

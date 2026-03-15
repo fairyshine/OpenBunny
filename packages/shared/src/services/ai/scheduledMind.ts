@@ -47,36 +47,12 @@ export function resetScheduledMindBridgeForTests(): void {
   heartbeatManager.setTickHandler(null);
 }
 
-export function buildCronMindInput(job: CronJob, triggeredAt: number = Date.now()): string {
-  return [
-    'A scheduled cron task has fired.',
-    `Triggered at: ${new Date(triggeredAt).toISOString()}`,
-    `Job ID: ${job.id}`,
-    `Cron expression: ${job.expression}`,
-    `Run count: ${job.runCount}`,
-    '',
-    'Task to execute:',
-    job.description,
-    '',
-    'Handle the task now. Use tools if they are necessary, and finish with a concrete result.',
-  ].join('\n');
+export function buildCronMindInput(job: CronJob): string {
+  return job.description;
 }
 
-export function buildHeartbeatMindInput(items: HeartbeatItem[], triggeredAt: number = Date.now()): string {
-  const lines = items.map((item, index) => (
-    `${index + 1}. ${item.text} (created at ${new Date(item.createdAt).toISOString()}, id ${item.id})`
-  ));
-
-  return [
-    'A heartbeat review has fired.',
-    `Triggered at: ${new Date(triggeredAt).toISOString()}`,
-    `Tracked items: ${items.length}`,
-    '',
-    'Review and act on the following watchlist items:',
-    ...lines,
-    '',
-    'Process the list now. Use tools if needed, and finish with a concrete result.',
-  ].join('\n');
+export function buildHeartbeatMindInput(item: HeartbeatItem): string {
+  return item.text;
 }
 
 export function resolveScheduledMindExecutionContext(
@@ -179,78 +155,47 @@ async function runCronMindJob(job: CronJob): Promise<void> {
 }
 
 async function runHeartbeatMindTick(items: HeartbeatItem[]): Promise<void> {
-  const groups = groupHeartbeatItemsByContext(items);
-
-  for (const [groupKey, groupItems] of groups) {
-    if (activeHeartbeatRuns.has(groupKey)) {
+  for (const item of items) {
+    if (activeHeartbeatRuns.has(item.id)) {
       logTool('warning', 'Heartbeat trigger skipped because the previous run is still active', {
-        itemCount: groupItems.length,
-        groupKey,
+        itemId: item.id,
+        text: item.text,
       });
       continue;
     }
 
-    activeHeartbeatRuns.add(groupKey);
+    activeHeartbeatRuns.add(item.id);
 
     try {
-      const context = resolveScheduledMindExecutionContext(groupItems[0]?.taskContext);
+      const context = resolveScheduledMindExecutionContext(item.taskContext);
       if (!context) {
         logTool('warning', 'Heartbeat trigger skipped because no runnable mind context is available', {
-          itemCount: groupItems.length,
-          groupKey,
+          itemId: item.id,
+          text: item.text,
         });
         continue;
       }
 
-      logTool('info', 'Running heartbeat review through mind', {
-        itemCount: groupItems.length,
-        groupKey,
+      logTool('info', 'Running heartbeat item through mind', {
+        itemId: item.id,
         agentId: context.currentAgentId,
       });
 
-      const result = await runMindConversation(buildHeartbeatMindInput(groupItems), context);
-      logTool('success', 'Heartbeat review completed through mind', {
-        itemCount: groupItems.length,
-        groupKey,
+      const result = await runMindConversation(buildHeartbeatMindInput(item), context);
+      logTool('success', 'Heartbeat item completed through mind', {
+        itemId: item.id,
         sessionId: result.sessionId,
         summary: result.summary || result.finalAssistantReply,
       });
     } catch (error) {
-      logTool('error', 'Heartbeat review failed through mind', getErrorMessage(error), {
-        itemCount: groupItems.length,
-        groupKey,
+      logTool('error', 'Heartbeat item failed through mind', getErrorMessage(error), {
+        itemId: item.id,
+        text: item.text,
       });
     } finally {
-      activeHeartbeatRuns.delete(groupKey);
+      activeHeartbeatRuns.delete(item.id);
     }
   }
-}
-
-function groupHeartbeatItemsByContext(items: HeartbeatItem[]): Map<string, HeartbeatItem[]> {
-  const groups = new Map<string, HeartbeatItem[]>();
-
-  for (const item of items) {
-    const groupKey = buildTaskContextKey(item.taskContext);
-    const current = groups.get(groupKey);
-    if (current) {
-      current.push(item);
-      continue;
-    }
-
-    groups.set(groupKey, [item]);
-  }
-
-  return groups;
-}
-
-function buildTaskContextKey(taskContext?: ScheduledTaskContext): string {
-  return JSON.stringify({
-    sourceSessionId: taskContext?.sourceSessionId || '',
-    currentAgentId: taskContext?.currentAgentId || '',
-    projectId: taskContext?.projectId || '',
-    enabledToolIds: dedupeStrings(taskContext?.enabledToolIds || []),
-    sessionSkillIds: dedupeStrings(taskContext?.sessionSkillIds || []),
-  });
 }
 
 function sanitizeBackgroundToolIds(toolIds: string[]): string[] {

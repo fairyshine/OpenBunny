@@ -3,8 +3,11 @@ import chalk from 'chalk';
 import * as readline from 'readline';
 import { getProviderMeta } from '@openbunny/shared/services/ai';
 import { callLLM } from '@openbunny/shared/services/llm/streaming';
+import { useSessionStore } from '@openbunny/shared/stores/session';
+import { resolveNodeConfigDir } from '@openbunny/shared/platform/nodeConfig';
+import { flushAllSessionPersistence } from '@openbunny/shared/services/storage/sessionPersistence';
 import type { ModelMessage } from 'ai';
-import { resolveLLMConfig, resolveSystemPrompt } from '../config/store.js';
+import { resolveLLMConfig, resolveSystemPrompt, resolveWorkspace } from '../config/store.js';
 
 export const chatCommand = new Command('chat')
   .description('Start an interactive chat session')
@@ -15,6 +18,7 @@ export const chatCommand = new Command('chat')
   .option('-t, --temperature <temp>', 'Temperature')
   .option('--max-tokens <tokens>', 'Max tokens')
   .option('--system <prompt>', 'System prompt')
+  .option('--resume <id>', 'Resume a previous session by ID (prefix match)')
   .action(async (opts) => {
     const config = resolveLLMConfig({
       apiKey: opts.apiKey,
@@ -32,12 +36,54 @@ export const chatCommand = new Command('chat')
     }
 
     const systemPrompt = resolveSystemPrompt(opts.system);
+    const workspace = resolveWorkspace(opts.parent?.workspace);
+    const configDir = resolveNodeConfigDir();
+
+    // Wait a tick for Zustand rehydration
+    await new Promise((r) => setTimeout(r, 100));
+
+    const store = useSessionStore.getState();
+    let sessionId: string;
+    let history: ModelMessage[];
+
+    if (opts.resume) {
+      // Resume existing session
+      const match = store.sessions.find((s) => s.id.startsWith(opts.resume));
+      if (!match) {
+        console.error(chalk.red(`No session found matching "${opts.resume}"`));
+        process.exit(1);
+      }
+
+      sessionId = match.id;
+
+      // Load messages if not already in memory
+      if (match.messages.length === 0) {
+        await store.loadSessionMessages(sessionId);
+      }
+
+      const loaded = useSessionStore.getState().sessions.find((s) => s.id === sessionId);
+      const msgs = loaded?.messages ?? [];
+
+      history = systemPrompt ? [{ role: 'system', content: systemPrompt } satisfies ModelMessage] : [];
+      for (const msg of msgs) {
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          history.push({ role: msg.role, content: msg.content });
+        }
+      }
+
+      console.log(chalk.green(`Resumed session ${sessionId.slice(0, 8)} (${match.name}) — ${msgs.length} message(s)`));
+    } else {
+      // Create new session
+      const session = store.createSession('CLI Chat');
+      sessionId = session.id;
+      history = systemPrompt ? [{ role: 'system', content: systemPrompt } satisfies ModelMessage] : [];
+      console.log(chalk.green('OpenBunny Chat') + chalk.gray(` [session ${sessionId.slice(0, 8)}]`));
+    }
+
     const initialHistory = systemPrompt ? [{ role: 'system', content: systemPrompt } satisfies ModelMessage] : [];
-    let history: ModelMessage[] = [...initialHistory];
     let isLoading = false;
 
-    console.log(chalk.green('OpenBunny Chat'));
-    console.log(chalk.gray('Type your message and press Enter. Commands: /help, /clear, /history, /quit\n'));
+    console.log(chalk.gray('Type your message and press Enter. Commands: /help, /clear, /history, /save, /quit\n'));
 
     const rl = readline.createInterface({
       input: process.stdin,
@@ -60,7 +106,25 @@ export const chatCommand = new Command('chat')
       }
 
       if (input === '/help') {
-        console.log(chalk.gray('Commands: /help, /clear, /history, /quit, /exit'));
+        console.log('');
+        console.log(chalk.cyan('  Configuration'));
+        console.log(chalk.gray(`    Provider:    ${config.provider}`));
+        console.log(chalk.gray(`    Model:       ${config.model}`));
+        console.log(chalk.gray(`    Temperature: ${config.temperature}`));
+        console.log(chalk.gray(`    Max tokens:  ${config.maxTokens}`));
+        if (workspace) {
+          console.log(chalk.gray(`    Workspace:   ${workspace}`));
+        }
+        console.log(chalk.gray(`    Config dir:  ${configDir}`));
+        console.log(chalk.gray(`    Session:     ${sessionId.slice(0, 8)}`));
+        console.log('');
+        console.log(chalk.cyan('  Commands'));
+        console.log(chalk.gray('    /help       Show this help'));
+        console.log(chalk.gray('    /clear      Clear conversation history'));
+        console.log(chalk.gray('    /history    Show session info'));
+        console.log(chalk.gray('    /save       Force-flush messages to disk'));
+        console.log(chalk.gray('    /quit       Exit chat'));
+        console.log('');
         rl.prompt();
         return;
       }
@@ -74,7 +138,14 @@ export const chatCommand = new Command('chat')
 
       if (input === '/history') {
         const messageCount = history.filter((message) => message.role !== 'system').length;
-        console.log(chalk.gray(`History contains ${messageCount} message(s).`));
+        console.log(chalk.gray(`Session ${sessionId.slice(0, 8)} — ${messageCount} message(s) in history.`));
+        rl.prompt();
+        return;
+      }
+
+      if (input === '/save') {
+        await store.flushMessages(sessionId);
+        console.log(chalk.gray('Messages flushed to disk.'));
         rl.prompt();
         return;
       }
@@ -86,6 +157,15 @@ export const chatCommand = new Command('chat')
       }
 
       history.push({ role: 'user', content: input });
+
+      // Persist user message to session store
+      useSessionStore.getState().addMessage(sessionId, {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: input,
+        timestamp: Date.now(),
+      });
+
       let lastLen = 0;
       isLoading = true;
 
@@ -102,6 +182,14 @@ export const chatCommand = new Command('chat')
         });
 
         history.push({ role: 'assistant', content: result });
+
+        // Persist assistant message to session store
+        useSessionStore.getState().addMessage(sessionId, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: result,
+          timestamp: Date.now(),
+        });
       } catch (error) {
         console.error(chalk.red(error instanceof Error ? error.message : String(error)));
         history.pop();
@@ -112,7 +200,9 @@ export const chatCommand = new Command('chat')
       rl.prompt();
     });
 
-    rl.on('close', () => {
+    rl.on('close', async () => {
+      // Flush pending messages before exit
+      await flushAllSessionPersistence();
       process.stdout.write('\n');
       process.exit(0);
     });

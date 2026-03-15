@@ -157,7 +157,7 @@ test('resolveScheduledMindExecutionContext returns null when no runnable llm con
   assert.equal(resolveScheduledMindExecutionContext(), null);
 });
 
-test('scheduled mind prompts include the scheduled task details', () => {
+test('buildCronMindInput returns only the job description', () => {
   const cronPrompt = buildCronMindInput({
     id: 'cron-1',
     expression: '*/5 * * * *',
@@ -166,24 +166,17 @@ test('scheduled mind prompts include the scheduled task details', () => {
     nextRun: 2,
     lastRun: 3,
     runCount: 4,
-  }, Date.UTC(2026, 0, 2, 3, 4, 5));
-  const heartbeatPrompt = buildHeartbeatMindInput([
-    {
-      id: 'heartbeat-1',
-      text: 'Review error budget',
-      createdAt: Date.UTC(2026, 0, 1, 8, 0, 0),
-    },
-    {
-      id: 'heartbeat-2',
-      text: 'Check blocked PRs',
-      createdAt: Date.UTC(2026, 0, 1, 9, 0, 0),
-    },
-  ], Date.UTC(2026, 0, 2, 10, 11, 12));
+  });
 
-  assert.match(cronPrompt, /Check deployment status/);
-  assert.match(cronPrompt, /cron-1/);
-  assert.match(cronPrompt, /2026-01-02T03:04:05.000Z/);
-  assert.match(heartbeatPrompt, /Review error budget/);
-  assert.match(heartbeatPrompt, /Check blocked PRs/);
-  assert.match(heartbeatPrompt, /2026-01-02T10:11:12.000Z/);
+  assert.equal(cronPrompt, 'Check deployment status');
+});
+
+test('buildHeartbeatMindInput returns the single item text', () => {
+  const heartbeatPrompt = buildHeartbeatMindInput({
+    id: 'heartbeat-1',
+    text: 'Review error budget',
+    createdAt: Date.UTC(2026, 0, 1, 8, 0, 0),
+  });
+
+  assert.equal(heartbeatPrompt, 'Review error budget');
 });

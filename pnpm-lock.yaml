@@ -147,9 +147,6 @@ catalogs:
     i18next:
       specifier: ^25.8.13
       version: 25.8.13
-    i18next-browser-languagedetector:
-      specifier: ^8.2.1
-      version: 8.2.1
     idb:
       specifier: ^8.0.3
       version: 8.0.3
@@ -483,6 +480,9 @@ importers:
         specifier: 'catalog:'
         version: 5.0.11(@types/react@19.2.14)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.35
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
@@ -497,7 +497,7 @@ importers:
         version: 5.9.3
       vite:
         specifier: 'catalog:'
-        version: 5.4.21(@types/node@25.3.3)(lightningcss@1.31.1)(terser@5.46.0)
+        version: 5.4.21(@types/node@20.19.35)(lightningcss@1.31.1)(terser@5.46.0)
 
   packages/tui:
     dependencies:
@@ -4636,9 +4636,6 @@ packages:
   https-proxy-agent@7.0.6:
     resolution: {integrity: sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==}
     engines: {node: '>= 14'}
-
-  i18next-browser-languagedetector@8.2.1:
-    resolution: {integrity: sha512-bZg8+4bdmaOiApD7N7BPT9W8MLZG+nPTOFlLiJiT8uzKXFjhxw4v2ierCXOwB5sFDMtuA5G4kgYZ0AznZxQ/cw==}
 
   i18next@25.8.13:
     resolution: {integrity: sha512-E0vzjBY1yM+nsFrtgkjLhST2NBkirkvOVoQa0MSldhsuZ3jUge7ZNpuwG0Cfc74zwo5ZwRzg3uOgT+McBn32iA==}
@@ -11325,10 +11322,6 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
-
-  i18next-browser-languagedetector@8.2.1:
-    dependencies:
-      '@babel/runtime': 7.28.6
 
   i18next@25.8.13(typescript@5.9.3):
     dependencies:

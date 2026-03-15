@@ -184,6 +184,30 @@
     "./services/ai/runtimeDefaults": {
       "types": "./dist/services/ai/runtimeDefaults.d.ts",
       "import": "./dist/services/ai/runtimeDefaults.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js"
+    },
+    "./config/nodeConfigStore": {
+      "types": "./dist/config/nodeConfigStore.d.ts",
+      "import": "./dist/config/nodeConfigStore.js"
+    },
+    "./services/storage/fileBackend": {
+      "types": "./dist/services/storage/fileBackend.d.ts",
+      "import": "./dist/services/storage/fileBackend.js"
+    },
+    "./services/storage/fileStatsBackend": {
+      "types": "./dist/services/storage/fileStatsBackend.d.ts",
+      "import": "./dist/services/storage/fileStatsBackend.js"
+    },
+    "./services/storage/nodeZustandStorage": {
+      "types": "./dist/services/storage/nodeZustandStorage.d.ts",
+      "import": "./dist/services/storage/nodeZustandStorage.js"
+    },
+    "./services/storage/sessionPersistence": {
+      "types": "./dist/services/storage/sessionPersistence.d.ts",
+      "import": "./dist/services/storage/sessionPersistence.js"
     }
   },
   "scripts": {
@@ -211,6 +235,7 @@
     "zustand": "catalog:"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/uuid": "catalog:",
     "react": "catalog:",

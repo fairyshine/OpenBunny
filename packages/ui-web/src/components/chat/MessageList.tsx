@@ -75,7 +75,7 @@ export default function MessageList({ messages, session }: MessageListProps) {
               <SessionSummaryCard summary={sessionSummary} />
             </div>
           ),
-        } : undefined}
+        } : {}}
         className="h-full"
         initialTopMostItemIndex={renderedMessages.length - 1}
         followOutput="smooth"
