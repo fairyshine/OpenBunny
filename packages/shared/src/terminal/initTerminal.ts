@@ -40,6 +40,7 @@ export function initTerminal(options: InitTerminalOptions): TerminalContext {
       sessionsDir: path.join(configDir, 'sessions'),
       statsDir: path.join(configDir, 'stats'),
       storeDir: path.join(configDir, 'store'),
+      filesDir: path.join(configDir, 'files'),
     },
   );
 

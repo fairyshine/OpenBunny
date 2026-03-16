@@ -1,12 +1,12 @@
 import type { PanelSection } from './types.js';
 
-export const MAX_VISIBLE_MESSAGES = 20;
+export const MAX_VISIBLE_MESSAGES = 200;
 export const MAX_VISIBLE_NOTICES = 4;
 export const MAX_VISIBLE_SESSIONS = 6;
 export const MAX_VISIBLE_SECTION_ITEMS = 12;
 
 export const PANEL_SECTIONS: readonly PanelSection[] = [
-  'general', 'llm', 'tools', 'skills', 'network', 'files', 'about',
+  'general', 'llm', 'tools', 'skills', 'network', 'files', 'stats', 'about',
 ] as const;
 
 export const SESSION_TYPE_FILTERS = ['all', 'user', 'agent', 'mind'] as const;

@@ -1,10 +1,15 @@
 import path from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { useState, useCallback, useEffect } from 'react';
 import { useInput } from 'ink';
 import type { PanelSection, PanelItem, PanelEditorState } from '../types.js';
+import { statsStorage } from '@openbunny/shared';
 import { providerRegistry, getProviderMeta } from '@openbunny/shared/services/ai';
+import { testConnection as testLLMConnection } from '@openbunny/shared/services/ai/provider';
+import { getEnabledTools } from '@openbunny/shared/services/ai/tools';
+import { MessageHistoryManager } from '@openbunny/shared/utils/messageHistory';
 import { PANEL_SECTIONS, MAX_VISIBLE_SECTION_ITEMS, SEARCH_PROVIDER_ORDER, SESSION_TYPE_FILTERS, TOOL_TIMEOUT_PRESETS, TEMPERATURE_PRESETS, MAX_TOKEN_PRESETS } from '../constants.js';
-import { truncate, formatTimeout, getSlidingWindow } from '../utils/formatting.js';
+import { decodeEscapedText, encodeEscapedText, truncate, formatTimeout, getSlidingWindow } from '../utils/formatting.js';
 import { useMouse } from './useMouse.js';
 import type { LLMConfig, Session } from '@openbunny/shared/types';
 import type { MCPConnection, MCPTransportType } from '@openbunny/shared/stores/tools';
@@ -16,11 +21,28 @@ import {
   getEffectiveSessionTools,
   getSessionConfigScopeLabel,
   getSessionStatusLabel,
+  getSessionAlternateHistories,
   getSessionSummary,
   getSessionTypeLabel,
   isSessionConfigLocked,
   isReadOnlySession,
 } from '../utils/sessionPresentation.js';
+import {
+  buildDefaultExportName,
+  describeSearchArgs,
+  formatSearchResult,
+  parseExportArgs,
+  parseSearchArgs,
+} from '../utils/sessionActions.js';
+import {
+  EMPTY_AGGREGATED_STATS,
+  formatCompactStat,
+  formatStatsDuration,
+  getStatsBreakdownLines,
+  summarizeStatsBreakdown,
+  type StatsBreakdownKind,
+} from '../utils/statsPresentation.js';
+import type { MessageSearchResults } from './useMessageViewport.js';
 
 type SessionTypeFilter = (typeof SESSION_TYPE_FILTERS)[number];
 
@@ -28,6 +50,7 @@ interface UsePanelOptions {
   terminalWidth: number;
   terminalHeight: number;
   sessions: Session[];
+  globalSessions: Session[];
   currentSession: Session | null;
   currentSessionId: string | null;
   currentAgent: { name: string; id: string; llmConfig: LLMConfig; isDefault?: boolean; enabledTools?: string[]; enabledSkills?: string[] } | null;
@@ -40,6 +63,7 @@ interface UsePanelOptions {
   execLoginShell: boolean;
   toolExecutionTimeout: number;
   searchProvider: 'exa_free' | 'exa' | 'brave';
+  proxyUrl: string;
   runtimeConfig: LLMConfig;
   workspace?: string;
   capabilities: { supportsExec: boolean };
@@ -50,6 +74,9 @@ interface UsePanelOptions {
   systemPrompt?: string;
   addNotice: (content: string, tone?: 'info' | 'success' | 'warning' | 'error') => void;
   createSession: (name: string) => Session;
+  deleteSession: (sessionId: string) => void;
+  restoreSession: (sessionId: string) => void;
+  clearTrash: () => void;
   loadSessionMessages: (id: string) => Promise<void>;
   openSession: (id: string) => void;
   setSessionSystemPrompt: (sessionId: string, prompt: string) => void;
@@ -60,6 +87,7 @@ interface UsePanelOptions {
   setCurrentAgent: (id: string) => void;
   agentSessions: Record<string, Session[]>;
   createAgentSession: (agentId: string, name: string) => Session;
+  deleteAgentSession: (agentId: string, sessionId: string) => void;
   setAgentSessionSystemPrompt: (agentId: string, sessionId: string, prompt: string) => void;
   setAgentSessionTools: (agentId: string, sessionId: string, tools: string[] | undefined) => void;
   setAgentSessionSkills: (agentId: string, sessionId: string, skills: string[] | undefined) => void;
@@ -75,10 +103,13 @@ interface UsePanelOptions {
   applyRuntimeConfig: (updates: Partial<LLMConfig>) => LLMConfig;
   saveRuntimeConfig: (config: LLMConfig) => void;
   fileBrowser: FileBrowserController;
+  setIsLoading: (value: boolean) => void;
+  setActivityLabel: (value: string) => void;
   // input state
   input: string;
   isInitializing: boolean;
   isLoading: boolean;
+  showSearchResults: (results: MessageSearchResults | null) => void;
 }
 
 interface PanelMouseTabHit {
@@ -95,6 +126,21 @@ interface PanelMouseRowHit {
   delta?: number;
 }
 
+interface PanelPreviewState {
+  section: PanelSection;
+  title: string;
+  meta?: string;
+  lines: string[];
+  tone?: string;
+}
+
+interface PanelStatsState {
+  stats: typeof EMPTY_AGGREGATED_STATS;
+  isLoading: boolean;
+  error: string | null;
+  loadedAt: number | null;
+}
+
 const PANEL_BORDER_AND_PADDING_X = 2;
 const PANEL_MIN_WIDTH = 60;
 const PANEL_PREFERRED_WIDTH = 96;
@@ -105,6 +151,7 @@ const PANEL_EDITOR_HEIGHT = 5;
 const PANEL_PREVIEW_SECTION_OVERHEAD = 2;
 const PANEL_PREVIEW_BODY_MAX_HEIGHT = 7;
 const MIN_VISIBLE_PANEL_ITEMS = 4;
+const MAX_INLINE_EDITOR_CHARS = 12000;
 
 function formatByteSize(size: number): string {
   if (size < 1024) return `${size}b`;
@@ -182,14 +229,18 @@ function buildPanelMouseLayout(args: {
     cursorY += 1;
   }
 
+  const editorTopValue = Math.max(args.panelTop + 2, args.panelTop + args.panelHeight - 4);
+  const editorTop = args.editor ? editorTopValue : null;
+  const editorBottom = args.editor ? Math.max(editorTopValue, args.panelTop + args.panelHeight - 2) : null;
+
   return {
     panelLeft,
     panelRight,
     panelTop: args.panelTop,
     panelBottom: args.panelTop + args.panelHeight - 1,
     tabY,
-    editorTop: null,
-    editorBottom: null,
+    editorTop,
+    editorBottom,
     tabHits,
     rowHits,
   };
@@ -211,10 +262,17 @@ export function usePanel(opts: UsePanelOptions) {
   const [panelSection, setPanelSection] = useState<PanelSection>('general');
   const [panelVisible, setPanelVisible] = useState(false);
   const [panelEditor, setPanelEditor] = useState<PanelEditorState | null>(null);
+  const [panelPreview, setPanelPreview] = useState<PanelPreviewState | null>(null);
+  const [statsState, setStatsState] = useState<PanelStatsState>({
+    stats: EMPTY_AGGREGATED_STATS,
+    isLoading: false,
+    error: null,
+    loadedAt: null,
+  });
   const [sessionTypeFilter, setSessionTypeFilter] = useState<SessionTypeFilter>('all');
   const [fileActionTargetPath, setFileActionTargetPath] = useState<string | null>(null);
   const [panelSelections, setPanelSelections] = useState<Record<PanelSection, number>>({
-    general: 0, llm: 0, tools: 0, skills: 0, network: 0, files: 0, about: 0,
+    general: 0, llm: 0, tools: 0, skills: 0, network: 0, files: 0, stats: 0, about: 0,
   });
 
   const terminalWidth = opts.terminalWidth;
@@ -238,6 +296,9 @@ export function usePanel(opts: UsePanelOptions) {
   const filteredSessions = opts.sessions.filter((session) => (
     sessionTypeFilter === 'all' ? true : (session.sessionType || 'user') === sessionTypeFilter
   ));
+  const deletedGlobalSessions = opts.globalSessions
+    .filter((session) => Boolean(session.deletedAt))
+    .sort((left, right) => (right.deletedAt || 0) - (left.deletedAt || 0));
   const selectedFileTargetPath = fileActionTargetPath || fileBrowser.preview?.path || null;
   const selectedFileTargetLabel = selectedFileTargetPath
     ? truncate(path.basename(selectedFileTargetPath) || selectedFileTargetPath, 26)
@@ -298,6 +359,29 @@ export function usePanel(opts: UsePanelOptions) {
     return { tools: nextTools, skills: nextSkills };
   }, [opts.enabledSkills, opts.enabledTools, setSessionOverrideConfig]);
 
+  const refreshStats = useCallback(async () => {
+    setStatsState((prev) => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const stats = await statsStorage.aggregate();
+      setStatsState({
+        stats,
+        isLoading: false,
+        error: null,
+        loadedAt: Date.now(),
+      });
+      return stats;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatsState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: message,
+        loadedAt: Date.now(),
+      }));
+      throw error;
+    }
+  }, []);
+
   const canMutateSessionOverrides = useCallback((session: Session | null) => {
     if (!session) {
       opts.addNotice('No active session selected.', 'warning');
@@ -317,9 +401,47 @@ export function usePanel(opts: UsePanelOptions) {
     return true;
   }, [opts]);
 
+  const switchSessionScope = useCallback((targetScope: 'global' | 'session') => {
+    if (!opts.currentSession) {
+      opts.addNotice('No active session selected.', 'warning');
+      return false;
+    }
+
+    if (targetScope === sessionConfigScope) {
+      opts.addNotice(`Current session already uses ${targetScope} scope.`, 'info');
+      return false;
+    }
+
+    if (!canMutateSessionOverrides(opts.currentSession)) {
+      return false;
+    }
+
+    if (targetScope === 'session') {
+      const { tools, skills } = ensureSessionOverrides(opts.currentSession);
+      opts.addNotice(
+        `Session scope enabled. Snapshot: ${tools.filter((id) => id !== 'file_manager').length} tool(s), ${skills.length} skill(s).`,
+        'success',
+      );
+      return true;
+    }
+
+    setSessionOverrideConfig(opts.currentSession, undefined, undefined);
+    opts.addNotice('Reverted current session back to global defaults.', 'success');
+    return true;
+  }, [
+    canMutateSessionOverrides,
+    ensureSessionOverrides,
+    opts,
+    sessionConfigScope,
+    setSessionOverrideConfig,
+  ]);
+
   /* ── General section ───────────────────────────────── */
   const generalItems: PanelItem[] = [
     { key: 'session:new', label: 'New session', meta: 'create', type: 'action', hint: 'Create a fresh TUI chat session' },
+    { key: 'session:delete-current', label: 'Delete current', meta: opts.currentSession ? opts.currentSession.id.slice(0, 8) : '(none)', type: 'action', hint: opts.isDefaultAgent ? 'Move the current workspace session to trash like the WEB sidebar' : 'Delete the current agent session' },
+    { key: 'session:search', label: 'Search session', meta: 'query', type: 'action', hint: 'Match WEB message search from the current conversation' },
+    { key: 'session:export', label: 'Export session', meta: 'markdown', type: 'action', hint: 'Match WEB export dialog for the current conversation' },
     { key: 'workspace', label: 'Workspace', meta: truncate(opts.workspace || process.cwd(), 30), type: 'info' },
     { key: 'current-session-type', label: 'Session type', meta: getSessionTypeLabel(opts.currentSession), type: 'info' },
     { key: 'current-session-status', label: 'Session status', meta: getSessionStatusLabel(opts.currentSession), type: 'info' },
@@ -355,7 +477,7 @@ export function usePanel(opts: UsePanelOptions) {
     { key: 'tool-timeout', label: 'Tool timeout', meta: formatTimeout(opts.toolExecutionTimeout), type: 'cycle', hint: 'Max execution time per tool call' },
     { key: 'search-provider', label: 'Search provider', meta: opts.searchProvider, type: 'cycle', hint: 'Web search backend' },
     { key: 'sessions-header', label: '── Sessions', type: 'header' },
-    ...filteredSessions.slice(0, 10).map((s) => ({
+    ...filteredSessions.slice(0, opts.isDefaultAgent ? 6 : 10).map((s) => ({
       key: `session:${s.id}`,
       label: truncate(s.name, 28),
       meta: `${s.id.slice(0, 8)}  ${(s.sessionType || 'user').slice(0, 1)}  ${s.messages.length} msg`,
@@ -363,6 +485,22 @@ export function usePanel(opts: UsePanelOptions) {
       type: 'action' as const,
       hint: `${getSessionTypeLabel(s)} · ${getSessionStatusLabel(s)}${s.projectId ? ` · project ${s.projectId.slice(0, 6)}` : ''}`,
     })),
+    ...(opts.isDefaultAgent ? [
+      { key: 'trash:list', label: 'Trash list', meta: `${deletedGlobalSessions.length} session(s)`, type: 'action' as const, hint: 'Match the WEB trash sidebar in TUI' },
+      { key: 'trash:empty', label: 'Empty trash', meta: deletedGlobalSessions.length === 0 ? '(empty)' : 'purge all', type: 'action' as const, hint: 'Permanently clear all trashed workspace sessions' },
+    ] : []),
+    ...(opts.isDefaultAgent && deletedGlobalSessions.length > 0
+      ? [{ key: 'trash-header', label: '── Trash', type: 'header' as const }]
+      : []),
+    ...(opts.isDefaultAgent
+      ? deletedGlobalSessions.slice(0, 4).map((s) => ({
+          key: `trash:session:${s.id}`,
+          label: truncate(s.name, 28),
+          meta: `${s.id.slice(0, 8)}  ${new Date(s.deletedAt || s.updatedAt).toLocaleDateString()}`,
+          type: 'action' as const,
+          hint: 'Restore this trashed session into the active workspace tabs',
+        }))
+      : []),
   ];
 
   /* ── LLM section ───────────────────────────────────── */
@@ -374,6 +512,7 @@ export function usePanel(opts: UsePanelOptions) {
     { key: 'llm-max-tokens', label: 'Max tokens', meta: String(opts.runtimeConfig.maxTokens ?? 4096), type: 'input', hint: 'Enter edits numeric value · Left/Right cycles presets' },
     { key: 'llm-base-url', label: 'Base URL', meta: opts.runtimeConfig.baseUrl ? truncate(opts.runtimeConfig.baseUrl, 24) : '(default)', type: 'input', hint: 'Enter edits base URL · submit empty to reset to default' },
     { key: 'llm-api-key', label: 'API key', meta: opts.runtimeConfig.apiKey ? `${opts.runtimeConfig.apiKey.slice(0, 8)}...` : (providerMeta?.requiresApiKey ? '(required)' : '(optional)'), type: 'input', hint: 'Enter edits API key · submit empty to clear' },
+    { key: 'llm-connection-test', label: 'Connection test', meta: providerMeta?.requiresApiKey && !opts.runtimeConfig.apiKey ? 'api key missing' : 'run', type: 'action', hint: 'Match the WEB connection test panel from TUI' },
     { key: 'llm-save', label: '💾 Save current config', type: 'action', hint: 'Persist to disk' },
     { key: 'llm-hint', label: '── Panel edits apply immediately; save to persist', type: 'header' },
   ];
@@ -452,6 +591,7 @@ export function usePanel(opts: UsePanelOptions) {
     { key: 'files:new-file', label: 'New file', meta: 'create', type: 'action', hint: 'Create a file inside the current directory' },
     { key: 'files:new-dir', label: 'New folder', meta: 'create', type: 'action', hint: 'Create a directory inside the current directory' },
     { key: 'files:rename', label: 'Rename selected', meta: selectedFileTargetLabel, type: 'action', hint: 'Rename the last selected file or directory' },
+    { key: 'files:edit', label: 'Edit selected', meta: selectedFileTargetLabel, type: 'action', hint: 'Open an escaped-text editor for the selected text file' },
     { key: 'files:delete', label: 'Delete selected', meta: selectedFileTargetLabel, type: 'action', hint: 'Delete the last selected file or directory recursively' },
     { key: 'files:path', label: 'Current path', meta: truncate(fileBrowser.currentDisplayPath, 26), type: 'info', hint: fileBrowser.currentPath },
     ...(selectedFileTargetPath
@@ -493,6 +633,36 @@ export function usePanel(opts: UsePanelOptions) {
     { key: 'about-exec', label: 'Exec', meta: opts.capabilities.supportsExec ? 'available' : 'unavailable', active: opts.capabilities.supportsExec, type: 'info' },
   ];
 
+  const statsItems: PanelItem[] = [
+    {
+      key: 'stats:refresh',
+      label: 'Refresh stats',
+      meta: statsState.isLoading ? 'loading' : (statsState.loadedAt ? new Date(statsState.loadedAt).toLocaleTimeString() : 'never'),
+      type: 'action',
+      hint: 'Reload persisted usage statistics, matching the WEB global stats page',
+    },
+    {
+      key: 'stats:last-error',
+      label: 'Last load',
+      meta: statsState.error ? 'failed' : statsState.loadedAt ? 'ok' : 'idle',
+      type: 'info',
+      hint: statsState.error || 'Stats are loaded from persisted Node-side storage.',
+    },
+    { key: 'stats-header-overview', label: '── Overview', type: 'header' },
+    { key: 'stats:total-sessions', label: 'Sessions', meta: formatCompactStat(statsState.stats.totalSessions), type: 'info', hint: 'Unique sessions with recorded interactions' },
+    { key: 'stats:total-interactions', label: 'Interactions', meta: formatCompactStat(statsState.stats.totalInteractions), type: 'info', hint: 'Completed agent loop runs persisted to stats storage' },
+    { key: 'stats:total-messages', label: 'Messages', meta: formatCompactStat(statsState.stats.totalMessages), type: 'info', hint: 'Messages counted across all recorded interactions' },
+    { key: 'stats:total-tokens', label: 'Tokens', meta: formatCompactStat(statsState.stats.totalTokens), type: 'info', hint: `${formatCompactStat(statsState.stats.totalInputTokens)} input · ${formatCompactStat(statsState.stats.totalOutputTokens)} output` },
+    { key: 'stats:avg-duration', label: 'Avg duration', meta: formatStatsDuration(statsState.stats.avgDuration), type: 'info', hint: `Avg tokens ${formatCompactStat(statsState.stats.avgTokensPerInteraction)} · total duration ${formatStatsDuration(statsState.stats.totalDuration)}` },
+    { key: 'stats:tool-calls', label: 'Tool calls', meta: formatCompactStat(statsState.stats.totalToolCalls), type: 'info', hint: `Total steps ${formatCompactStat(statsState.stats.totalSteps)} · errors ${formatCompactStat(statsState.stats.errorCount)}` },
+    { key: 'stats-header-breakdown', label: '── Breakdowns', type: 'header' },
+    { key: 'stats:providers', label: 'Providers', meta: summarizeStatsBreakdown(statsState.stats, 'providers'), type: 'action', hint: 'Open provider usage breakdown' },
+    { key: 'stats:models', label: 'Models', meta: summarizeStatsBreakdown(statsState.stats, 'models'), type: 'action', hint: 'Open model usage breakdown' },
+    { key: 'stats:tools', label: 'Tools', meta: summarizeStatsBreakdown(statsState.stats, 'tools'), type: 'action', hint: 'Open tool usage breakdown' },
+    { key: 'stats:dates', label: 'Recent days', meta: summarizeStatsBreakdown(statsState.stats, 'dates'), type: 'action', hint: 'Open recent day-by-day activity breakdown' },
+    { key: 'stats:finish-reasons', label: 'Finish reasons', meta: summarizeStatsBreakdown(statsState.stats, 'finishReasons'), type: 'action', hint: 'Open finish reason breakdown' },
+  ];
+
   const getItems = useCallback((section: PanelSection): PanelItem[] => {
     switch (section) {
       case 'general':   return generalItems;
@@ -501,10 +671,11 @@ export function usePanel(opts: UsePanelOptions) {
       case 'skills':    return skillItems;
       case 'network':   return networkItems;
       case 'files':     return fileItems;
+      case 'stats':     return statsItems;
       case 'about':     return aboutItems;
       default:          return [];
     }
-  }, [generalItems, llmItems, toolItems, skillItems, networkItems, fileItems, aboutItems]);
+  }, [aboutItems, fileItems, generalItems, llmItems, networkItems, skillItems, statsItems, toolItems]);
 
   /* ── Clamp selections when items change ────────────── */
   useEffect(() => {
@@ -544,9 +715,136 @@ export function usePanel(opts: UsePanelOptions) {
     setPanelEditor(null);
   }, []);
 
+  const openPanelSection = useCallback((section: PanelSection) => {
+    if (panelEditor) {
+      cancelEditor();
+    }
+    setPanelSection(section);
+    setPanelVisible(true);
+  }, [cancelEditor, panelEditor]);
+
+  const openFileEditor = useCallback(async (targetPath: string) => {
+    try {
+      const textFile = await fileBrowser.readTextFile(targetPath);
+      const escapedContent = encodeEscapedText(textFile.content);
+      if (escapedContent.length > MAX_INLINE_EDITOR_CHARS) {
+        opts.addNotice(
+          `Inline editor is limited to ${MAX_INLINE_EDITOR_CHARS} escaped characters. Use /open, /write, or /shell for larger files.`,
+          'warning',
+        );
+        return;
+      }
+
+      setFileActionTargetPath(textFile.path);
+      openEditor({
+        itemKey: 'files:edit',
+        label: 'Edit selected',
+        value: escapedContent,
+        placeholder: 'first line\\nsecond line',
+        help: `Editing ${textFile.displayPath} · use \\n \\t \\\\ escapes · Enter saves`,
+        targetPath: textFile.path,
+      });
+    } catch (fileError) {
+      opts.addNotice(`Open editor failed: ${fileError instanceof Error ? fileError.message : String(fileError)}`, 'error');
+    }
+  }, [fileBrowser, openEditor, opts]);
+
   const submitEditor = useCallback(async (value: string) => {
     if (!panelEditor) return;
     const trimmed = value.trim();
+
+    if (panelEditor.itemKey === 'session:search') {
+      if (!opts.currentSession) {
+        opts.addNotice('No active session selected.', 'warning');
+        return;
+      }
+
+      const searchArgs = parseSearchArgs(trimmed);
+      if (!searchArgs.query) {
+        opts.addNotice('Usage: [--case-sensitive|-c] [--content-only|--tool-output] <query>', 'warning');
+        return;
+      }
+
+      const matches = MessageHistoryManager.searchMessages(opts.currentSession.messages, searchArgs.query, {
+        caseSensitive: searchArgs.caseSensitive,
+        searchInToolOutput: searchArgs.searchInToolOutput,
+      });
+      opts.showSearchResults(matches.length > 0 ? {
+        sessionId: opts.currentSession.id,
+        query: searchArgs.query,
+        caseSensitive: searchArgs.caseSensitive,
+        searchInToolOutput: searchArgs.searchInToolOutput,
+        matchIds: matches.map((match) => match.id),
+      } : null);
+
+      setPanelPreview({
+        section: 'general',
+        title: `Search · ${truncate(searchArgs.query, 28)}`,
+        meta: `${matches.length} result(s) · ${describeSearchArgs(searchArgs)}`,
+        tone: matches.length > 0 ? undefined : '#fbbf24',
+        lines: matches.length > 0
+          ? [
+              ...matches.slice(-8).map((match) => formatSearchResult(match).trimStart()),
+              ...(matches.length > 8 ? [`... ${matches.length - 8} older match(es)`] : []),
+            ]
+          : ['No matches found in the current session.'],
+      });
+      opts.addNotice(matches.length > 0
+        ? `Found ${matches.length} match(es) for "${searchArgs.query}".`
+        : `No messages matched "${searchArgs.query}".`, matches.length > 0 ? 'success' : 'warning');
+      setPanelEditor(null);
+      return;
+    }
+
+    if (panelEditor.itemKey === 'session:export') {
+      if (!opts.currentSession) {
+        opts.addNotice('No active session selected.', 'warning');
+        return;
+      }
+
+      const { format, outputPath } = parseExportArgs(trimmed);
+      try {
+        const targetPath = path.resolve(
+          opts.workspace || process.cwd(),
+          outputPath || buildDefaultExportName(opts.currentSession, format),
+        );
+        const effectiveToolIds = (opts.currentSession.sessionTools ?? opts.enabledTools).filter((toolId) => toolId !== 'file_manager');
+        const exportOptions = {
+          systemPrompt: opts.currentSession.systemPrompt,
+          sessionId: opts.currentSession.id,
+          sessionName: opts.currentSession.name,
+          tools: getEnabledTools(effectiveToolIds),
+          alternateHistories: getSessionAlternateHistories(opts.currentSession),
+        };
+
+        const content = format === 'json'
+          ? MessageHistoryManager.exportToJSON(opts.currentSession.messages, exportOptions)
+          : format === 'text'
+            ? MessageHistoryManager.exportToText(opts.currentSession.messages, exportOptions)
+            : MessageHistoryManager.exportToMarkdown(opts.currentSession.messages, exportOptions);
+
+        await mkdir(path.dirname(targetPath), { recursive: true });
+        await writeFile(targetPath, content, 'utf8');
+
+        const stats = MessageHistoryManager.getMessageStats(opts.currentSession.messages);
+        setPanelPreview({
+          section: 'general',
+          title: 'Export complete',
+          meta: format,
+          lines: [
+            targetPath,
+            `Messages: ${stats.total}`,
+            `Tool calls: ${stats.toolCalls}`,
+            `Estimated tokens: ${stats.tokens}`,
+          ],
+        });
+        opts.addNotice(`Exported ${opts.currentSession.name} to ${targetPath}.`, 'success');
+        setPanelEditor(null);
+      } catch (exportError) {
+        opts.addNotice(`Export failed: ${exportError instanceof Error ? exportError.message : String(exportError)}`, 'error');
+      }
+      return;
+    }
 
     if (panelEditor.itemKey === 'llm-model') {
       if (!trimmed) {
@@ -594,6 +892,30 @@ export function usePanel(opts: UsePanelOptions) {
       opts.applyRuntimeConfig({ apiKey: trimmed || undefined });
       opts.addNotice(trimmed ? 'API key updated for current runtime config.' : 'API key cleared from current runtime config.', 'success');
       setPanelEditor(null);
+      return;
+    }
+
+    if (panelEditor.itemKey === 'files:edit') {
+      if (!panelEditor.targetPath) {
+        opts.addNotice('Select a file before editing.', 'warning');
+        return;
+      }
+
+      try {
+        const content = decodeEscapedText(value);
+        const preview = await fileBrowser.writeTextFile(panelEditor.targetPath, content);
+        setFileActionTargetPath(preview.path);
+        setPanelPreview({
+          section: 'files',
+          title: `Saved ${preview.displayPath}`,
+          meta: `${preview.size} bytes${preview.truncated ? ' · preview truncated' : ''}`,
+          lines: preview.lines.slice(0, 5),
+        });
+        opts.addNotice(`Saved ${preview.displayPath}.`, 'success');
+        setPanelEditor(null);
+      } catch (fileError) {
+        opts.addNotice(`Save failed: ${fileError instanceof Error ? fileError.message : String(fileError)}`, 'error');
+      }
       return;
     }
 
@@ -659,7 +981,17 @@ export function usePanel(opts: UsePanelOptions) {
   }, [panelEditor, panelVisible]);
 
   useEffect(() => {
-    if (panelEditor && panelSection !== 'llm' && panelSection !== 'files') {
+    if (!panelVisible || panelSection !== 'stats' || statsState.isLoading) {
+      return;
+    }
+    if (statsState.loadedAt !== null) {
+      return;
+    }
+    void refreshStats().catch(() => {});
+  }, [panelSection, panelVisible, refreshStats, statsState.isLoading, statsState.loadedAt]);
+
+  useEffect(() => {
+    if (panelEditor && panelSection !== 'general' && panelSection !== 'llm' && panelSection !== 'files') {
       setPanelEditor(null);
     }
   }, [panelEditor, panelSection]);
@@ -702,6 +1034,49 @@ export function usePanel(opts: UsePanelOptions) {
         }
         return;
       }
+      if (selectedItem.key === 'session:delete-current') {
+        if (!opts.currentSession) {
+          opts.addNotice('No active session selected.', 'warning');
+          return;
+        }
+        if (opts.isDefaultAgent) {
+          opts.deleteSession(opts.currentSession.id);
+          opts.addNotice(`Moved ${opts.currentSession.id.slice(0, 8)} (${opts.currentSession.name}) to trash.`, 'success');
+          return;
+        }
+        const deletedSession = opts.currentSession;
+        opts.deleteAgentSession(opts.currentAgentId, deletedSession.id);
+        if (deletedSession.id === opts.currentSessionId) {
+          const next = opts.createAgentSession(opts.currentAgentId, 'TUI Chat');
+          if (opts.systemPrompt) {
+            opts.setAgentSessionSystemPrompt(opts.currentAgentId, next.id, opts.systemPrompt);
+          }
+        }
+        opts.addNotice(`Deleted agent session ${deletedSession.id.slice(0, 8)} (${deletedSession.name}).`, 'success');
+        return;
+      }
+      if (selectedItem.key === 'session:search') {
+        if (mode !== 'select') return;
+        openEditor({
+          itemKey: 'session:search',
+          label: 'Search session',
+          value: '',
+          placeholder: '--content-only tool call',
+          help: 'Supports --case-sensitive|-c, --content-only, and --tool-output before the query',
+        });
+        return;
+      }
+      if (selectedItem.key === 'session:export') {
+        if (mode !== 'select') return;
+        openEditor({
+          itemKey: 'session:export',
+          label: 'Export session',
+          value: 'markdown',
+          placeholder: 'markdown exports/chat.md',
+          help: 'Format first: markdown, json, or text. Optional relative output path after it.',
+        });
+        return;
+      }
       if (selectedItem.key === 'session-filter') {
         const nextFilter = cycleValue<(typeof SESSION_TYPE_FILTERS)[number]>(SESSION_TYPE_FILTERS, sessionTypeFilter, delta);
         setSessionTypeFilter(nextFilter);
@@ -709,28 +1084,12 @@ export function usePanel(opts: UsePanelOptions) {
         return;
       }
       if (selectedItem.key === 'session-scope') {
-        if (!opts.currentSession) {
-          opts.addNotice('No active session selected.', 'warning');
-          return;
-        }
-
-        const nextScope = cycleValue(['global', 'session'] as const, sessionConfigScope, delta);
-        if (nextScope === sessionConfigScope) {
-          return;
-        }
-
-        if (!canMutateSessionOverrides(opts.currentSession)) {
-          return;
-        }
-
-        if (nextScope === 'session') {
-          const { tools, skills } = ensureSessionOverrides(opts.currentSession);
-          opts.addNotice(`Session scope enabled. Snapshot: ${tools.filter((id) => id !== 'file_manager').length} tool(s), ${skills.length} skill(s).`, 'success');
-          return;
-        }
-
-        setSessionOverrideConfig(opts.currentSession, undefined, undefined);
-        opts.addNotice('Reverted current session back to global defaults.', 'success');
+        const nextScope = cycleValue<'global' | 'session'>(
+          ['global', 'session'],
+          sessionConfigScope as 'global' | 'session',
+          delta,
+        );
+        switchSessionScope(nextScope);
         return;
       }
       if (selectedItem.key === 'exec-login-shell') {
@@ -767,6 +1126,40 @@ export function usePanel(opts: UsePanelOptions) {
           opts.setAgentCurrentSession(opts.currentAgentId, target.id);
         }
         opts.addNotice(`Switched to session ${target.id.slice(0, 8)} (${target.name}).`, 'success');
+        setPanelVisible(false);
+        return;
+      }
+      if (selectedItem.key === 'trash:list') {
+        setPanelPreview({
+          section: 'general',
+          title: 'Workspace trash',
+          meta: `${deletedGlobalSessions.length} session(s)`,
+          tone: deletedGlobalSessions.length === 0 ? '#fbbf24' : undefined,
+          lines: deletedGlobalSessions.length > 0
+            ? deletedGlobalSessions.slice(0, 8).map((candidate) => (
+                `${candidate.id.slice(0, 8)}  ${candidate.name}  deleted ${new Date(candidate.deletedAt || candidate.updatedAt).toLocaleString()}`
+              ))
+            : ['Trash is empty.'],
+        });
+        return;
+      }
+      if (selectedItem.key === 'trash:empty') {
+        if (deletedGlobalSessions.length === 0) {
+          opts.addNotice('Workspace trash is already empty.', 'info');
+          return;
+        }
+        opts.clearTrash();
+        opts.addNotice(`Permanently cleared ${deletedGlobalSessions.length} trashed session(s).`, 'success');
+        return;
+      }
+      if (selectedItem.key.startsWith('trash:session:')) {
+        const sessionId = selectedItem.key.slice('trash:session:'.length);
+        const target = deletedGlobalSessions.find((session) => session.id === sessionId);
+        if (!target) return;
+        opts.restoreSession(target.id);
+        await opts.loadSessionMessages(target.id);
+        opts.openSession(target.id);
+        opts.addNotice(`Restored session ${target.id.slice(0, 8)} (${target.name}).`, 'success');
         setPanelVisible(false);
         return;
       }
@@ -891,6 +1284,60 @@ export function usePanel(opts: UsePanelOptions) {
           help: 'Submit empty to clear the API key from current runtime config',
         });
         return;
+      }
+      if (selectedItem.key === 'llm-connection-test') {
+        opts.setIsLoading(true);
+        opts.setActivityLabel('Testing LLM connection...');
+        try {
+          const currentConfig = opts.runtimeConfig;
+          const providerDetails = getProviderMeta(currentConfig.provider);
+          const lines = [
+            `Provider: ${currentConfig.provider}`,
+            `Model: ${currentConfig.model}`,
+            `Base URL: ${currentConfig.baseUrl || providerDetails?.defaultBaseUrl || '(default)'}`,
+            `API key: ${currentConfig.apiKey ? `${currentConfig.apiKey.slice(0, 10)}...` : '(not set)'}`,
+          ];
+          if ((providerDetails?.requiresApiKey ?? true) && !currentConfig.apiKey) {
+            setPanelPreview({
+              section: 'llm',
+              title: 'Connection test',
+              meta: 'blocked',
+              tone: '#fbbf24',
+              lines: [...lines, '', 'This provider requires an API key before the test can run.'],
+            });
+            opts.addNotice('Connection test skipped: API key is required for the current provider.', 'warning');
+            return;
+          }
+          const text = await testLLMConnection(currentConfig, opts.proxyUrl);
+          setPanelPreview({
+            section: 'llm',
+            title: 'Connection test',
+            meta: 'success',
+            tone: '#6ee7a0',
+            lines: [...lines, '', `Response: ${text}`],
+          });
+          opts.addNotice(`Connection test succeeded for ${currentConfig.provider}/${currentConfig.model}.`, 'success');
+          return;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          setPanelPreview({
+            section: 'llm',
+            title: 'Connection test',
+            meta: 'failed',
+            tone: '#f87171',
+            lines: [
+              `Provider: ${opts.runtimeConfig.provider}`,
+              `Model: ${opts.runtimeConfig.model}`,
+              '',
+              message,
+            ],
+          });
+          opts.addNotice(`Connection test failed: ${message}`, 'error');
+          return;
+        } finally {
+          opts.setActivityLabel('Thinking...');
+          opts.setIsLoading(false);
+        }
       }
       if (selectedItem.key === 'llm-save') {
         opts.saveRuntimeConfig(opts.runtimeConfig);
@@ -1038,6 +1485,15 @@ export function usePanel(opts: UsePanelOptions) {
         });
         return;
       }
+      if (selectedItem.key === 'files:edit') {
+        if (mode !== 'select') return;
+        if (!selectedFileTargetPath) {
+          opts.addNotice('Select a text file before editing.', 'warning');
+          return;
+        }
+        await openFileEditor(selectedFileTargetPath);
+        return;
+      }
       if (selectedItem.key === 'files:delete') {
         if (!selectedFileTargetPath) {
           opts.addNotice('Select a file or directory before deleting.', 'warning');
@@ -1087,29 +1543,99 @@ export function usePanel(opts: UsePanelOptions) {
       }
       return;
     }
+
+    if (panelSection === 'stats') {
+      if (selectedItem.key === 'stats:refresh') {
+        try {
+          const stats = await refreshStats();
+          opts.addNotice(`Stats refreshed: ${formatCompactStat(stats.totalInteractions)} interaction(s), ${formatCompactStat(stats.totalTokens)} token(s).`, 'success');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          opts.addNotice(`Stats refresh failed: ${message}`, 'error');
+        }
+        return;
+      }
+
+      const breakdownKeyMap: Record<string, StatsBreakdownKind> = {
+        'stats:providers': 'providers',
+        'stats:models': 'models',
+        'stats:tools': 'tools',
+        'stats:dates': 'dates',
+        'stats:finish-reasons': 'finishReasons',
+      };
+      const breakdownKind = breakdownKeyMap[selectedItem.key];
+      if (breakdownKind) {
+        const lines = getStatsBreakdownLines(statsState.stats, breakdownKind, 8);
+        setPanelPreview({
+          section: 'stats',
+          title: selectedItem.label,
+          meta: lines.length > 0 ? `${lines.length} row(s)` : 'empty',
+          tone: lines.length > 0 ? undefined : '#fbbf24',
+          lines: lines.length > 0 ? lines : ['No data recorded yet.'],
+        });
+        return;
+      }
+      return;
+    }
   }, [
     canMutateSessionOverrides,
     cycleValue,
+    deletedGlobalSessions,
     effectiveSkillIds,
     effectiveToolIds,
     ensureSessionOverrides,
     getSelectedItem,
     nearestNumericIndex,
     openEditor,
+    openFileEditor,
     opts,
     panelSection,
     providerMeta,
     providerModels,
+    refreshStats,
     sessionConfigScope,
     sessionTypeFilter,
     selectedFileTargetPath,
     setPanelVisible,
     setSessionOverrideConfig,
+    switchSessionScope,
   ]);
 
   /* ── Keyboard navigation ───────────────────────────── */
   useInput((inputChar, key) => {
     const hasTypedInput = opts.input.trim().length > 0;
+    const ctrlShortcut = key.ctrl ? inputChar.toLowerCase() : '';
+
+    if (ctrlShortcut === 'g') {
+      openPanelSection('general');
+      return;
+    }
+    if (ctrlShortcut === 'l') {
+      openPanelSection('llm');
+      return;
+    }
+    if (ctrlShortcut === 't') {
+      openPanelSection('tools');
+      return;
+    }
+    if (ctrlShortcut === 'k') {
+      openPanelSection('skills');
+      return;
+    }
+    if (ctrlShortcut === 'p') {
+      openPanelSection('network');
+      return;
+    }
+    if (ctrlShortcut === 'f') {
+      openPanelSection('files');
+      return;
+    }
+    if (ctrlShortcut === 'o') {
+      if (!opts.isInitializing && !opts.isLoading) {
+        switchSessionScope(sessionConfigScope === 'session' ? 'global' : 'session');
+      }
+      return;
+    }
 
     if (key.escape) {
       if (panelEditor) {
@@ -1198,6 +1724,15 @@ export function usePanel(opts: UsePanelOptions) {
         return;
       }
 
+      if (inputChar === 'e') {
+        if (!selectedFileTargetPath) {
+          opts.addNotice('Select a text file before editing.', 'warning');
+          return;
+        }
+        void openFileEditor(selectedFileTargetPath);
+        return;
+      }
+
       if (inputChar === 'x') {
         if (!selectedFileTargetPath) {
           opts.addNotice('Select a file or directory before deleting.', 'warning');
@@ -1232,16 +1767,6 @@ export function usePanel(opts: UsePanelOptions) {
       void runAction('select');
       return;
     }
-
-    if (key.ctrl) {
-      const c = inputChar.toLowerCase();
-      if (c === 'g') setPanelSection('general');
-      else if (c === 'l') setPanelSection('llm');
-      else if (c === 't') setPanelSection('tools');
-      else if (c === 'k') setPanelSection('skills');
-      else if (c === 'p') setPanelSection('network');
-      else if (c === 'f') setPanelSection('files');
-    }
   });
 
   /* ── Mouse support ─────────────────────────────────── */
@@ -1270,7 +1795,8 @@ export function usePanel(opts: UsePanelOptions) {
   }, [getSelectableItems, panelSection]);
 
   /* ── Computed for rendering ────────────────────────── */
-  const previewBodyHeight = panelSection === 'files' && !panelEditor
+  const shouldShowPreview = !panelEditor && (panelSection === 'files' || panelPreview?.section === panelSection);
+  const previewBodyHeight = shouldShowPreview
     ? Math.max(4, Math.min(PANEL_PREVIEW_BODY_MAX_HEIGHT, Math.floor(panelHeight * 0.25)))
     : 0;
   const previewSectionHeight = previewBodyHeight > 0 ? previewBodyHeight + PANEL_PREVIEW_SECTION_OVERHEAD : 0;
@@ -1322,21 +1848,28 @@ export function usePanel(opts: UsePanelOptions) {
     hiddenAfter: window.hiddenAfter,
     editor: panelEditor,
   });
-  const previewTitle = panelSection === 'files' && fileBrowser.preview
-    ? `Preview ${fileBrowser.preview.displayPath}`
-    : undefined;
-  const previewMeta = panelSection === 'files' && fileBrowser.preview
-    ? filePreviewMeta
-    : (panelSection === 'files' && fileBrowser.error ? fileBrowser.error : undefined);
-  const previewLines = panelSection === 'files'
-    ? ((fileBrowser.preview?.lines || (fileBrowser.error
-        ? ['File browser error.']
-        : [
-            'Select a file to preview it here.',
-            'Shortcuts: n new file · d new folder · r rename · x delete',
-            'Commands: /touch /mkdir /rename /rm /write',
-          ])).slice(0, Math.max(1, previewBodyHeight - 2)))
-    : undefined;
+  const defaultFilePreviewLines = fileBrowser.error
+    ? ['File browser error.']
+    : [
+        'Select a file to preview it here.',
+        'Shortcuts: n new file · d new folder · e edit · r rename · x delete',
+        'Commands: /touch /mkdir /open /write /rename /rm',
+      ];
+  const previewState = panelSection === 'files'
+    ? {
+        title: fileBrowser.preview ? `Preview ${fileBrowser.preview.displayPath}` : 'File preview',
+        meta: fileBrowser.preview ? filePreviewMeta : (fileBrowser.error || fileBrowser.currentDisplayPath),
+        lines: (fileBrowser.preview?.lines || defaultFilePreviewLines).slice(0, Math.max(1, previewBodyHeight - 2)),
+        tone: undefined,
+      }
+      : panelPreview?.section === panelSection
+        ? {
+            title: panelPreview.title,
+            meta: panelPreview.meta,
+            lines: panelPreview.lines.slice(0, Math.max(1, previewBodyHeight - 2)),
+            tone: panelPreview.tone,
+        }
+      : undefined;
 
   useMouse((event) => {
     if (!panelVisible) return;
@@ -1435,11 +1968,12 @@ export function usePanel(opts: UsePanelOptions) {
     panelLeft: panelMouseLayout.panelLeft,
     currentItems: visibleItems, currentSelection, window,
     selectedItemKey,
-    previewTitle,
-    previewMeta,
-    previewLines,
+    stats: statsState.stats,
+    previewTitle: previewState?.title,
+    previewMeta: previewState?.meta,
+    previewLines: previewState?.lines,
     previewBodyHeight,
-    previewTone: panelSection === 'files' && fileBrowser.preview?.kind === 'binary' ? 'yellow' : undefined,
+    previewTone: previewState?.tone || (panelSection === 'files' && fileBrowser.preview?.kind === 'binary' ? 'yellow' : undefined),
     getItems, runAction,
   };
 }

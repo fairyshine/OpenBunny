@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Box, Text } from 'ink';
 import type { Message, MessageFileAttachment, MessagePresentation, MessageSkillResource } from '@openbunny/shared/types';
 import {
@@ -10,6 +11,8 @@ import { formatTime, truncate } from '../../utils/formatting.js';
 
 interface MessageBubbleProps {
   message: Message;
+  isFocused?: boolean;
+  focusLabel?: string;
 }
 
 interface LineWindow {
@@ -185,6 +188,27 @@ function MessageHeader({
   );
 }
 
+function MessageContainer({
+  isFocused,
+  focusLabel,
+  children,
+}: {
+  isFocused?: boolean;
+  focusLabel?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Box marginBottom={1} flexDirection="column">
+      {isFocused && (
+        <Text color={T.info}>
+          ↳ {focusLabel || 'Focused message'}
+        </Text>
+      )}
+      {children}
+    </Box>
+  );
+}
+
 function DetailBlock({
   title,
   lines,
@@ -204,12 +228,10 @@ function DetailBlock({
     <Box
       marginLeft={2}
       marginTop={1}
-      borderStyle="round"
-      borderColor={borderColor}
-      paddingX={1}
+      paddingLeft={1}
       flexDirection="column"
     >
-      {title && <Text color={T.fgSubtle}>{title}</Text>}
+      {title && <Text color={borderColor}>{title}</Text>}
       {lines.map((line, index) => (
         <Text key={`${index}-${line}`} wrap="wrap" color={color}>
           {line || ' '}
@@ -249,7 +271,7 @@ function getMessageHeading(message: Message): { prefix: string; label: string; c
   if (presentation.kind === 'skill_resource_result') return { prefix: '*', label: presentation.skillName || 'Skill Resource', color: T.skill };
   if (presentation.kind === 'skill_activation_result') return { prefix: '*', label: presentation.skillName || 'Skill Loaded', color: T.skill };
 
-  return { prefix: '@', label: speaker || 'Bunny', color: T.assistant };
+  return { prefix: '🐰', label: speaker || 'Bunny', color: T.assistant };
 }
 
 function getMessageBody(message: Message): string {
@@ -278,7 +300,7 @@ const TOOL_RESULT_MAX_LINES = 10;
 const DETAIL_MAX_LINES = 14;
 const RESPONSE_MAX_LINES = 18;
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, isFocused = false, focusLabel }: MessageBubbleProps) {
   const presentation = deriveMessagePresentation(message);
   const heading = getMessageHeading(message);
   const rawBody = getMessageBody(message);
@@ -321,7 +343,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     );
 
     return (
-      <Box marginBottom={1} flexDirection="column">
+      <MessageContainer isFocused={isFocused} focusLabel={focusLabel}>
         <MessageHeader
           prefix={heading.prefix}
           label={heading.label}
@@ -341,10 +363,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           title={presentation.toolInput ? 'Parameters' : 'Details'}
           lines={bodyLines.lines}
           color={presentation.toolInput ? T.fgDim : T.fg}
-          borderColor={T.borderLight}
+          borderColor={isFocused ? T.info : T.borderLight}
           footer={bodyLines.hiddenLineCount > 0 ? `... ${bodyLines.hiddenLineCount} more line(s)` : undefined}
         />
-      </Box>
+      </MessageContainer>
     );
   }
 
@@ -357,7 +379,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     ].filter(Boolean).join(' · ');
 
     return (
-      <Box marginBottom={1} flexDirection="column">
+      <MessageContainer isFocused={isFocused} focusLabel={focusLabel}>
         <MessageHeader
           prefix={heading.prefix}
           label={heading.label}
@@ -369,7 +391,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           title="Output"
           lines={bodyLines.lines}
           color={presentation.isError ? T.err : T.fgDim}
-          borderColor={presentation.isError ? T.err : T.toolResult}
+          borderColor={isFocused ? T.info : presentation.isError ? T.err : T.toolResult}
           footer={footer || undefined}
         />
         {attachmentLines.length > 0 && (
@@ -380,7 +402,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             borderColor={T.toolResult}
           />
         )}
-      </Box>
+      </MessageContainer>
     );
   }
 
@@ -397,7 +419,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       : [];
 
     return (
-      <Box marginBottom={1} flexDirection="column">
+      <MessageContainer isFocused={isFocused} focusLabel={focusLabel}>
         <MessageHeader
           prefix={heading.prefix}
           label={heading.label}
@@ -409,7 +431,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           title={presentation.kind === 'skill_activation' ? 'Skill details' : 'Skill output'}
           lines={bodyLines.lines}
           color={presentation.kind === 'skill_result_error' ? T.err : T.fgDim}
-          borderColor={presentation.kind === 'skill_result_error' ? T.err : T.skill}
+          borderColor={isFocused ? T.info : presentation.kind === 'skill_result_error' ? T.err : T.skill}
           footer={bodyLines.hiddenLineCount > 0 ? `... ${bodyLines.hiddenLineCount} more line(s)` : undefined}
         />
         {resourceLines.length > 0 && (
@@ -428,7 +450,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             borderColor={T.skill}
           />
         )}
-      </Box>
+      </MessageContainer>
     );
   }
 
@@ -436,7 +458,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     const bodyLines = sliceVisibleLines(rawBody, DETAIL_MAX_LINES);
 
     return (
-      <Box marginBottom={1} flexDirection="column">
+      <MessageContainer isFocused={isFocused} focusLabel={focusLabel}>
         <MessageHeader
           prefix={heading.prefix}
           label={heading.label}
@@ -445,10 +467,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         />
         <DetailBlock
           lines={bodyLines.lines}
-          borderColor={T.user}
+          borderColor={isFocused ? T.info : T.user}
           footer={bodyLines.hiddenLineCount > 0 ? `... ${bodyLines.hiddenLineCount} more line(s)` : undefined}
         />
-      </Box>
+      </MessageContainer>
     );
   }
 
@@ -461,7 +483,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     : [];
 
   return (
-    <Box marginBottom={1} flexDirection="column">
+    <MessageContainer isFocused={isFocused} focusLabel={focusLabel}>
       <MessageHeader
         prefix={heading.prefix}
         label={heading.label}
@@ -470,7 +492,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       />
       <DetailBlock
         lines={responseLines.lines}
-        borderColor={message.role === 'system' ? T.system : T.assistant}
+        borderColor={isFocused ? T.info : message.role === 'system' ? T.system : T.assistant}
         footer={responseLines.hiddenLineCount > 0 ? `... ${responseLines.hiddenLineCount} more line(s)` : undefined}
       />
       {artifactLines.length > 0 && (
@@ -481,6 +503,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           borderColor={T.assistant}
         />
       )}
-    </Box>
+    </MessageContainer>
   );
 }

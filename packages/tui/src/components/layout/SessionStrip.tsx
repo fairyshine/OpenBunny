@@ -35,58 +35,44 @@ export function SessionStrip({ sessions, currentSessionId, width, modeLabel }: S
 
   return (
     <Box paddingX={1} marginBottom={1} flexDirection="column" width={Math.max(24, width - 2)}>
-      <Box
-        borderStyle="round"
-        borderColor={T.borderLight}
-        paddingX={1}
-        flexDirection="column"
-        width={Math.max(24, width - 2)}
-      >
-        <Text color={T.fgSubtle}>
-          Sessions
-          <Text color={T.fgMuted}> · {modeLabel}</Text>
-          <Text color={T.fgMuted}> · {sessions.length} visible</Text>
-          {(window.hiddenBefore > 0 || window.hiddenAfter > 0) && (
-            <Text color={T.fgMuted}>
-              {' · '}
-              {window.hiddenBefore > 0 ? `${window.hiddenBefore} left` : ''}
-              {window.hiddenBefore > 0 && window.hiddenAfter > 0 ? ' · ' : ''}
-              {window.hiddenAfter > 0 ? `${window.hiddenAfter} right` : ''}
-            </Text>
-          )}
-        </Text>
+      <Text color={T.fgSubtle}>
+        Sessions
+        <Text color={T.fgMuted}> · {modeLabel}</Text>
+        <Text color={T.fgMuted}> · {sessions.length} open</Text>
+        {(window.hiddenBefore > 0 || window.hiddenAfter > 0) && (
+          <Text color={T.fgMuted}>
+            {' · '}
+            {window.hiddenBefore > 0 ? `${window.hiddenBefore} left` : ''}
+            {window.hiddenBefore > 0 && window.hiddenAfter > 0 ? ' · ' : ''}
+            {window.hiddenAfter > 0 ? `${window.hiddenAfter} right` : ''}
+          </Text>
+        )}
+      </Text>
+      <Box flexWrap="wrap">
+        {window.items.map((session) => {
+          const isActive = session.id === currentSessionId;
+          const marker = getSessionStatusMarker(session);
+          const typeMarker = getSessionTypeMarker(session);
+          const tabColor = isActive
+            ? T.brandLight
+            : session.isStreaming
+              ? T.warn
+              : session.interruptedAt
+                ? T.info
+                : T.fgDim;
 
-        <Box flexWrap="wrap">
-          {window.items.map((session) => {
-            const isActive = session.id === currentSessionId;
-            const marker = getSessionStatusMarker(session);
-            const typeMarker = getSessionTypeMarker(session);
-            const tabColor = isActive
-              ? T.brandLight
-              : session.isStreaming
-                ? T.warn
-                : session.interruptedAt
-                  ? T.info
-                  : T.fgDim;
-
-            return (
-              <Box key={session.id} marginRight={1}>
-                <Text color={tabColor} bold={isActive}>
-                  {isActive ? '[' : ' '}
-                  {typeMarker}
-                  {marker !== ' ' ? marker : ''}
-                  {' '}
-                  {truncate(session.name, isActive ? 20 : 18)}
-                  {isActive ? ']' : ''}
-                </Text>
-              </Box>
-            );
-          })}
-        </Box>
-
-        <Text color={T.fgMuted}>
-          Active session changes from the panel General section. Streaming uses `~`, interrupted uses `!`.
-        </Text>
+          return (
+            <Box key={session.id} marginRight={1}>
+              <Text color={tabColor} bold={isActive}>
+                {isActive ? '[' : ''}
+                {typeMarker}
+                {marker !== ' ' ? marker : '·'}
+                {truncate(session.name, isActive ? 20 : 18)}
+                {isActive ? ']' : ''}
+              </Text>
+            </Box>
+          );
+        })}
       </Box>
     </Box>
   );

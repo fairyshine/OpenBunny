@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { LLMConfig, Message, Session } from '@openbunny/shared/types';
-import { discoverMCPConnection } from '@openbunny/shared';
+import type { LLMConfig, Session } from '@openbunny/shared/types';
+import { discoverMCPConnection, statsStorage } from '@openbunny/shared';
 import { getProviderMeta } from '@openbunny/shared/services/ai';
+import { testConnection as testLLMConnection } from '@openbunny/shared/services/ai/provider';
 import { getEnabledTools } from '@openbunny/shared/services/ai/tools';
 import { flushAllSessionPersistence } from '@openbunny/shared/services/storage/sessionPersistence';
 import { getPlatformCapabilities, getPlatformContext } from '@openbunny/shared/platform';
@@ -18,8 +19,7 @@ import {
   getProviderList,
 } from '@openbunny/shared/terminal';
 import { MessageHistoryManager } from '@openbunny/shared/utils/messageHistory';
-import { getMessageDisplayType, getMessageToolName } from '@openbunny/shared/utils/messagePresentation';
-import { formatConfigSummary, truncate } from '../utils/formatting.js';
+import { decodeEscapedText, formatConfigSummary } from '../utils/formatting.js';
 import type { NoticeTone } from '../types.js';
 import type { FileBrowserController } from './useFileBrowser.js';
 import {
@@ -37,6 +37,15 @@ import {
   isSessionConfigLocked,
   isReadOnlySession,
 } from '../utils/sessionPresentation.js';
+import {
+  buildDefaultExportName,
+  describeSearchArgs,
+  formatSearchResult,
+  parseExportArgs,
+  parseSearchArgs,
+} from '../utils/sessionActions.js';
+import { buildStatsCommandLines } from '../utils/statsPresentation.js';
+import type { MessageSearchResults } from './useMessageViewport.js';
 
 interface UseCommandHandlerOptions {
   workspace?: string;
@@ -45,6 +54,8 @@ interface UseCommandHandlerOptions {
   isDefaultAgent: boolean;
   currentAgentId: string;
   currentAgent: { id: string; name: string; enabledTools?: string[]; enabledSkills?: string[] } | null;
+  globalSessions: Session[];
+  globalOpenSessionIds: string[];
   sessions: Session[];
   enabledTools: string[];
   enabledSkills: string[];
@@ -58,6 +69,9 @@ interface UseCommandHandlerOptions {
   setSessionSystemPrompt: (sessionId: string, prompt: string) => void;
   setSessionTools: (sessionId: string, tools: string[] | undefined) => void;
   setSessionSkills: (sessionId: string, skills: string[] | undefined) => void;
+  deleteSession: (sessionId: string) => void;
+  restoreSession: (sessionId: string) => void;
+  clearTrash: () => void;
   setAgentSessionSystemPrompt: (agentId: string, sessionId: string, prompt: string) => void;
   setAgentSessionTools: (agentId: string, sessionId: string, tools: string[] | undefined) => void;
   setAgentSessionSkills: (agentId: string, sessionId: string, skills: string[] | undefined) => void;
@@ -65,6 +79,7 @@ interface UseCommandHandlerOptions {
   clearSessionMessages: (sessionId: string) => void;
   loadSessionMessages: (sessionId: string) => Promise<void>;
   openSession: (sessionId: string) => void;
+  closeSession: (sessionId: string) => void;
   loadAgentSessionMessages: (agentId: string, sessionId: string) => Promise<void>;
   setAgentCurrentSession: (agentId: string, sessionId: string) => void;
   flushMessages: (sessionId: string) => Promise<void>;
@@ -96,40 +111,10 @@ interface UseCommandHandlerOptions {
   applyRuntimeConfig: (updates: Partial<LLMConfig>) => LLMConfig;
   saveRuntimeConfig: (config: LLMConfig) => void;
   fileBrowser: FileBrowserController;
+  showSearchResults: (results: MessageSearchResults | null) => void;
   // agent loop
   handleStop: (sessionId: string | null) => void;
   sendMessage: (trimmed: string, session: Session, config: LLMConfig) => Promise<void>;
-}
-
-type ExportFormat = 'json' | 'markdown' | 'text';
-
-function parseExportArgs(rawArgs: string): { format: ExportFormat; outputPath?: string } {
-  const trimmed = rawArgs.trim();
-  if (!trimmed) return { format: 'markdown' };
-
-  const [firstToken, ...restTokens] = trimmed.split(/\s+/);
-  if (firstToken === 'json' || firstToken === 'markdown' || firstToken === 'text') {
-    return {
-      format: firstToken,
-      outputPath: restTokens.join(' ').trim() || undefined,
-    };
-  }
-
-  return {
-    format: 'markdown',
-    outputPath: trimmed,
-  };
-}
-
-function buildDefaultExportName(session: Session, format: ExportFormat): string {
-  const extension = format === 'json' ? 'json' : format === 'text' ? 'txt' : 'md';
-  const safeSessionName = (session.name || 'conversation')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/gi, '-')
-    .replace(/^-+|-+$/g, '')
-    || 'conversation';
-  return `${safeSessionName}-${session.id.slice(0, 8)}.${extension}`;
 }
 
 function splitArgsOnce(rawArgs: string): [string, string] {
@@ -144,25 +129,6 @@ function splitArgsOnce(rawArgs: string): [string, string] {
   }
 
   return [match[1], match[2]];
-}
-
-function decodeEscapedText(value: string): string {
-  return value
-    .replace(/\\\\/g, '\u0000')
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '\r')
-    .replace(/\\t/g, '\t')
-    .replace(/\u0000/g, '\\');
-}
-
-function formatSearchResult(match: Message): string {
-  const type = getMessageDisplayType(match) || match.role;
-  const toolName = getMessageToolName(match);
-  const summary = MessageHistoryManager.getMessageSummary(match);
-  const rawText = summary.searchableToolOutput || match.content || '(no content)';
-  const snippet = truncate(rawText.replace(/\s+/g, ' ').trim() || '(no content)', 96);
-  const meta = toolName ? ` ${toolName}` : '';
-  return `  ${new Date(match.timestamp).toLocaleTimeString()}  ${type}${meta}  ${snippet}`;
 }
 
 function formatFileEntries(
@@ -294,7 +260,7 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
 
   const updateScopedTool = useCallback((session: Session, toolId: string, nextEnabled: boolean) => {
     if (toolId === 'file_manager') {
-      opts.addNotice('file_manager is not available in TUI. Use /shell and the workspace instead.', 'warning');
+      opts.addNotice('file_manager is handled by the TUI workspace commands. Use /files, /open, or /write instead.', 'warning');
       return false;
     }
 
@@ -405,6 +371,55 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
     }
   }, [opts]);
 
+  const getDeletedGlobalSessions = useCallback(() => (
+    opts.globalSessions
+      .filter((candidate) => Boolean(candidate.deletedAt))
+      .sort((left, right) => (right.deletedAt || 0) - (left.deletedAt || 0))
+  ), [opts.globalSessions]);
+
+  const getWorkspaceTabSessions = useCallback(() => {
+    const byId = new Map(opts.globalSessions.map((candidate) => [candidate.id, candidate]));
+    return opts.globalOpenSessionIds
+      .map((sessionId) => byId.get(sessionId))
+      .filter((candidate): candidate is Session => Boolean(candidate && !candidate.deletedAt));
+  }, [opts.globalOpenSessionIds, opts.globalSessions]);
+
+  const switchToSession = useCallback(async (target: Session) => {
+    if (opts.isDefaultAgent) {
+      await opts.loadSessionMessages(target.id);
+      opts.openSession(target.id);
+      return;
+    }
+
+    await opts.loadAgentSessionMessages(opts.currentAgentId, target.id);
+    opts.setAgentCurrentSession(opts.currentAgentId, target.id);
+  }, [
+    opts.currentAgentId,
+    opts.isDefaultAgent,
+    opts.loadAgentSessionMessages,
+    opts.loadSessionMessages,
+    opts.openSession,
+    opts.setAgentCurrentSession,
+  ]);
+
+  const listSessionTabs = useCallback((currentSession: Session) => {
+    const tabs = opts.isDefaultAgent ? getWorkspaceTabSessions() : opts.sessions;
+    if (tabs.length === 0) {
+      opts.addNotice('No session tabs are open.', 'warning');
+      return;
+    }
+
+    opts.addNotice([
+      opts.isDefaultAgent ? 'Workspace tabs:' : `Agent sessions for ${opts.currentAgent?.name || opts.currentAgentId}:`,
+      ...tabs.map((candidate, index) => {
+        const prefix = candidate.id === currentSession.id ? '*' : ' ';
+        const interrupted = candidate.interruptedAt ? ' interrupted' : '';
+        const streaming = candidate.isStreaming ? ' streaming' : '';
+        return `${prefix} ${index + 1}. ${candidate.id.slice(0, 8)}  ${candidate.name}  ${getSessionTypeLabel(candidate)}${streaming}${interrupted}`;
+      }),
+    ].join('\n'));
+  }, [getWorkspaceTabSessions, opts]);
+
   const handleSubmit = useCallback(async (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return;
@@ -477,7 +492,13 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
           '    /agents          Show available agents',
           '    /agent <id>      Switch current agent',
           '    /agent-new <n>   Create a new agent',
-          '    /delete <id>     Permanently delete a session',
+          '    /tabs            Show current session tabs',
+          '    /tab <op>        Switch/close workspace tabs',
+          '    /delete <id>     Move a workspace session to trash',
+          '    /trash           Show workspace trash',
+          '    /restore <id>    Restore a trashed workspace session',
+          '    /purge <id>      Permanently delete a workspace session',
+          '    /empty-trash     Permanently clear workspace trash',
           '    /scope [mode]    Show or switch global/session scope',
           '    /tools           Show enabled tools',
           '    /tool on|off     Toggle a tool for TUI',
@@ -487,15 +508,17 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
           '    /mcp add         Add and sync an MCP server',
           '    /mcp sync        Refresh an MCP server',
           '    /mcp remove      Remove an MCP server',
-          '    /search <query>  Search in current session',
+          '    /search [flags]  Search in current session',
           '    /export [fmt]    Export current session',
+          '    /stats           Show persisted usage statistics',
+          '    /conn-test       Run an LLM connection test',
           '    /files           List workspace files',
           '    /touch <path>    Create an empty file',
           '    /mkdir <path>    Create a directory',
           '    /rename <a> <b> Rename a file or directory',
           '    /rm <path>       Delete a file or directory',
           '    /write <p> <txt> Overwrite a file using escaped text',
-          '    /cd <path>       Change file panel directory',
+          '    /cd <path>       Change current workspace directory',
           '    /open <path>     Preview a workspace file',
           '    /stop            Stop the current response',
           '    /shell <cmd>     Run a shell command in the workspace',
@@ -580,6 +603,39 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
         setInput('');
         return;
 
+      case 'conn-test': {
+        setInput('');
+        opts.setIsLoading(true);
+        opts.setActivityLabel('Testing LLM connection...');
+        try {
+          const currentConfig = opts.runtimeConfigRef.current;
+          const providerMeta = getProviderMeta(currentConfig.provider);
+          if ((providerMeta?.requiresApiKey ?? true) && !currentConfig.apiKey) {
+            opts.addNotice([
+              `Provider: ${currentConfig.provider}`,
+              `Model: ${currentConfig.model}`,
+              'Connection test skipped: API key is required for the current provider.',
+            ].join('\n'), 'warning');
+            return;
+          }
+          const text = await testLLMConnection(currentConfig, opts.proxyUrl);
+          opts.addNotice([
+            `Provider: ${currentConfig.provider}`,
+            `Model: ${currentConfig.model}`,
+            `Base URL: ${currentConfig.baseUrl || providerMeta?.defaultBaseUrl || '(default)'}`,
+            '',
+            `Response: ${text}`,
+          ].join('\n'), 'success');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          opts.addNotice(`Connection test failed: ${message}`, 'error');
+        } finally {
+          opts.setActivityLabel('Thinking...');
+          opts.setIsLoading(false);
+        }
+        return;
+      }
+
       case 'history':
         opts.addNotice([
           getHistoryInfo(session.id, session.messages.length),
@@ -596,15 +652,17 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
         return;
 
       case 'sessions': {
-        const filter = command.args?.trim() as 'all' | 'user' | 'agent' | 'mind' | undefined;
-        if (filter && !['all', 'user', 'agent', 'mind'].includes(filter)) {
-          opts.addNotice('Usage: /sessions [all|user|agent|mind]', 'warning');
+        const filter = command.args?.trim() as 'all' | 'user' | 'agent' | 'mind' | 'trash' | undefined;
+        if (filter && !['all', 'user', 'agent', 'mind', 'trash'].includes(filter)) {
+          opts.addNotice('Usage: /sessions [all|user|agent|mind|trash]', 'warning');
           setInput('');
           return;
         }
-        const filteredSessions = opts.sessions.filter((candidate) => (
-          !filter || filter === 'all' ? true : (candidate.sessionType || 'user') === filter
-        ));
+        const filteredSessions = filter === 'trash'
+          ? (opts.isDefaultAgent ? getDeletedGlobalSessions() : [])
+          : opts.sessions.filter((candidate) => (
+              !filter || filter === 'all' ? true : (candidate.sessionType || 'user') === filter
+            ));
         const list = filteredSessions.map((s) => ({
           shortId: s.id.slice(0, 8), name: s.name,
           messageCount: s.messages.length,
@@ -615,7 +673,8 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
         if (list.length === 0) { opts.addNotice('No sessions found.'); }
         else {
           const lines = list.map((s) => `  ${s.shortId}  ${s.type}  ${s.status}  ${s.name}  ${s.messageCount} msg(s)  ${s.createdAt}`);
-          opts.addNotice(`${list.length} session(s):\n${lines.join('\n')}`);
+          const label = filter === 'trash' ? 'trashed session(s)' : 'session(s)';
+          opts.addNotice(`${list.length} ${label}:\n${lines.join('\n')}`);
         }
         setInput('');
         return;
@@ -662,14 +721,68 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
         if (!command.args) { opts.addNotice('Usage: /resume <session-id-prefix>'); setInput(''); return; }
         const match = opts.sessions.find((s) => s.id.startsWith(command.args));
         if (!match) { opts.addNotice(`No session found matching "${command.args}"`); setInput(''); return; }
-        if (opts.isDefaultAgent) {
-          await opts.loadSessionMessages(match.id);
-          opts.openSession(match.id);
-        } else {
-          await opts.loadAgentSessionMessages(opts.currentAgentId, match.id);
-          opts.setAgentCurrentSession(opts.currentAgentId, match.id);
-        }
+        await switchToSession(match);
         opts.addNotice(`Resumed session ${match.id.slice(0, 8)} (${match.name}).`);
+        setInput('');
+        return;
+      }
+
+      case 'tabs':
+        listSessionTabs(session);
+        setInput('');
+        return;
+
+      case 'tab': {
+        if (!command.args) {
+          opts.addNotice('Usage: /tab next | /tab prev | /tab close | /tab <session-id-prefix>', 'warning');
+          setInput('');
+          return;
+        }
+
+        const tabs = opts.isDefaultAgent ? getWorkspaceTabSessions() : opts.sessions;
+        if (tabs.length === 0) {
+          opts.addNotice('No session tabs are open.', 'warning');
+          setInput('');
+          return;
+        }
+
+        const activeIndex = Math.max(0, tabs.findIndex((candidate) => candidate.id === session.id));
+        const mode = command.args.trim().toLowerCase();
+
+        if (mode === 'next' || mode === 'prev') {
+          const delta = mode === 'next' ? 1 : -1;
+          const target = tabs[(activeIndex + delta + tabs.length) % tabs.length];
+          await switchToSession(target);
+          opts.addNotice(`Switched to ${target.id.slice(0, 8)} (${target.name}).`, 'success');
+          setInput('');
+          return;
+        }
+
+        if (mode === 'close') {
+          if (!opts.isDefaultAgent) {
+            opts.addNotice('Agent sessions do not use closable workspace tabs. Use /delete to remove an agent session.', 'warning');
+            setInput('');
+            return;
+          }
+
+          opts.closeSession(session.id);
+          const remainingTabs = getWorkspaceTabSessions().filter((candidate) => candidate.id !== session.id);
+          opts.addNotice(remainingTabs.length > 0
+            ? `Closed tab ${session.id.slice(0, 8)} (${session.name}).`
+            : `Closed tab ${session.id.slice(0, 8)} (${session.name}). Create or resume a session to reopen the chat area.`, 'success');
+          setInput('');
+          return;
+        }
+
+        const target = tabs.find((candidate) => candidate.id.startsWith(mode));
+        if (!target) {
+          opts.addNotice(`No tab matched "${command.args}".`, 'warning');
+          setInput('');
+          return;
+        }
+
+        await switchToSession(target);
+        opts.addNotice(`Switched to ${target.id.slice(0, 8)} (${target.name}).`, 'success');
         setInput('');
         return;
       }
@@ -685,16 +798,116 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
         if (!command.args) { opts.addNotice('Usage: /delete <session-id-prefix>'); setInput(''); return; }
         const match = opts.sessions.find((s) => s.id.startsWith(command.args));
         if (!match) { opts.addNotice(`No session found matching "${command.args}"`); setInput(''); return; }
-        if (opts.isDefaultAgent) opts.permanentlyDeleteSession(match.id);
-        else opts.deleteAgentSession(opts.currentAgentId, match.id);
-        if (match.id === session.id) {
-          const next = opts.isDefaultAgent ? opts.createSession('TUI Chat') : opts.createAgentSession(opts.currentAgentId, 'TUI Chat');
-          if (opts.systemPrompt) {
-            if (opts.isDefaultAgent) opts.setSessionSystemPrompt(next.id, opts.systemPrompt);
-            else opts.setAgentSessionSystemPrompt(opts.currentAgentId, next.id, opts.systemPrompt);
+        if (opts.isDefaultAgent) {
+          opts.deleteSession(match.id);
+        } else {
+          opts.deleteAgentSession(opts.currentAgentId, match.id);
+          if (match.id === session.id) {
+            const next = opts.createAgentSession(opts.currentAgentId, 'TUI Chat');
+            if (opts.systemPrompt) {
+              opts.setAgentSessionSystemPrompt(opts.currentAgentId, next.id, opts.systemPrompt);
+            }
           }
         }
-        opts.addNotice(`Deleted session ${match.id.slice(0, 8)} (${match.name}).`);
+        opts.addNotice(opts.isDefaultAgent
+          ? `Moved session ${match.id.slice(0, 8)} (${match.name}) to trash.`
+          : `Deleted agent session ${match.id.slice(0, 8)} (${match.name}).`);
+        setInput('');
+        return;
+      }
+
+      case 'trash': {
+        if (!opts.isDefaultAgent) {
+          opts.addNotice('Trash is only available for workspace sessions, matching the WEB session sidebar.', 'warning');
+          setInput('');
+          return;
+        }
+
+        const trashedSessions = getDeletedGlobalSessions();
+        if (trashedSessions.length === 0) {
+          opts.addNotice('Workspace trash is empty.');
+          setInput('');
+          return;
+        }
+
+        opts.addNotice([
+          `Workspace trash (${trashedSessions.length} session(s)):`,
+          ...trashedSessions.map((candidate) => (
+            `  ${candidate.id.slice(0, 8)}  ${candidate.name}  deleted ${new Date(candidate.deletedAt || candidate.updatedAt).toLocaleString()}`
+          )),
+        ].join('\n'));
+        setInput('');
+        return;
+      }
+
+      case 'restore': {
+        if (!opts.isDefaultAgent) {
+          opts.addNotice('Restore is only available for workspace sessions.', 'warning');
+          setInput('');
+          return;
+        }
+        if (!command.args) {
+          opts.addNotice('Usage: /restore <session-id-prefix>', 'warning');
+          setInput('');
+          return;
+        }
+
+        const match = getDeletedGlobalSessions().find((candidate) => candidate.id.startsWith(command.args));
+        if (!match) {
+          opts.addNotice(`No trashed session found matching "${command.args}".`, 'warning');
+          setInput('');
+          return;
+        }
+
+        opts.restoreSession(match.id);
+        await opts.loadSessionMessages(match.id);
+        opts.openSession(match.id);
+        opts.addNotice(`Restored session ${match.id.slice(0, 8)} (${match.name}).`, 'success');
+        setInput('');
+        return;
+      }
+
+      case 'purge': {
+        if (!opts.isDefaultAgent) {
+          opts.addNotice('Agent sessions are deleted immediately. Use /delete instead.', 'warning');
+          setInput('');
+          return;
+        }
+        if (!command.args) {
+          opts.addNotice('Usage: /purge <session-id-prefix>', 'warning');
+          setInput('');
+          return;
+        }
+
+        const match = opts.globalSessions.find((candidate) => candidate.id.startsWith(command.args));
+        if (!match) {
+          opts.addNotice(`No session found matching "${command.args}".`, 'warning');
+          setInput('');
+          return;
+        }
+
+        opts.permanentlyDeleteSession(match.id);
+        opts.addNotice(`Permanently deleted ${match.id.slice(0, 8)} (${match.name}).`, 'success');
+        setInput('');
+        return;
+      }
+
+      case 'empty-trash': {
+        if (!opts.isDefaultAgent) {
+          opts.addNotice('Trash is only available for workspace sessions.', 'warning');
+          setInput('');
+          return;
+        }
+
+        const trashedSessions = getDeletedGlobalSessions();
+        if (trashedSessions.length === 0) {
+          opts.addNotice('Workspace trash is already empty.');
+          setInput('');
+          return;
+        }
+
+        opts.clearTrash();
+        opts.addNotice(`Permanently cleared ${trashedSessions.length} trashed session(s).`, 'success');
         setInput('');
         return;
       }
@@ -708,7 +921,7 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
             `Session ${session.id.slice(0, 8)} (${session.name})`,
             `Scope: ${config.scope}`,
             `Status: ${config.readOnly ? 'read-only' : config.locked ? 'locked' : 'editable'}`,
-            `Tools: ${config.effectiveTools.filter((id) => id !== 'file_manager').length}${config.effectiveTools.includes('file_manager') ? ' + file_manager (suppressed in TUI)' : ''}`,
+            `Tools: ${config.effectiveTools.filter((id) => id !== 'file_manager').length}${config.effectiveTools.includes('file_manager') ? ' + file_manager (mirrored by TUI workspace commands)' : ''}`,
             `Skills: ${config.effectiveSkills.length}`,
           ].join('\n'));
           setInput('');
@@ -740,7 +953,7 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
                 return `  ${enabledSet.has(tool.id) ? '[x]' : '[ ]'} ${tool.label} (${tool.id})${statusSuffix} · ${tool.description}`;
               })),
         ];
-        if (config.effectiveTools.includes('file_manager')) lines.push('', 'Suppressed in TUI: file_manager');
+        if (config.effectiveTools.includes('file_manager')) lines.push('', 'Mirrored in TUI: file_manager is exposed through /files, /open, and /write.');
         opts.addNotice(lines.join('\n'));
         setInput('');
         return;
@@ -750,7 +963,7 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
         const [op, toolQuery] = command.args.split(/\s+/, 2);
         if (!op || !toolQuery || !['on', 'off'].includes(op)) { opts.addNotice('Usage: /tool on <tool-id> | /tool off <tool-id>', 'warning'); setInput(''); return; }
         if (toolQuery === 'file_manager') {
-          opts.addNotice('file_manager is not available in TUI. Use /files, /open, /write, or /shell instead.', 'warning');
+          opts.addNotice('file_manager is mirrored by the TUI workspace commands. Use /files, /open, or /write instead.', 'warning');
           setInput('');
           return;
         }
@@ -845,20 +1058,32 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
         return;
 
       case 'search': {
-        if (!command.args) {
-          opts.addNotice('Usage: /search <query>', 'warning');
+        const searchArgs = parseSearchArgs(command.args);
+        if (!searchArgs.query) {
+          opts.addNotice('Usage: /search [--case-sensitive|-c] [--content-only] <query>', 'warning');
           setInput('');
           return;
         }
-        const matches = MessageHistoryManager.searchMessages(session.messages, command.args);
+        const matches = MessageHistoryManager.searchMessages(session.messages, searchArgs.query, {
+          caseSensitive: searchArgs.caseSensitive,
+          searchInToolOutput: searchArgs.searchInToolOutput,
+        });
         if (matches.length === 0) {
-          opts.addNotice(`No messages matched "${command.args}".`, 'warning');
+          opts.showSearchResults(null);
+          opts.addNotice(`No messages matched "${searchArgs.query}" (${describeSearchArgs(searchArgs)}).`, 'warning');
           setInput('');
           return;
         }
+        opts.showSearchResults({
+          sessionId: session.id,
+          query: searchArgs.query,
+          caseSensitive: searchArgs.caseSensitive,
+          searchInToolOutput: searchArgs.searchInToolOutput,
+          matchIds: matches.map((match) => match.id),
+        });
         const visibleMatches = matches.slice(-8);
         opts.addNotice([
-          `Found ${matches.length} match(es) in ${session.id.slice(0, 8)} (${session.name}):`,
+          `Found ${matches.length} match(es) in ${session.id.slice(0, 8)} (${session.name}) · ${describeSearchArgs(searchArgs)}:`,
           ...visibleMatches.map((match) => formatSearchResult(match)),
           ...(matches.length > visibleMatches.length ? [`  ... ${matches.length - visibleMatches.length} older match(es)`] : []),
         ].join('\n'));
@@ -902,6 +1127,17 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
           ].join('\n'), 'success');
         } catch (exportError) {
           opts.addNotice(`Export failed: ${exportError instanceof Error ? exportError.message : String(exportError)}`, 'error');
+        }
+        setInput('');
+        return;
+      }
+
+      case 'stats': {
+        try {
+          const stats = await statsStorage.aggregate();
+          opts.addNotice(buildStatsCommandLines(stats).join('\n'), stats.totalInteractions > 0 ? 'info' : 'warning');
+        } catch (error) {
+          opts.addNotice(`Stats query failed: ${error instanceof Error ? error.message : String(error)}`, 'error');
         }
         setInput('');
         return;

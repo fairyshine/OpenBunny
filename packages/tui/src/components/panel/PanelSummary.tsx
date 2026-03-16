@@ -3,6 +3,7 @@ import type { LLMConfig } from '@openbunny/shared/types';
 import type { PanelSection } from '../../types.js';
 import { T } from '../../theme.js';
 import { truncate } from '../../utils/formatting.js';
+import { formatCompactStat } from '../../utils/statsPresentation.js';
 
 interface PanelSummaryProps {
   section: PanelSection;
@@ -23,6 +24,9 @@ interface PanelSummaryProps {
   searchProvider: string;
   fileBrowserPath: string;
   fileEntryCount: number;
+  statsTotalInteractions: number;
+  statsTotalTokens: number;
+  statsErrorCount: number;
 }
 
 export function PanelSummary(props: PanelSummaryProps) {
@@ -41,6 +45,8 @@ export function PanelSummary(props: PanelSummaryProps) {
       return <Text color={T.fgDim}>agents active · MCP {props.connectedMcpCount}/{props.mcpCount} connected</Text>;
     case 'files':
       return <Text color={T.fgDim}>{truncate(props.fileBrowserPath, 30)} · {props.fileEntryCount} item{props.fileEntryCount === 1 ? '' : 's'}</Text>;
+    case 'stats':
+      return <Text color={T.fgDim}>{formatCompactStat(props.statsTotalInteractions)} interactions · {formatCompactStat(props.statsTotalTokens)} tok · {props.statsErrorCount} error{props.statsErrorCount === 1 ? '' : 's'}</Text>;
     case 'about':
       return <Text color={T.fgDim}>OpenBunny v0.1.0 · exec {props.execLoginShell ? 'login-shell' : 'plain-shell'}</Text>;
     default:

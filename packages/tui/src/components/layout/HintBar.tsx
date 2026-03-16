@@ -11,18 +11,18 @@ export function HintBar({ panelVisible, width, panelEditing }: HintBarProps) {
   const compact = width < 96;
 
   return (
-    <Box paddingX={1} marginTop={1}>
+    <Box paddingX={1}>
       <Text color={T.fgSubtle}>
         {compact ? '^C quit' : '^C quit · Enter send'}
         {' · '}
         {panelEditing
           ? 'Esc/right click cancel edit · Enter apply'
           : panelVisible
-            ? 'Click select · wheel scroll · right click close'
-            : 'Esc/Tab panel'}
+            ? 'Click select · wheel scroll · e edit file · right click close'
+            : 'Esc/Tab panel · PgUp/PgDn scroll · Home/End jump'}
         {' · '}
-        {compact ? '/help' : '/help · /scope'}
-        {!compact && ' · /files workspace'}
+        {compact ? '/help · Ctrl+B/Ctrl+N search' : '/help · /scope · Ctrl+O scope · Ctrl+B/Ctrl+N search'}
+        {!compact && ' · /trash · /files workspace · Ctrl+F files'}
       </Text>
     </Box>
   );

@@ -5,6 +5,30 @@ import { initTerminal, resolveLLMConfig, resolveSystemPrompt, resolveWorkspace }
 import { getProviderMeta } from '@openbunny/shared/services/ai';
 import App from './App.js';
 
+function installTuiConsoleSilencer() {
+  const original = {
+    log: console.log.bind(console),
+    info: console.info.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console),
+    debug: console.debug.bind(console),
+  };
+
+  console.log = () => {};
+  console.info = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+  console.debug = () => {};
+
+  return () => {
+    console.log = original.log;
+    console.info = original.info;
+    console.warn = original.warn;
+    console.error = original.error;
+    console.debug = original.debug;
+  };
+}
+
 const args = process.argv.slice(2);
 let model: string | undefined;
 let provider: string | undefined;
@@ -29,7 +53,7 @@ for (let i = 0; i < args.length; i++) {
     case '--resume': resumeIdPrefix = args[++i]; break;
     case '-h': case '--help':
       console.log(`
-openbunny-tui - Interactive terminal UI for OpenBunny
+openbunny-tui - Streaming terminal chat for OpenBunny
 
 Options:
   -m, --model <model>       Model to use
@@ -55,7 +79,13 @@ Commands inside TUI:
   /agent <id>               Switch current agent
   /agent-new <name>         Create a new agent
   /new                      Create a new session
-  /delete <id>              Permanently delete a session
+  /tabs                     Show current session tabs
+  /tab <op>                 Switch or close a workspace tab
+  /delete <id>              Move a workspace session to trash
+  /trash                    Show workspace trash
+  /restore <id>             Restore a trashed workspace session
+  /purge <id>               Permanently delete a workspace session
+  /empty-trash              Permanently clear workspace trash
   /scope [global|session]   Show or switch current session config scope
   /tools                    Show enabled tools
   /tool on|off <id>         Toggle a tool
@@ -69,33 +99,31 @@ Commands inside TUI:
   /shell <command>          Run a shell command in the workspace
   /shell reset              Reset the persistent shell session
   /history                  Show session info
-  /sessions [filter]        List available sessions
+  /sessions [filter]        List available or trashed sessions
   /resume <id>              Resume a previous session
   /save                     Force-flush messages to disk
   /files                    List workspace files
-  /cd <path>                Change file panel directory
+  /cd <path>                Change current workspace directory
   /open <path>              Preview a workspace file
+  /write <p> <txt>          Overwrite a workspace file with escaped text
   /providers                List supported providers
+  /search [flags] <query>   Search with --case-sensitive/-c or --content-only and focus matches
+  /stats                    Show persisted usage statistics
+  /conn-test                Run an LLM connection test
 
-Panel keys:
-  Esc / Tab                 Open panel (when input empty)
-  Tab                       Switch section tab (when panel open)
-  Up / Down / j / k         Navigate panel items
-  Left / Right              Cycle selected setting values
-  Enter                     Select or open inline editor
-  Space                     Toggle selected toggle/action item
-  1-7                       Jump to panel sections
-  Ctrl+G / Ctrl+L           Focus General / LLM
-  Ctrl+T / Ctrl+K           Focus Tools / Skills
-  Ctrl+P                    Focus Network (agents + MCP)
-  Ctrl+F                    Focus Files
-  Esc                       Close panel
+Prompt keys:
+  Enter                     Send the current input
+  Ctrl+A / Ctrl+E           Move to line start / end
+  Left / Right              Move the cursor
+  Backspace                 Delete one character
+  Ctrl+C                    Exit
 `);
       process.exit(0);
   }
 }
 
 const { configDir } = initTerminal({ type: 'tui' });
+process.env.OPENBUNNY_DISABLE_CONSOLE_LOGGER = '1';
 
 const config = resolveLLMConfig({ apiKey, baseUrl, maxTokens, model, provider, temperature });
 const providerMeta = getProviderMeta(config.provider);
@@ -104,6 +132,7 @@ const resolvedWorkspace = resolveWorkspace(workspace);
 const startupNotice = (providerMeta?.requiresApiKey ?? true) && !config.apiKey
   ? `Provider "${config.provider}" requires an API key. Use /api-key <key>, switch with /provider <id>, or restart with --api-key.`
   : undefined;
+const restoreConsole = installTuiConsoleSilencer();
 const instance = render(React.createElement(App, {
   config,
   systemPrompt: resolvedSystemPrompt,
@@ -112,4 +141,8 @@ const instance = render(React.createElement(App, {
   resumeIdPrefix,
   startupNotice,
 }));
-instance.waitUntilExit().catch(() => {});
+instance.waitUntilExit()
+  .catch(() => {})
+  .finally(() => {
+    restoreConsole();
+  });

@@ -3,7 +3,7 @@ import type { LLMConfig } from '@openbunny/shared/types';
 export type NoticeTone = 'info' | 'success' | 'warning' | 'error';
 
 // Match the main TUI settings/navigation surfaces.
-export type PanelSection = 'general' | 'llm' | 'tools' | 'skills' | 'network' | 'files' | 'about';
+export type PanelSection = 'general' | 'llm' | 'tools' | 'skills' | 'network' | 'files' | 'stats' | 'about';
 
 export type PanelItemStatus = 'connected' | 'disconnected' | 'connecting';
 

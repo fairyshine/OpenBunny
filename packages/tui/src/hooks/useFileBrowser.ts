@@ -1,4 +1,4 @@
-import { mkdir, open, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -25,12 +25,20 @@ export interface FileBrowserOpenResult {
   preview?: FileBrowserPreview;
 }
 
+export interface FileBrowserTextFile {
+  path: string;
+  displayPath: string;
+  content: string;
+  size: number;
+}
+
 interface UseFileBrowserOptions {
   rootPath?: string;
 }
 
 const PREVIEW_MAX_BYTES = 12 * 1024;
 const PREVIEW_MAX_LINES = 12;
+const EDIT_MAX_BYTES = 64 * 1024;
 
 function isWithinRoot(rootPath: string, candidatePath: string): boolean {
   const relativePath = path.relative(rootPath, candidatePath);
@@ -105,6 +113,25 @@ async function loadFilePreview(rootPath: string, filePath: string): Promise<File
   } finally {
     await handle.close();
   }
+}
+
+async function loadTextFile(rootPath: string, filePath: string): Promise<FileBrowserTextFile> {
+  const stats = await stat(filePath);
+  if (stats.size > EDIT_MAX_BYTES) {
+    throw new Error(`File is too large for inline TUI editing (${stats.size} bytes, limit ${EDIT_MAX_BYTES}).`);
+  }
+
+  const buffer = await readFile(filePath);
+  if (detectBinary(buffer)) {
+    throw new Error('Binary files cannot be edited inline in TUI.');
+  }
+
+  return {
+    path: filePath,
+    displayPath: normalizeDisplayPath(rootPath, filePath),
+    content: buffer.toString('utf8'),
+    size: stats.size,
+  };
 }
 
 function resolveRenameTarget(currentPath: string, sourcePath: string, nextPathOrName: string) {
@@ -242,6 +269,13 @@ export function useFileBrowser({ rootPath }: UseFileBrowserOptions) {
     return { kind: 'file', path: nextPath, preview: nextPreview };
   }, [resolvePath, root]);
 
+  const readTextFile = useCallback(async (inputPath: string) => {
+    const nextPath = resolvePath(inputPath);
+    const nextTextFile = await loadTextFile(root, nextPath);
+    setPreview(await loadFilePreview(root, nextPath));
+    return nextTextFile;
+  }, [resolvePath, root]);
+
   const clearPreview = useCallback(() => {
     setPreview(null);
   }, []);
@@ -353,6 +387,7 @@ export function useFileBrowser({ rootPath }: UseFileBrowserOptions) {
     changeDirectory,
     goUp,
     openPath,
+    readTextFile,
     previewFile,
     refresh,
     clearPreview,

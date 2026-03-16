@@ -19,28 +19,7 @@ import {
 import { generateSkillTemplate } from '../services/skills';
 
 // Built-in skills defined inline (always available)
-const BUILTIN_SKILLS: LoadedSkill[] = [
-  {
-    id: 'data-analysis',
-    name: 'data-analysis',
-    description: 'Analyze data files (CSV, JSON, Excel) using Python. Performs statistical analysis, generates visualizations, and creates summary reports.',
-    body: `# Data Analysis Skill
-
-## When to use this skill
-Use this skill when the user needs to:
-- Analyze CSV, JSON, or Excel files
-- Generate statistical summaries
-- Create visualizations (charts, graphs, plots)
-- Find patterns or correlations in data
-- Clean or transform data
-
-## How it works
-This skill uses Python with pandas, numpy, and matplotlib to analyze data files.`,
-    path: 'builtin://data-analysis',
-    source: 'builtin',
-    metadata: { author: 'system', version: '1.0' },
-  },
-];
+const BUILTIN_SKILLS: LoadedSkill[] = [];
 
 interface SkillState {
   skills: LoadedSkill[];

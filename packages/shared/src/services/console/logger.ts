@@ -24,6 +24,29 @@ export interface LogEntry {
   metadata?: Record<string, unknown>;
 }
 
+function shouldEchoToConsole(): boolean {
+  if (typeof process === 'undefined') {
+    return true;
+  }
+
+  if (process.env.OPENBUNNY_DISABLE_CONSOLE_LOGGER === '1') {
+    return false;
+  }
+
+  const argv = process.argv || [];
+  const scriptPath = argv[1] || '';
+
+  if (
+    scriptPath.includes('openbunny-tui')
+    || scriptPath.includes('/packages/tui/')
+    || scriptPath.includes('\\packages\\tui\\')
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 class ConsoleLogger {
   private logs: LogEntry[] = [];
   private maxLogs = 1000; // 最多保留 1000 条日志
@@ -56,10 +79,11 @@ class ConsoleLogger {
       this.logs = this.logs.slice(-this.maxLogs);
     }
 
-    // 同时输出到浏览器控制台
-    const consoleMethod = level === 'error' ? 'error' : level === 'warning' ? 'warn' : 'log';
-    const prefix = `[${category.toUpperCase()}]`;
-    console[consoleMethod](prefix, message, details || '');
+    if (shouldEchoToConsole()) {
+      const consoleMethod = level === 'error' ? 'error' : level === 'warning' ? 'warn' : 'log';
+      const prefix = `[${category.toUpperCase()}]`;
+      console[consoleMethod](prefix, message, details || '');
+    }
 
     // 通知监听器
     this.notifyListeners();

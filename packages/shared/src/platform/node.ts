@@ -1,5 +1,7 @@
 import { initializePlatformRuntime } from '../platform';
 import type { IPlatformStorage, IPlatformAPI, IPlatformContext, PlatformInfo } from '../platform';
+import { setFileSystemInstance } from '../services/filesystem';
+import { NodeFileSystem } from '../services/filesystem/nodeFileSystem';
 import { initializePlatformStorage } from '../services/storage/bootstrap';
 import { FileMessageBackend } from '../services/storage/fileBackend';
 import { FileStatsBackend } from '../services/storage/fileStatsBackend';
@@ -24,6 +26,8 @@ export interface NodePlatformOptions {
   statsDir?: string;
   /** Directory for Zustand persist JSON files */
   storeDir?: string;
+  /** Directory for the virtual /root filesystem used by skills and tools */
+  filesDir?: string;
 }
 
 /**
@@ -56,6 +60,10 @@ export function initNodePlatform(
       const statsBackend = options?.statsDir
         ? new FileStatsBackend(options.statsDir)
         : undefined;
+
+      if (options?.filesDir) {
+        setFileSystemInstance(new NodeFileSystem(options.filesDir));
+      }
 
       initializePlatformStorage({ messageBackend, statsBackend });
 

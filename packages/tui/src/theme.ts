@@ -1,69 +1,67 @@
 import type { NoticeTone, PanelSection, PanelItemStatus } from './types.js';
 
 /* ── Color palette ─────────────────────────────────────────
- * Three-tier system inspired by Gemini CLI:
- *   1. Raw palette (T) — hex values
- *   2. Semantic tokens — purpose-based aliases
- *   3. Gradient — brand identity colors
+ * Keep the base mostly neutral and reserve stronger accents
+ * for state changes, similar to Gemini CLI's terminal tone.
  * ────────────────────────────────────────────────────────── */
 
-/** Brand gradient: purple → blue → cyan (used for logo, spinner, accents) */
-export const GRADIENT = ['#9f7aea', '#7c6ff7', '#58d5ba'] as const;
+/** Brand gradient: blue → cyan → mint (used for logo, spinner, accents) */
+export const GRADIENT = ['#7dd3fc', '#38bdf8', '#5eead4'] as const;
 
 export const T = {
   // ── brand ──────────────────────────────────────────────
-  brand:       '#9f7aea',
-  brandDim:    '#7c6ff7',
-  brandLight:  '#c4b5fd',
-  accent:      '#58d5ba',
-  accentDim:   '#3a9e87',
-  accentSoft:  '#164e47',
+  brand:       '#7dd3fc',
+  brandDim:    '#38bdf8',
+  brandLight:  '#bae6fd',
+  accent:      '#5eead4',
+  accentDim:   '#2dd4bf',
+  accentSoft:  '#10353a',
 
   // ── semantic status ────────────────────────────────────
-  ok:          '#6ee7a0',
-  warn:        '#fbbf24',
+  ok:          '#86efac',
+  warn:        '#facc15',
   err:         '#f87171',
-  info:        '#60a5fa',
+  info:        '#93c5fd',
 
   // ── surfaces & text ────────────────────────────────────
-  fg:          '#e4e4e7',
-  fgDim:       '#a1a1aa',
-  fgMuted:     '#71717a',
-  fgSubtle:    '#52525b',
+  fg:          '#f5f5f5',
+  fgDim:       '#d4d4d8',
+  fgMuted:     '#a1a1aa',
+  fgSubtle:    '#71717a',
   border:      '#3f3f46',
   borderLight: '#52525b',
-  borderFocus: '#9f7aea',
-  surface:     '#18181b',
-  surfaceAlt:  '#111827',
+  borderFocus: '#38bdf8',
+  surface:     '#111111',
+  surfaceAlt:  '#18181b',
 
   // ── message roles ──────────────────────────────────────
-  user:        '#6ee7a0',
-  assistant:   '#c4b5fd',
+  user:        '#5eead4',
+  assistant:   '#7dd3fc',
   system:      '#71717a',
-  tool:        '#fbbf24',
-  toolResult:  '#c084fc',
-  skill:       '#22d3ee',
+  tool:        '#facc15',
+  toolResult:  '#c4b5fd',
+  skill:       '#67e8f9',
   thinking:    '#a1a1aa',
 
   // ── panel section accents ──────────────────────────────
-  sGeneral:    '#9f7aea',
-  sLlm:        '#c084fc',
-  sTools:      '#fbbf24',
-  sSkills:     '#60a5fa',
-  sNetwork:    '#22d3ee',
-  sFiles:      '#34d399',
-  sAbout:      '#f0abfc',
+  sGeneral:    '#7dd3fc',
+  sLlm:        '#c4b5fd',
+  sTools:      '#facc15',
+  sSkills:     '#67e8f9',
+  sNetwork:    '#93c5fd',
+  sFiles:      '#86efac',
+  sStats:      '#fb923c',
+  sAbout:      '#e9d5ff',
 
   // ── gradient accent cycle (for spinner) ────────────────
   gradientCycle: [
-    '#c084fc', // purple
-    '#9f7aea', // brand
-    '#60a5fa', // blue
+    '#7dd3fc', // brand
+    '#38bdf8', // sky
     '#22d3ee', // cyan
-    '#58d5ba', // accent green
-    '#fbbf24', // yellow
+    '#5eead4', // mint
+    '#facc15', // yellow
     '#f87171', // red
-    '#c084fc', // back to purple
+    '#7dd3fc', // back to brand
   ] as readonly string[],
 } as const;
 
@@ -77,6 +75,7 @@ export function getSectionColor(section: PanelSection): string {
     case 'skills':    return T.sSkills;
     case 'network':   return T.sNetwork;
     case 'files':     return T.sFiles;
+    case 'stats':     return T.sStats;
     case 'about':     return T.sAbout;
     default:          return T.brand;
   }
@@ -84,13 +83,14 @@ export function getSectionColor(section: PanelSection): string {
 
 export function getSectionSurfaceColor(section: PanelSection): string {
   switch (section) {
-    case 'general':   return '#20172e';
-    case 'llm':       return '#26162f';
-    case 'tools':     return '#2d2411';
-    case 'skills':    return '#122338';
-    case 'network':   return '#0f2730';
-    case 'files':     return '#10261f';
-    case 'about':     return '#2a1830';
+    case 'general':   return '#15212a';
+    case 'llm':       return '#21182c';
+    case 'tools':     return '#2b2410';
+    case 'skills':    return '#102432';
+    case 'network':   return '#12202e';
+    case 'files':     return '#11231c';
+    case 'stats':     return '#2b1d12';
+    case 'about':     return '#221827';
     default:          return T.surface;
   }
 }
@@ -103,6 +103,7 @@ export function getSectionTabLabel(section: PanelSection): string {
     case 'skills':    return 'Skills';
     case 'network':   return 'Network';
     case 'files':     return 'Files';
+    case 'stats':     return 'Stats';
     case 'about':     return 'About';
     default:          return section;
   }
@@ -116,6 +117,7 @@ export function getSectionShortcut(section: PanelSection): string | null {
     case 'skills':    return 'Ctrl+K';
     case 'network':   return 'Ctrl+P';
     case 'files':     return 'Ctrl+F';
+    case 'stats':     return null;
     default:          return null;
   }
 }

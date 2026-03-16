@@ -14,6 +14,9 @@ export function useAppState() {
   const globalLLMConfig = useSessionStore((s) => s.llmConfig);
   const createSession = useSessionStore((s) => s.createSession);
   const renameSession = useSessionStore((s) => s.renameSession);
+  const deleteSession = useSessionStore((s) => s.deleteSession);
+  const restoreSession = useSessionStore((s) => s.restoreSession);
+  const clearTrash = useSessionStore((s) => s.clearTrash);
   const addMessage = useSessionStore((s) => s.addMessage);
   const updateMessage = useSessionStore((s) => s.updateMessage);
   const clearSessionMessages = useSessionStore((s) => s.clearSessionMessages);
@@ -122,7 +125,7 @@ export function useAppState() {
   return {
     // session store
     globalSessions, globalCurrentSessionId, globalOpenSessionIds, globalLLMConfig,
-    createSession, renameSession, addMessage, updateMessage,
+    createSession, renameSession, deleteSession, restoreSession, clearTrash, addMessage, updateMessage,
     clearSessionMessages, setGlobalLLMConfig, setSessionStreaming,
     setSessionSystemPrompt, setSessionTools, setSessionSkills,
     openSession, closeSession, loadSessionMessages,

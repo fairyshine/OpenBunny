@@ -6,6 +6,23 @@ export function truncate(value: string, maxLength: number): string {
   return `${value.slice(0, maxLength - 1)}...`;
 }
 
+export function encodeEscapedText(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+export function decodeEscapedText(value: string): string {
+  return value
+    .replace(/\\\\/g, '\u0000')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\u0000/g, '\\');
+}
+
 export function formatTimeout(timeoutMs: number): string {
   if (timeoutMs % 60000 === 0) return `${timeoutMs / 60000}m`;
   if (timeoutMs % 1000 === 0) return `${timeoutMs / 1000}s`;
@@ -42,13 +59,24 @@ export function formatConfigSummary(
     '    /agent <id>             Switch current agent',
     '    /agent-new <name>       Create a new agent',
     '    /sessions [filter]      List sessions by type',
+    '    /tabs                   List workspace tabs',
+    '    /tab <op>               Switch or close a tab',
+    '    /delete <id>            Move a workspace session to trash',
+    '    /trash                  Show workspace trash',
+    '    /restore <id>           Restore a trashed session',
+    '    /purge <id>             Permanently delete a session',
+    '    /empty-trash            Permanently clear workspace trash',
     '    /tools                  Show enabled tools',
     '    /tool on|off <id>       Toggle a tool',
     '    /skills                 Show enabled skills',
     '    /skill on|off <id>      Toggle a skill',
+    '    /search [flags]         Search the current session',
+    '    /stats                  Show persisted usage statistics',
+    '    /conn-test              Run an LLM connection test',
     '    /files                  List workspace files',
-    '    /cd <path>              Change file panel directory',
+    '    /cd <path>              Change current workspace directory',
     '    /open <path>            Preview a workspace file',
+    '    /write <p> <txt>        Overwrite a workspace file using escaped text',
     '    /mcp                    List MCP connections',
     '    /mcp add <n> <u> [t]    Add and sync an MCP connection',
     '    /mcp sync <id>          Refresh an MCP connection',

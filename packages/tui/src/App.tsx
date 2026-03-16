@@ -1,24 +1,26 @@
-import { useEffect, useState } from 'react';
-import { Box, Text, useApp, useStdout } from 'ink';
-import type { Session } from '@openbunny/shared/types';
-import type { AppProps } from './types.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Box, Static, useApp, useStdout } from 'ink';
+import type { Message } from '@openbunny/shared/types';
+import { flushAllSessionPersistence } from '@openbunny/shared/services/storage/sessionPersistence';
+import type { AppProps, NoticeTone } from './types.js';
 import { useAppState } from './hooks/useAppState.js';
 import { useNotices } from './hooks/useNotices.js';
 import { useRuntimeConfig } from './hooks/useRuntimeConfig.js';
 import { useAgentLoop } from './hooks/useAgentLoop.js';
 import { useCommandHandler } from './hooks/useCommandHandler.js';
-import { usePanel } from './hooks/usePanel.js';
 import { useFileBrowser } from './hooks/useFileBrowser.js';
+import { usePanel } from './hooks/usePanel.js';
 import { resolveSessionOnStartup } from './utils/session.js';
-import { AppHeader } from './components/layout/AppHeader.js';
+import {
+  TranscriptMessage,
+  TranscriptNotice,
+  TranscriptBanner,
+  isStreamingMessage,
+} from './components/chat/TranscriptMessage.js';
 import { FooterBar } from './components/layout/FooterBar.js';
 import { HintBar } from './components/layout/HintBar.js';
-import { InputBar } from './components/layout/InputBar.js';
-import { SessionStrip } from './components/layout/SessionStrip.js';
-import { MessageList } from './components/chat/MessageList.js';
-import { NoticePanel } from './components/notices/NoticePanel.js';
+import { PromptBar } from './components/layout/PromptBar.js';
 import { Panel } from './components/panel/Panel.js';
-import { T } from './theme.js';
 import { getAvailableToolEntries } from './utils/toolPresentation.js';
 import {
   getEffectiveSessionSkills,
@@ -28,8 +30,23 @@ import {
   isSessionConfigLocked,
 } from './utils/sessionPresentation.js';
 
-const MIN_TERM_COLS = 88;
-const MIN_TERM_ROWS = 22;
+type PrintedEntry =
+  | {
+      id: string;
+      kind: 'banner';
+    }
+  | {
+      id: string;
+      kind: 'message';
+      message: Message;
+    }
+  | {
+      id: string;
+      kind: 'notice';
+      content: string;
+      tone: NoticeTone;
+      label?: string;
+    };
 
 function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, startupNotice }: AppProps) {
   const { exit } = useApp();
@@ -37,14 +54,24 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
   const state = useAppState();
   const { notices, error, setError, addNotice, clearNotices } = useNotices();
   const [isInitializing, setIsInitializing] = useState(true);
-  const fileBrowser = useFileBrowser({ rootPath: workspace });
-
-  /* ── Track terminal size for fullscreen layout ───── */
+  const [printedEntries, setPrintedEntries] = useState<PrintedEntry[]>([]);
   const [termSize, setTermSize] = useState({ cols: stdout.columns ?? 80, rows: stdout.rows ?? 24 });
+  const fileBrowser = useFileBrowser({ rootPath: workspace });
+  const printedMessageIdsRef = useRef(new Set<string>());
+  const printedNoticeIdsRef = useRef(new Set<string>());
+  const hydratedSessionIdsRef = useRef(new Set<string>());
+  const lastErrorRef = useRef('');
+  const printedBannerRef = useRef(false);
+
   useEffect(() => {
-    const onResize = () => setTermSize({ cols: stdout.columns ?? 80, rows: stdout.rows ?? 24 });
+    const onResize = () => {
+      setTermSize({ cols: stdout.columns ?? 80, rows: stdout.rows ?? 24 });
+    };
+
     stdout.on('resize', onResize);
-    return () => { stdout.off('resize', onResize); };
+    return () => {
+      stdout.off('resize', onResize);
+    };
   }, [stdout]);
 
   const { runtimeConfig, runtimeConfigRef, applyRuntimeConfig, saveRuntimeConfig } = useRuntimeConfig({
@@ -78,11 +105,23 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     enabledSkills: state.enabledSkills,
   });
 
+  const appendEntries = useCallback((entries: PrintedEntry[]) => {
+    if (entries.length === 0) {
+      return;
+    }
+
+    setPrintedEntries((previous) => [...previous, ...entries]);
+  }, []);
+
   const cmd = useCommandHandler({
-    workspace, configDir, systemPrompt,
+    workspace,
+    configDir,
+    systemPrompt,
     isDefaultAgent: state.isDefaultAgent,
     currentAgentId: state.currentAgentId,
     currentAgent: state.currentAgent,
+    globalSessions: state.globalSessions,
+    globalOpenSessionIds: state.globalOpenSessionIds,
     sessions: state.sessions,
     enabledTools: state.enabledTools,
     enabledSkills: state.enabledSkills,
@@ -95,6 +134,9 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     setSessionSystemPrompt: state.setSessionSystemPrompt,
     setSessionTools: state.setSessionTools,
     setSessionSkills: state.setSessionSkills,
+    deleteSession: state.deleteSession,
+    restoreSession: state.restoreSession,
+    clearTrash: state.clearTrash,
     setAgentSessionSystemPrompt: state.setAgentSessionSystemPrompt,
     setAgentSessionTools: state.setAgentSessionTools,
     setAgentSessionSkills: state.setAgentSessionSkills,
@@ -102,6 +144,7 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     clearSessionMessages: state.clearSessionMessages,
     loadSessionMessages: state.loadSessionMessages,
     openSession: state.openSession,
+    closeSession: state.closeSession,
     loadAgentSessionMessages: state.loadAgentSessionMessages,
     setAgentCurrentSession: state.setAgentCurrentSession,
     flushMessages: state.flushMessages,
@@ -123,23 +166,203 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     updateMCPStatus: state.updateMCPStatus,
     setMCPTools: state.setMCPTools,
     setMCPError: state.setMCPError,
-    addNotice, clearNotices,
+    addNotice,
+    clearNotices,
     setIsLoading: agentLoop.setIsLoading,
     setActivityLabel: agentLoop.setActivityLabel,
     runtimeConfigRef,
     applyRuntimeConfig,
     saveRuntimeConfig,
     fileBrowser,
+    showSearchResults: () => {},
     handleStop: agentLoop.handleStop,
     sendMessage: agentLoop.sendMessage,
   });
 
-  const agentName = state.currentAgent?.name || 'OpenBunny';
+  const currentSession = state.currentSession;
+  const messages = currentSession?.messages || [];
+  const liveMessage = [...messages].reverse().find(isStreamingMessage) || null;
+  const readOnlySession = isReadOnlySession(currentSession);
+  const sessionConfigScope = getSessionConfigScopeLabel(currentSession);
+  const sessionConfigState = readOnlySession
+    ? 'read-only'
+    : isSessionConfigLocked(currentSession)
+      ? 'locked'
+      : 'editable';
+  const effectiveToolCount = getEffectiveSessionTools(currentSession, state.enabledTools)
+    .filter((id) => id !== 'file_manager')
+    .length;
+  const effectiveSkillCount = getEffectiveSessionSkills(currentSession, state.enabledSkills).length;
+  const availableToolCount = getAvailableToolEntries(state.builtinToolIds, state.mcpConnections).length;
+  const agentName = state.currentAgent?.isDefault ? 'OpenBunny' : (state.currentAgent?.name || 'OpenBunny');
+
+  useEffect(() => {
+    if (printedBannerRef.current) {
+      return;
+    }
+
+    printedBannerRef.current = true;
+    appendEntries([{
+      id: crypto.randomUUID(),
+      kind: 'banner',
+    }]);
+  }, [appendEntries]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void state.loadSkills()
+      .catch(() => {})
+      .finally(async () => {
+        try {
+          const session = await resolveSessionOnStartup('TUI Chat', systemPrompt, resumeIdPrefix);
+          if (cancelled) return;
+          if (resumeIdPrefix) {
+            addNotice(`Resumed session ${session.id.slice(0, 8)} (${session.name}) — ${session.messages.length} message(s)`, 'success');
+          }
+          if (startupNotice) {
+            addNotice(startupNotice, 'info');
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setError(err instanceof Error ? err.message : String(err));
+          }
+        } finally {
+          if (!cancelled) {
+            setIsInitializing(false);
+          }
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.loadSkills, resumeIdPrefix, startupNotice, systemPrompt, addNotice, setError]);
+
+  useEffect(() => {
+    if (isInitializing || state.isDefaultAgent || state.currentSession) {
+      return;
+    }
+
+    const next = state.createAgentSession(state.currentAgentId, 'TUI Chat');
+    if (systemPrompt) {
+      state.setAgentSessionSystemPrompt(state.currentAgentId, next.id, systemPrompt);
+    }
+  }, [
+    isInitializing,
+    state.createAgentSession,
+    state.currentAgentId,
+    state.currentSession,
+    state.isDefaultAgent,
+    state.setAgentSessionSystemPrompt,
+    systemPrompt,
+  ]);
+
+  useEffect(() => {
+    if (!currentSession || hydratedSessionIdsRef.current.has(currentSession.id)) {
+      return;
+    }
+
+    hydratedSessionIdsRef.current.add(currentSession.id);
+    const historyEntries: PrintedEntry[] = [];
+
+    for (const message of currentSession.messages) {
+      if (isStreamingMessage(message)) {
+        continue;
+      }
+
+      printedMessageIdsRef.current.add(`${currentSession.id}:${message.id}`);
+      historyEntries.push({
+        id: crypto.randomUUID(),
+        kind: 'message',
+        message,
+      });
+    }
+
+    appendEntries(historyEntries);
+  }, [appendEntries, currentSession]);
+
+  useEffect(() => {
+    if (!currentSession) {
+      return;
+    }
+
+    const nextEntries: PrintedEntry[] = [];
+    for (const message of currentSession.messages) {
+      const printedId = `${currentSession.id}:${message.id}`;
+      if (printedMessageIdsRef.current.has(printedId) || isStreamingMessage(message)) {
+        continue;
+      }
+
+      printedMessageIdsRef.current.add(printedId);
+      nextEntries.push({
+        id: crypto.randomUUID(),
+        kind: 'message',
+        message,
+      });
+    }
+
+    appendEntries(nextEntries);
+  }, [appendEntries, currentSession, messages]);
+
+  useEffect(() => {
+    const nextEntries: PrintedEntry[] = [];
+
+    for (const notice of notices) {
+      if (printedNoticeIdsRef.current.has(notice.id)) {
+        continue;
+      }
+
+      printedNoticeIdsRef.current.add(notice.id);
+      nextEntries.push({
+        id: notice.id,
+        kind: 'notice',
+        content: notice.content,
+        tone: notice.tone,
+      });
+    }
+
+    appendEntries(nextEntries);
+  }, [appendEntries, notices]);
+
+  useEffect(() => {
+    if (!error || lastErrorRef.current === error) {
+      return;
+    }
+
+    lastErrorRef.current = error;
+    appendEntries([{
+      id: crypto.randomUUID(),
+      kind: 'notice',
+      content: error,
+      tone: 'error',
+      label: 'error',
+    }]);
+  }, [appendEntries, error]);
+
+  const handleExit = useCallback(() => {
+    void flushAllSessionPersistence().finally(() => {
+      exit();
+    });
+  }, [exit]);
+
+  const handleSubmit = useCallback((value: string) => {
+    const trimmed = value.trim();
+
+    if (agentLoop.isLoading && trimmed && !trimmed.startsWith('/stop')) {
+      addNotice('Model is still replying. Keep typing, or run /stop before sending the next message.', 'info');
+      return;
+    }
+
+    void cmd.handleSubmit(value);
+  }, [addNotice, agentLoop.isLoading, cmd.handleSubmit]);
+
   const panel = usePanel({
     terminalWidth: termSize.cols,
     terminalHeight: termSize.rows,
     sessions: state.sessions,
-    currentSession: state.currentSession,
+    globalSessions: state.globalSessions,
+    currentSession,
     currentSessionId: state.currentSessionId,
     currentAgent: state.currentAgent,
     agents: state.agents,
@@ -151,6 +374,7 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     execLoginShell: state.execLoginShell,
     toolExecutionTimeout: state.toolExecutionTimeout,
     searchProvider: state.searchProvider,
+    proxyUrl: state.proxyUrl,
     runtimeConfig,
     workspace,
     capabilities: state.capabilities,
@@ -160,6 +384,9 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     systemPrompt,
     addNotice,
     createSession: state.createSession,
+    deleteSession: state.deleteSession,
+    restoreSession: state.restoreSession,
+    clearTrash: state.clearTrash,
     loadSessionMessages: state.loadSessionMessages,
     openSession: state.openSession,
     setSessionSystemPrompt: state.setSessionSystemPrompt,
@@ -170,6 +397,7 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     setCurrentAgent: state.setCurrentAgent,
     agentSessions: state.agentSessions,
     createAgentSession: state.createAgentSession,
+    deleteAgentSession: state.deleteAgentSession,
     setAgentSessionSystemPrompt: state.setAgentSessionSystemPrompt,
     setAgentSessionTools: state.setAgentSessionTools,
     setAgentSessionSkills: state.setAgentSessionSkills,
@@ -184,159 +412,65 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     applyRuntimeConfig,
     saveRuntimeConfig,
     fileBrowser,
+    setIsLoading: agentLoop.setIsLoading,
+    setActivityLabel: agentLoop.setActivityLabel,
     input: cmd.input,
     isInitializing,
     isLoading: agentLoop.isLoading,
+    showSearchResults: () => {},
   });
 
-  /* ── Startup ───────────────────────────────────────── */
-  useEffect(() => {
-    let cancelled = false;
-    void state.loadSkills()
-      .catch(() => {})
-      .finally(async () => {
-        try {
-          const session = await resolveSessionOnStartup('TUI Chat', systemPrompt, resumeIdPrefix);
-          if (cancelled) return;
-          if (resumeIdPrefix) {
-            addNotice(`Resumed session ${session.id.slice(0, 8)} (${session.name}) — ${session.messages.length} message(s)`, 'success');
-          }
-          if (startupNotice) {
-            addNotice(startupNotice, 'info');
-          }
-        } catch (err) {
-          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
-        } finally {
-          if (!cancelled) setIsInitializing(false);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [state.loadSkills, resumeIdPrefix, startupNotice, systemPrompt, addNotice, setError]);
-
-  /* ── Auto-create agent session ─────────────────────── */
-  useEffect(() => {
-    if (isInitializing || state.isDefaultAgent || state.currentSession) return;
-    const next = state.createAgentSession(state.currentAgentId, 'TUI Chat');
-    if (systemPrompt) state.setAgentSessionSystemPrompt(state.currentAgentId, next.id, systemPrompt);
-  }, [state.createAgentSession, state.currentAgentId, state.currentSession, state.isDefaultAgent, isInitializing, state.setAgentSessionSystemPrompt, systemPrompt]);
-
-  const messages = state.currentSession?.messages || [];
-  const readOnlySession = isReadOnlySession(state.currentSession);
-  const sessionConfigScope = getSessionConfigScopeLabel(state.currentSession);
-  const sessionConfigState = readOnlySession
-    ? 'read-only'
-    : isSessionConfigLocked(state.currentSession)
-      ? 'locked'
-      : 'editable';
-  const effectiveToolCount = getEffectiveSessionTools(state.currentSession, state.enabledTools)
-    .filter((id) => id !== 'file_manager')
-    .length;
-  const effectiveSkillCount = getEffectiveSessionSkills(state.currentSession, state.enabledSkills).length;
-  const availableToolCount = getAvailableToolEntries(state.builtinToolIds, state.mcpConnections).length;
-  const totalMessageCount = messages.length;
-  const visibleSessions = state.isDefaultAgent
-    ? (() => {
-        const openSessions = state.globalOpenSessionIds
-          .map((sessionId) => state.sessions.find((session) => session.id === sessionId))
-          .filter((session): session is Session => Boolean(session));
-        if (state.currentSession && !openSessions.some((session) => session.id === state.currentSession?.id)) {
-          return [state.currentSession, ...openSessions];
-        }
-        return openSessions;
-      })()
-    : (() => {
-        const current = state.currentSession ? [state.currentSession] : [];
-        const recent = state.sessions
-          .filter((session) => session.id !== state.currentSessionId)
-          .slice(0, 4);
-        return [...current, ...recent];
-      })();
-  const disabled = agentLoop.isLoading || isInitializing || panel.panelVisible;
-  const tooSmall = termSize.cols < MIN_TERM_COLS || termSize.rows < MIN_TERM_ROWS;
-  const disabledReason = isInitializing
-    ? 'Initializing'
-    : agentLoop.isLoading
-      ? agentLoop.activityLabel || 'Streaming response'
-      : panel.panelEditor
-        ? `Editing ${panel.panelEditor.label}`
-      : panel.panelVisible
-        ? 'Panel navigation active'
-        : undefined;
-
-  if (tooSmall) {
-    return (
-      <Box
-        flexDirection="column"
-        width={termSize.cols}
-        height={termSize.rows}
-        justifyContent="center"
-        alignItems="center"
-        paddingX={2}
-      >
-        <Box borderStyle="round" borderColor={T.warn} paddingX={2} flexDirection="column">
-          <Text color={T.warn} bold>Terminal too small for TUI layout</Text>
-          <Text color={T.fgDim}>Current: {termSize.cols}x{termSize.rows}</Text>
-          <Text color={T.fgDim}>Recommended: {MIN_TERM_COLS}+ columns, {MIN_TERM_ROWS}+ rows</Text>
-          <Text color={T.fgSubtle}>Resize the terminal to restore the full chat area and floating panel.</Text>
-        </Box>
-      </Box>
-    );
-  }
+  const statusLabel = isInitializing
+    ? 'Initializing...'
+    : agentLoop.currentStatus || (agentLoop.isLoading ? agentLoop.activityLabel : '');
+  const width = Math.max(24, termSize.cols);
+  const panelOverlayLift = 4;
+  const panelBottomOffset = Math.max(
+    0,
+    termSize.rows - (panel.panelTop + panel.panelHeight - 1) + panelOverlayLift,
+  );
+  const promptStatusLabel = panel.panelEditor
+    ? `Editing ${panel.panelEditor.label}`
+    : panel.panelVisible
+      ? 'Panel navigation active'
+      : statusLabel;
 
   return (
-    <Box width={termSize.cols} height={termSize.rows}>
-      <Box flexDirection="column" width={termSize.cols} height={termSize.rows}>
-        <AppHeader
-          agentName={agentName}
-          runtimeConfig={runtimeConfig}
-          workspace={workspace}
-          width={termSize.cols}
-          totalMessageCount={totalMessageCount}
-          currentSessionId={state.currentSessionId}
-          isLoading={agentLoop.isLoading}
-          panelVisible={panel.panelVisible}
-        />
+    <Box width={termSize.cols} height={panel.panelVisible ? termSize.rows : undefined}>
+      <Box flexDirection="column" width={termSize.cols}>
+        <Box flexDirection="column">
+          <Static items={printedEntries}>
+            {(entry) => {
+              if (entry.kind === 'banner') {
+                return <TranscriptBanner />;
+              }
 
-        <Box flexDirection="column" flexGrow={1} overflow="hidden">
-          <SessionStrip
-            sessions={visibleSessions}
-            currentSessionId={state.currentSessionId}
-            width={termSize.cols}
-            modeLabel={state.isDefaultAgent ? 'workspace tabs' : `agent ${agentName}`}
-          />
+              if (entry.kind === 'message') {
+                return <TranscriptMessage message={entry.message} />;
+              }
 
-          <MessageList
-            session={state.currentSession}
-            messages={messages}
-            sessionConfigScope={sessionConfigScope}
-            sessionConfigState={sessionConfigState}
-            enabledToolCount={effectiveToolCount}
-            enabledSkillCount={effectiveSkillCount}
-            isInitializing={isInitializing}
-            isLoading={agentLoop.isLoading}
-            currentStatus={agentLoop.currentStatus}
-            activityLabel={agentLoop.activityLabel}
-            width={termSize.cols}
-          />
+              return (
+                <TranscriptNotice
+                  content={entry.content}
+                  tone={entry.tone}
+                  label={entry.label}
+                />
+              );
+            }}
+          </Static>
 
-          <NoticePanel notices={notices} error={error} width={termSize.cols} />
+          {liveMessage && <TranscriptMessage message={liveMessage} />}
         </Box>
 
-        <InputBar
+        <PromptBar
           input={cmd.input}
           setInput={cmd.setInput}
-          onSubmit={cmd.handleSubmit}
-          disabled={disabled}
-          readOnly={readOnlySession}
-          session={state.currentSession}
-          sessionConfigScope={sessionConfigScope}
-          sessionConfigState={sessionConfigState}
-          enabledToolCount={effectiveToolCount}
-          enabledSkillCount={effectiveSkillCount}
-          width={termSize.cols}
-          disabledReason={disabledReason}
+          onSubmit={handleSubmit}
+          onExit={handleExit}
+          isLoading={agentLoop.isLoading}
+          disabled={isInitializing || panel.panelVisible}
+          statusLabel={promptStatusLabel}
         />
-
         <FooterBar
           runtimeConfig={runtimeConfig}
           currentSessionId={state.currentSessionId}
@@ -344,12 +478,10 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
           isLoading={agentLoop.isLoading}
           sessionConfigScope={sessionConfigScope}
           sessionConfigState={sessionConfigState}
-          width={termSize.cols}
-          totalMessageCount={totalMessageCount}
-          panelVisible={panel.panelVisible}
+          width={width}
+          totalMessageCount={messages.length}
         />
-
-        <HintBar panelVisible={panel.panelVisible} panelEditing={Boolean(panel.panelEditor)} width={termSize.cols} />
+        <HintBar panelVisible={panel.panelVisible} panelEditing={Boolean(panel.panelEditor)} width={width} />
       </Box>
 
       {panel.panelVisible && (
@@ -358,43 +490,47 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
           width={termSize.cols}
           height={termSize.rows}
           flexDirection="column"
-          justifyContent="center"
-          alignItems="center"
+          justifyContent="flex-end"
         >
-          <Panel
-            section={panel.panelSection}
-            items={panel.currentItems}
-            selectedItemKey={panel.selectedItemKey}
-            panelWidth={panel.panelWidth}
-            panelHeight={panel.panelHeight}
-            hiddenBefore={panel.window.hiddenBefore}
-            hiddenAfter={panel.window.hiddenAfter}
-            agentName={agentName}
-            runtimeConfig={runtimeConfig}
-            sessionCount={state.sessions.length}
-            sessionConfigScope={sessionConfigScope}
-            sessionConfigState={sessionConfigState}
-            enabledToolCount={effectiveToolCount}
-            availableToolCount={availableToolCount}
-            connectedMcpCount={state.connectedMcpCount}
-            mcpCount={state.mcpConnections.length}
-            builtinToolCount={state.builtinToolIds.length}
-            execLoginShell={state.execLoginShell}
-            skillCount={state.skills.length}
-            enabledSkillCount={effectiveSkillCount}
-            toolExecutionTimeout={state.toolExecutionTimeout}
-            searchProvider={state.searchProvider}
-            fileBrowserPath={fileBrowser.currentDisplayPath}
-            fileEntryCount={fileBrowser.entries.length}
-            editor={panel.panelEditor}
-            onEditorChange={(value) => panel.setPanelEditor((prev) => (prev ? { ...prev, value } : prev))}
-            onEditorSubmit={panel.submitPanelEditor}
-            previewTitle={panel.previewTitle}
-            previewMeta={panel.previewMeta}
-            previewLines={panel.previewLines}
-            previewTone={panel.previewTone}
-            previewBodyHeight={panel.previewBodyHeight}
-          />
+          <Box marginLeft={Math.max(0, panel.panelLeft - 1)} marginBottom={panelBottomOffset}>
+            <Panel
+              section={panel.panelSection}
+              items={panel.currentItems}
+              selectedItemKey={panel.selectedItemKey}
+              panelWidth={panel.panelWidth}
+              panelHeight={panel.panelHeight}
+              hiddenBefore={panel.window.hiddenBefore}
+              hiddenAfter={panel.window.hiddenAfter}
+              agentName={agentName}
+              runtimeConfig={runtimeConfig}
+              sessionCount={state.sessions.length}
+              sessionConfigScope={sessionConfigScope}
+              sessionConfigState={sessionConfigState}
+              enabledToolCount={effectiveToolCount}
+              availableToolCount={availableToolCount}
+              connectedMcpCount={state.connectedMcpCount}
+              mcpCount={state.mcpConnections.length}
+              builtinToolCount={state.builtinToolIds.length}
+              skillCount={state.skills.length}
+              enabledSkillCount={effectiveSkillCount}
+              execLoginShell={state.execLoginShell}
+              toolExecutionTimeout={state.toolExecutionTimeout}
+              searchProvider={state.searchProvider}
+              fileBrowserPath={fileBrowser.currentDisplayPath}
+              fileEntryCount={fileBrowser.entries.length}
+              statsTotalInteractions={panel.stats.totalInteractions}
+              statsTotalTokens={panel.stats.totalTokens}
+              statsErrorCount={panel.stats.errorCount}
+              editor={panel.panelEditor}
+              onEditorChange={(value) => panel.setPanelEditor((prev) => (prev ? { ...prev, value } : prev))}
+              onEditorSubmit={panel.submitPanelEditor}
+              previewTitle={panel.previewTitle}
+              previewMeta={panel.previewMeta}
+              previewLines={panel.previewLines}
+              previewTone={panel.previewTone}
+              previewBodyHeight={panel.previewBodyHeight}
+            />
+          </Box>
         </Box>
       )}
     </Box>

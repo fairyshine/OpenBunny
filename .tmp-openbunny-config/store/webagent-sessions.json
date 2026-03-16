@@ -1,0 +1,1 @@
+{"state":{"sessions":[],"projects":[],"currentSessionId":null,"openSessionIds":[],"llmConfig":{"provider":"openai","apiKey":"","model":"gpt-4o","temperature":0.7,"maxTokens":4096},"sessionStats":{"sessionCount":0,"totalMessages":0,"totalTokens":0}},"version":0}

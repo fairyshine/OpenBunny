@@ -16,7 +16,7 @@ import type { StatsRecord } from '../storage/statsTypes';
 import type { Message, LLMConfig } from '../../types';
 import {
   createAssistantMessage,
-  createThoughtMessage,
+  createResponseMessage,
   createToolCallMessage,
   createToolResultMessage,
   normalizeToolResultOutput,
@@ -272,9 +272,10 @@ export async function runAgentLoop(
             stepCount++;
             currentStepMessageId = callbacks.generateId();
             currentStepContent = '';
-            callbacks.addMessage(sessionId, createThoughtMessage('', {
+            callbacks.addMessage(sessionId, createResponseMessage('', {
               id: currentStepMessageId,
               groupId,
+              metadata: { streaming: true },
             }));
           }
           currentStepContent += (c.text || '');

@@ -12,10 +12,8 @@ interface FooterBarProps {
   sessionConfigState: string;
   width: number;
   totalMessageCount: number;
-  panelVisible: boolean;
 }
 
-/** Gemini-style footer: compact status items separated by · */
 export function FooterBar({
   runtimeConfig,
   currentSessionId,
@@ -25,15 +23,10 @@ export function FooterBar({
   sessionConfigState,
   width,
   totalMessageCount,
-  panelVisible,
 }: FooterBarProps) {
-  if (!panelVisible) {
-    return null;
-  }
-
   const items: Array<{ label: string; color: string }> = [];
-  const stateLabel = isLoading ? 'streaming' : panelVisible ? 'panel open' : 'idle';
-  const stateColor = isLoading ? T.warn : panelVisible ? T.brandLight : T.accent;
+  const stateLabel = isLoading ? 'streaming' : 'idle';
+  const stateColor = isLoading ? T.warn : T.accent;
 
   items.push({ label: stateLabel, color: stateColor });
   items.push({ label: `${sessionConfigScope}/${sessionConfigState}`, color: T.info });
@@ -50,7 +43,7 @@ export function FooterBar({
   }
 
   return (
-    <Box paddingX={1} marginTop={1} width={Math.max(24, width - 2)}>
+    <Box paddingX={1} width={Math.max(24, width - 2)}>
       {items.map((item, i) => (
         <Text key={i}>
           {i > 0 && <Text color={T.fgSubtle}> · </Text>}

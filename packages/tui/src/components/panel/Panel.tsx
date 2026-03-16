@@ -2,6 +2,7 @@ import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import type { LLMConfig } from '@openbunny/shared/types';
 import type { PanelEditorState, PanelItem, PanelSection } from '../../types.js';
+import { PANEL_SECTIONS } from '../../constants.js';
 import { T, getSectionColor, getSectionSurfaceColor } from '../../theme.js';
 import { PanelTabs } from './PanelTabs.js';
 import { PanelSummary } from './PanelSummary.js';
@@ -33,6 +34,9 @@ interface PanelProps {
   searchProvider: string;
   fileBrowserPath: string;
   fileEntryCount: number;
+  statsTotalInteractions: number;
+  statsTotalTokens: number;
+  statsErrorCount: number;
   editor: PanelEditorState | null;
   onEditorChange: (value: string) => void;
   onEditorSubmit: (value: string) => void;
@@ -91,6 +95,9 @@ export function Panel(props: PanelProps) {
         searchProvider={props.searchProvider}
         fileBrowserPath={props.fileBrowserPath}
         fileEntryCount={props.fileEntryCount}
+        statsTotalInteractions={props.statsTotalInteractions}
+        statsTotalTokens={props.statsTotalTokens}
+        statsErrorCount={props.statsErrorCount}
       />
 
       <Text color={T.border}>{divider}</Text>
@@ -169,7 +176,7 @@ export function Panel(props: PanelProps) {
       <Text color={T.fgSubtle}>
         {editor
           ? 'Type edit · ↩ apply · Esc/right click cancel · click tab/item switch'
-          : 'Click select · wheel scroll · right click close · ↑↓/←→ keys · 1-7 sections'}
+          : `Click select · wheel scroll · right click close · ↑↓/←→ keys · 1-${PANEL_SECTIONS.length} sections`}
       </Text>
     </Box>
   );
