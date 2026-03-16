@@ -1,0 +1,424 @@
+import { useState, useCallback, useEffect } from 'react';
+import { useInput } from 'ink';
+import type { PanelSection, PanelItem } from '../types.js';
+import { PANEL_SECTIONS, MAX_VISIBLE_SECTION_ITEMS, SEARCH_PROVIDER_ORDER, TOOL_TIMEOUT_PRESETS, TOOL_DESCRIPTIONS } from '../constants.js';
+import { truncate, formatTimeout, getSlidingWindow } from '../utils/formatting.js';
+import { useMouse } from './useMouse.js';
+import type { LLMConfig, Session } from '@openbunny/shared/types';
+import type { MCPConnection, MCPTransportType } from '@openbunny/shared/stores/tools';
+
+interface UsePanelOptions {
+  sessions: Session[];
+  currentSessionId: string | null;
+  currentAgent: { name: string; id: string; llmConfig: LLMConfig; isDefault?: boolean; enabledTools?: string[]; enabledSkills?: string[] } | null;
+  agents: Array<{ id: string; name: string; llmConfig: LLMConfig; isDefault?: boolean }>;
+  enabledTools: string[];
+  enabledSkills: string[];
+  builtinToolIds: string[];
+  skills: Array<{ id: string; description: string }>;
+  mcpConnections: MCPConnection[];
+  execLoginShell: boolean;
+  toolExecutionTimeout: number;
+  searchProvider: string;
+  runtimeConfig: LLMConfig;
+  workspace?: string;
+  capabilities: { supportsExec: boolean };
+  connectedMcpCount: number;
+  // actions
+  isDefaultAgent: boolean;
+  currentAgentId: string;
+  systemPrompt?: string;
+  addNotice: (content: string, tone?: 'info' | 'success' | 'warning' | 'error') => void;
+  loadSessionMessages: (id: string) => Promise<void>;
+  openSession: (id: string) => void;
+  loadAgentSessionMessages: (agentId: string, id: string) => Promise<void>;
+  setAgentCurrentSession: (agentId: string, id: string) => void;
+  setCurrentAgent: (id: string) => void;
+  agentSessions: Record<string, Session[]>;
+  createAgentSession: (agentId: string, name: string) => Session;
+  setAgentSessionSystemPrompt: (agentId: string, sessionId: string, prompt: string) => void;
+  toggleGlobalTool: (id: string) => void;
+  setAgentEnabledTools: (agentId: string, tools: string[]) => void;
+  toggleGlobalSkill: (id: string) => void;
+  setAgentEnabledSkills: (agentId: string, skills: string[]) => void;
+  syncMCPConnection: (connection: { id: string; name: string; url: string; transport: MCPTransportType }) => Promise<void>;
+  setExecLoginShell: (value: boolean) => void;
+  setToolExecutionTimeout: (value: number) => void;
+  setSearchProvider: (provider: 'exa_free' | 'exa' | 'brave') => void;
+  // runtime config actions
+  applyRuntimeConfig: (updates: Partial<LLMConfig>) => LLMConfig;
+  saveRuntimeConfig: (config: LLMConfig) => void;
+  // input state
+  input: string;
+  isInitializing: boolean;
+  isLoading: boolean;
+}
+
+export function usePanel(opts: UsePanelOptions) {
+  const [panelSection, setPanelSection] = useState<PanelSection>('general');
+  const [panelVisible, setPanelVisible] = useState(false);
+  const [panelSelections, setPanelSelections] = useState<Record<PanelSection, number>>({
+    general: 0, llm: 0, tools: 0, skills: 0, network: 0, about: 0,
+  });
+
+  const terminalWidth = process.stdout.columns ?? 120;
+  const panelWidth = Math.min(72, Math.max(40, Math.floor(terminalWidth * 0.7)));
+
+  /* ── General section ───────────────────────────────── */
+  const generalItems: PanelItem[] = [
+    { key: 'workspace', label: 'Workspace', meta: truncate(opts.workspace || process.cwd(), 30), type: 'info' },
+    { key: 'exec-login-shell', label: 'Exec login shell', meta: opts.execLoginShell ? 'on' : 'off', active: opts.execLoginShell, type: 'toggle', hint: 'Use login shell for /shell commands' },
+    { key: 'tool-timeout', label: 'Tool timeout', meta: formatTimeout(opts.toolExecutionTimeout), type: 'cycle', hint: 'Max execution time per tool call' },
+    { key: 'search-provider', label: 'Search provider', meta: opts.searchProvider, type: 'cycle', hint: 'Web search backend' },
+    { key: 'sessions-header', label: '── Sessions', type: 'header' },
+    ...opts.sessions.slice(0, 8).map((s) => ({
+      key: `session:${s.id}`,
+      label: truncate(s.name, 28),
+      meta: `${s.id.slice(0, 8)}  ${s.messages.length} msg`,
+      active: s.id === opts.currentSessionId,
+      type: 'action' as const,
+    })),
+  ];
+
+  /* ── LLM section ───────────────────────────────────── */
+  const llmItems: PanelItem[] = [
+    { key: 'llm-provider', label: 'Provider', meta: opts.runtimeConfig.provider, type: 'info' },
+    { key: 'llm-model', label: 'Model', meta: truncate(opts.runtimeConfig.model, 24), type: 'info' },
+    { key: 'llm-temperature', label: 'Temperature', meta: String(opts.runtimeConfig.temperature ?? 0.7), type: 'info' },
+    { key: 'llm-max-tokens', label: 'Max tokens', meta: String(opts.runtimeConfig.maxTokens ?? 4096), type: 'info' },
+    { key: 'llm-base-url', label: 'Base URL', meta: opts.runtimeConfig.baseUrl ? truncate(opts.runtimeConfig.baseUrl, 24) : '(default)', type: 'info' },
+    { key: 'llm-api-key', label: 'API key', meta: opts.runtimeConfig.apiKey ? `${opts.runtimeConfig.apiKey.slice(0, 8)}...` : '(not set)', type: 'info' },
+    { key: 'llm-save', label: '💾 Save current config', type: 'action', hint: 'Persist to disk' },
+    { key: 'llm-hint', label: 'Use /model, /provider, /temperature, /api-key to change', type: 'header' },
+  ];
+
+  /* ── Tools section ─────────────────────────────────── */
+  const toolItems: PanelItem[] = opts.builtinToolIds.map((id) => ({
+    key: id,
+    label: id,
+    meta: opts.enabledTools.includes(id) ? 'on' : 'off',
+    active: opts.enabledTools.includes(id),
+    type: 'toggle' as const,
+    hint: TOOL_DESCRIPTIONS[id] || '',
+  }));
+
+  /* ── Skills section ────────────────────────────────── */
+  const skillItems: PanelItem[] = opts.skills.map((s) => ({
+    key: s.id,
+    label: truncate(s.id, 28),
+    meta: opts.enabledSkills.includes(s.id) ? 'on' : 'off',
+    active: opts.enabledSkills.includes(s.id),
+    type: 'toggle' as const,
+    hint: truncate(s.description || '', 40),
+  }));
+
+  /* ── Network section (agents + MCP) ────────────────── */
+  const networkItems: PanelItem[] = [
+    { key: 'agents-header', label: '── Agents', type: 'header' },
+    ...opts.agents.map((a) => ({
+      key: `agent:${a.id}`,
+      label: truncate(a.name, 24),
+      meta: a.isDefault
+        ? `default  ${a.llmConfig.provider}/${truncate(a.llmConfig.model, 10)}`
+        : `${a.id.slice(0, 6)}  ${a.llmConfig.provider}/${truncate(a.llmConfig.model, 10)}`,
+      active: a.id === opts.currentAgentId,
+      type: 'action' as const,
+    })),
+    { key: 'mcp-header', label: '── MCP Connections', type: 'header' },
+    ...(opts.mcpConnections.length === 0
+      ? [{ key: 'mcp-empty', label: 'No MCP connections', type: 'info' as const, meta: 'Use /mcp add' }]
+      : opts.mcpConnections.map((c) => ({
+          key: `mcp:${c.id}`,
+          label: truncate(c.name, 24),
+          meta: `${c.status}  ${c.tools.length} tool${c.tools.length === 1 ? '' : 's'}`,
+          active: c.status === 'connected',
+          status: c.status,
+          type: 'action' as const,
+        }))),
+  ];
+
+  /* ── About section ─────────────────────────────────── */
+  const aboutItems: PanelItem[] = [
+    { key: 'about-name', label: '🐰 OpenBunny', type: 'info', meta: 'AI-powered assistant' },
+    { key: 'about-version', label: 'Version', meta: '0.1.0', type: 'info' },
+    { key: 'about-agent', label: 'Current agent', meta: opts.currentAgent?.name || 'OpenBunny', type: 'info' },
+    { key: 'about-session', label: 'Session', meta: opts.currentSessionId ? opts.currentSessionId.slice(0, 8) : '(none)', type: 'info' },
+    { key: 'about-tools', label: 'Tools', meta: `${opts.enabledTools.filter((id) => id !== 'file_manager').length} enabled`, type: 'info' },
+    { key: 'about-skills', label: 'Skills', meta: `${opts.enabledSkills.length}/${opts.skills.length} enabled`, type: 'info' },
+    { key: 'about-mcp', label: 'MCP', meta: `${opts.connectedMcpCount}/${opts.mcpConnections.length} connected`, type: 'info' },
+    { key: 'about-exec', label: 'Exec', meta: opts.capabilities.supportsExec ? 'available' : 'unavailable', active: opts.capabilities.supportsExec, type: 'info' },
+  ];
+
+  const getItems = useCallback((section: PanelSection): PanelItem[] => {
+    switch (section) {
+      case 'general':   return generalItems;
+      case 'llm':       return llmItems;
+      case 'tools':     return toolItems;
+      case 'skills':    return skillItems;
+      case 'network':   return networkItems;
+      case 'about':     return aboutItems;
+      default:          return [];
+    }
+  }, [generalItems, llmItems, toolItems, skillItems, networkItems, aboutItems]);
+
+  /* ── Clamp selections when items change ────────────── */
+  useEffect(() => {
+    setPanelSelections((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const section of PANEL_SECTIONS) {
+        const items = getItems(section);
+        // Skip header items for selection
+        const selectableCount = items.filter((i) => i.type !== 'header').length;
+        const lastIndex = selectableCount - 1;
+        const clamped = lastIndex < 0 ? 0 : Math.min(prev[section] ?? 0, lastIndex);
+        if (clamped !== prev[section]) {
+          next[section] = clamped;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [getItems]);
+
+  // Map selection index to actual item index (skipping headers)
+  const getSelectableItems = useCallback((section: PanelSection) => {
+    return getItems(section).filter((i) => i.type !== 'header');
+  }, [getItems]);
+
+  const getSelectedItem = useCallback(() => {
+    const selectable = getSelectableItems(panelSection);
+    return selectable[panelSelections[panelSection]] || null;
+  }, [getSelectableItems, panelSection, panelSelections]);
+
+  /* ── Run action on Enter ───────────────────────────── */
+  const runAction = useCallback(async () => {
+    const selectedItem = getSelectedItem();
+    if (!selectedItem) return;
+
+    // General section
+    if (panelSection === 'general') {
+      if (selectedItem.key === 'exec-login-shell') {
+        opts.setExecLoginShell(!opts.execLoginShell);
+        opts.addNotice(`Exec login shell ${!opts.execLoginShell ? 'enabled' : 'disabled'}.`, 'success');
+        return;
+      }
+      if (selectedItem.key === 'tool-timeout') {
+        const idx = TOOL_TIMEOUT_PRESETS.findIndex((v) => v === opts.toolExecutionTimeout);
+        const next = TOOL_TIMEOUT_PRESETS[(idx + 1) % TOOL_TIMEOUT_PRESETS.length];
+        opts.setToolExecutionTimeout(next);
+        opts.addNotice(`Tool timeout set to ${formatTimeout(next)}.`, 'success');
+        return;
+      }
+      if (selectedItem.key === 'search-provider') {
+        const idx = SEARCH_PROVIDER_ORDER.findIndex((v) => v === opts.searchProvider);
+        const next = SEARCH_PROVIDER_ORDER[(idx + 1) % SEARCH_PROVIDER_ORDER.length];
+        opts.setSearchProvider(next);
+        opts.addNotice(`Search provider set to ${next}.`, 'success');
+        return;
+      }
+      if (selectedItem.key.startsWith('session:')) {
+        const sessionId = selectedItem.key.slice(8);
+        const target = opts.sessions.find((s) => s.id === sessionId);
+        if (!target) return;
+        if (opts.isDefaultAgent) {
+          await opts.loadSessionMessages(target.id);
+          opts.openSession(target.id);
+        } else {
+          await opts.loadAgentSessionMessages(opts.currentAgentId, target.id);
+          opts.setAgentCurrentSession(opts.currentAgentId, target.id);
+        }
+        opts.addNotice(`Switched to session ${target.id.slice(0, 8)} (${target.name}).`, 'success');
+        setPanelVisible(false);
+        return;
+      }
+      return;
+    }
+
+    // LLM section
+    if (panelSection === 'llm') {
+      if (selectedItem.key === 'llm-save') {
+        opts.saveRuntimeConfig(opts.runtimeConfig);
+        opts.addNotice('Runtime config saved to disk.', 'success');
+        return;
+      }
+      // Info items: show a hint to use slash commands
+      opts.addNotice(`Use /${selectedItem.key.replace('llm-', '')} <value> to change this setting.`, 'info');
+      return;
+    }
+
+    // Tools section
+    if (panelSection === 'tools') {
+      const toolId = selectedItem.key;
+      const isEnabled = opts.enabledTools.includes(toolId);
+      if (opts.isDefaultAgent) {
+        opts.toggleGlobalTool(toolId);
+      } else if (opts.currentAgent) {
+        opts.setAgentEnabledTools(
+          opts.currentAgent.id,
+          isEnabled ? opts.enabledTools.filter((id) => id !== toolId) : [...opts.enabledTools, toolId],
+        );
+      }
+      opts.addNotice(`Tool ${toolId} ${isEnabled ? 'disabled' : 'enabled'}.`, 'success');
+      return;
+    }
+
+    // Skills section
+    if (panelSection === 'skills') {
+      const skillId = selectedItem.key;
+      const isEnabled = opts.enabledSkills.includes(skillId);
+      if (opts.isDefaultAgent) {
+        opts.toggleGlobalSkill(skillId);
+      } else if (opts.currentAgent) {
+        opts.setAgentEnabledSkills(
+          opts.currentAgent.id,
+          isEnabled ? opts.enabledSkills.filter((id) => id !== skillId) : [...opts.enabledSkills, skillId],
+        );
+      }
+      opts.addNotice(`Skill ${skillId} ${isEnabled ? 'disabled' : 'enabled'}.`, 'success');
+      return;
+    }
+
+    // Network section
+    if (panelSection === 'network') {
+      if (selectedItem.key.startsWith('agent:')) {
+        const agentId = selectedItem.key.slice(6);
+        const target = opts.agents.find((a) => a.id === agentId);
+        if (!target) return;
+        opts.setCurrentAgent(target.id);
+        if (!target.isDefault && !(opts.agentSessions[target.id] || []).length) {
+          const s = opts.createAgentSession(target.id, 'TUI Chat');
+          if (opts.systemPrompt) opts.setAgentSessionSystemPrompt(target.id, s.id, opts.systemPrompt);
+        }
+        opts.addNotice(`Switched to agent ${target.name}.`, 'success');
+        return;
+      }
+      if (selectedItem.key.startsWith('mcp:')) {
+        const mcpId = selectedItem.key.slice(4);
+        const connection = opts.mcpConnections.find((c) => c.id === mcpId);
+        if (!connection) return;
+        if (connection.status !== 'connected' || connection.tools.length === 0) {
+          await opts.syncMCPConnection(connection);
+          return;
+        }
+        opts.addNotice([
+          `MCP: ${connection.name}`,
+          `Status: ${connection.status}  Transport: ${connection.transport}`,
+          `URL: ${connection.url}`,
+          `Tools: ${connection.tools.length > 0 ? connection.tools.map((t) => t.name).join(', ') : '(none)'}`,
+          connection.lastError ? `Error: ${connection.lastError}` : null,
+        ].filter(Boolean).join('\n'), connection.lastError ? 'warning' : 'info');
+        return;
+      }
+    }
+  }, [getSelectedItem, panelSection, opts, setPanelVisible]);
+
+  /* ── Keyboard navigation ───────────────────────────── */
+  useInput((inputChar, key) => {
+    const hasTypedInput = opts.input.trim().length > 0;
+
+    if (key.escape) {
+      if (hasTypedInput) return;
+      setPanelVisible((prev) => !prev);
+      return;
+    }
+
+    if (key.tab) {
+      if (!panelVisible) {
+        setPanelVisible(true);
+        return;
+      }
+      const idx = PANEL_SECTIONS.indexOf(panelSection);
+      setPanelSection(PANEL_SECTIONS[(idx + 1) % PANEL_SECTIONS.length]);
+      return;
+    }
+
+    if (!panelVisible || opts.isInitializing || opts.isLoading) return;
+    if (hasTypedInput) return;
+
+    if (key.upArrow || key.downArrow) {
+      const selectable = getSelectableItems(panelSection);
+      if (selectable.length === 0) return;
+      setPanelSelections((prev) => {
+        const current = prev[panelSection] ?? 0;
+        const delta = key.upArrow ? -1 : 1;
+        const next = (current + delta + selectable.length) % selectable.length;
+        return { ...prev, [panelSection]: next };
+      });
+      return;
+    }
+
+    if (key.return) {
+      void runAction();
+      return;
+    }
+
+    if (key.ctrl) {
+      const c = inputChar.toLowerCase();
+      if (c === 'g') setPanelSection('general');
+      else if (c === 'l') setPanelSection('llm');
+      else if (c === 't') setPanelSection('tools');
+      else if (c === 'k') setPanelSection('skills');
+      else if (c === 'p') setPanelSection('network');
+    }
+  });
+
+  /* ── Mouse support ─────────────────────────────────── */
+  const selectItemByOffset = useCallback((delta: number) => {
+    const selectable = getSelectableItems(panelSection);
+    if (selectable.length === 0) return;
+    setPanelSelections((prev) => {
+      const current = prev[panelSection] ?? 0;
+      const next = Math.max(0, Math.min(selectable.length - 1, current + delta));
+      return { ...prev, [panelSection]: next };
+    });
+  }, [getSelectableItems, panelSection]);
+
+  useMouse((event) => {
+    if (!panelVisible) return;
+    if (event.type === 'wheel') {
+      selectItemByOffset(event.button === 'scrollDown' ? 1 : -1);
+      return;
+    }
+    if (event.type === 'press' && event.button === 'left') {
+      void runAction();
+    }
+  }, panelVisible);
+
+  /* ── Computed for rendering ────────────────────────── */
+  const currentItems = getItems(panelSection);
+  const selectableItems = getSelectableItems(panelSection);
+  const currentSelection = panelSelections[panelSection] ?? 0;
+  const window = getSlidingWindow(selectableItems, currentSelection, MAX_VISIBLE_SECTION_ITEMS);
+  const selectedItemKey = selectableItems[currentSelection]?.key ?? null;
+  const visibleKeys = new Set(window.items.map((item) => item.key));
+  const visibleItems: PanelItem[] = [];
+  let pendingHeader: PanelItem | null = null;
+
+  for (const item of currentItems) {
+    if (item.type === 'header') {
+      pendingHeader = item;
+      continue;
+    }
+
+    if (!visibleKeys.has(item.key)) {
+      continue;
+    }
+
+    if (pendingHeader) {
+      visibleItems.push(pendingHeader);
+      pendingHeader = null;
+    }
+
+    visibleItems.push(item);
+  }
+
+  return {
+    panelVisible, setPanelVisible,
+    panelSection, setPanelSection,
+    panelWidth,
+    currentItems: visibleItems, currentSelection, window,
+    selectedItemKey,
+    getItems, runAction,
+  };
+}
