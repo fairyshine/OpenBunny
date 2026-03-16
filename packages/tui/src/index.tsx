@@ -56,6 +56,7 @@ Commands inside TUI:
   /agent-new <name>         Create a new agent
   /new                      Create a new session
   /delete <id>              Permanently delete a session
+  /scope [global|session]   Show or switch current session config scope
   /tools                    Show enabled tools
   /tool on|off <id>         Toggle a tool
   /skills                   Show enabled skills
@@ -68,9 +69,12 @@ Commands inside TUI:
   /shell <command>          Run a shell command in the workspace
   /shell reset              Reset the persistent shell session
   /history                  Show session info
-  /sessions                 List available sessions
+  /sessions [filter]        List available sessions
   /resume <id>              Resume a previous session
   /save                     Force-flush messages to disk
+  /files                    List workspace files
+  /cd <path>                Change file panel directory
+  /open <path>              Preview a workspace file
   /providers                List supported providers
 
 Panel keys:
@@ -80,10 +84,11 @@ Panel keys:
   Left / Right              Cycle selected setting values
   Enter                     Select or open inline editor
   Space                     Toggle selected toggle/action item
-  1-6                       Jump to panel sections
+  1-7                       Jump to panel sections
   Ctrl+G / Ctrl+L           Focus General / LLM
   Ctrl+T / Ctrl+K           Focus Tools / Skills
   Ctrl+P                    Focus Network (agents + MCP)
+  Ctrl+F                    Focus Files
   Esc                       Close panel
 `);
       process.exit(0);

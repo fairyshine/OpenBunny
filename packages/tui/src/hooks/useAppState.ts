@@ -19,6 +19,8 @@ export function useAppState() {
   const setGlobalLLMConfig = useSessionStore((s) => s.setLLMConfig);
   const setSessionStreaming = useSessionStore((s) => s.setSessionStreaming);
   const setSessionSystemPrompt = useSessionStore((s) => s.setSessionSystemPrompt);
+  const setSessionTools = useSessionStore((s) => s.setSessionTools);
+  const setSessionSkills = useSessionStore((s) => s.setSessionSkills);
   const openSession = useSessionStore((s) => s.openSession);
   const loadSessionMessages = useSessionStore((s) => s.loadSessionMessages);
   const flushMessages = useSessionStore((s) => s.flushMessages);
@@ -38,6 +40,8 @@ export function useAppState() {
   const updateAgentMessage = useAgentStore((s) => s.updateAgentMessage);
   const setAgentSessionStreaming = useAgentStore((s) => s.setAgentSessionStreaming);
   const setAgentSessionSystemPrompt = useAgentStore((s) => s.setAgentSessionSystemPrompt);
+  const setAgentSessionTools = useAgentStore((s) => s.setAgentSessionTools);
+  const setAgentSessionSkills = useAgentStore((s) => s.setAgentSessionSkills);
   const loadAgentSessionMessages = useAgentStore((s) => s.loadAgentSessionMessages);
   const flushAgentMessages = useAgentStore((s) => s.flushAgentMessages);
   const setAgentCurrentSession = useAgentStore((s) => s.setAgentCurrentSession);
@@ -117,7 +121,8 @@ export function useAppState() {
     globalSessions, globalCurrentSessionId, globalLLMConfig,
     createSession, renameSession, addMessage, updateMessage,
     clearSessionMessages, setGlobalLLMConfig, setSessionStreaming,
-    setSessionSystemPrompt, openSession, loadSessionMessages,
+    setSessionSystemPrompt, setSessionTools, setSessionSkills,
+    openSession, loadSessionMessages,
     flushMessages, permanentlyDeleteSession,
     // agent store
     agents, currentAgentId, setCurrentAgent, createAgent,
@@ -125,6 +130,7 @@ export function useAppState() {
     createAgentSession, renameAgentSession, deleteAgentSession,
     addAgentMessage, updateAgentMessage,
     setAgentSessionStreaming, setAgentSessionSystemPrompt,
+    setAgentSessionTools, setAgentSessionSkills,
     loadAgentSessionMessages, flushAgentMessages,
     setAgentCurrentSession, setAgentLLMConfig,
     setAgentEnabledTools, setAgentEnabledSkills,

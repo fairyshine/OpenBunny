@@ -1,17 +1,46 @@
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
+import type { Session } from '@openbunny/shared/types';
 import { T } from '../../theme.js';
+import {
+  getSessionTypeLabel,
+  isReadOnlySession,
+} from '../../utils/sessionPresentation.js';
 
 interface InputBarProps {
   input: string;
   setInput: (value: string) => void;
   onSubmit: (value: string) => void;
   disabled: boolean;
+  readOnly: boolean;
+  session: Session | null;
+  sessionConfigScope: string;
+  sessionConfigState: string;
+  enabledToolCount: number;
+  enabledSkillCount: number;
   width: number;
   disabledReason?: string;
 }
 
-export function InputBar({ input, setInput, onSubmit, disabled, width, disabledReason }: InputBarProps) {
+export function InputBar({
+  input,
+  setInput,
+  onSubmit,
+  disabled,
+  readOnly,
+  session,
+  sessionConfigScope,
+  sessionConfigState,
+  enabledToolCount,
+  enabledSkillCount,
+  width,
+  disabledReason,
+}: InputBarProps) {
+  const readOnlySession = isReadOnlySession(session);
+  const readOnlyHint = readOnlySession
+    ? `${getSessionTypeLabel(session)} is read-only. Slash commands still work.`
+    : null;
+
   return (
     <Box paddingX={1} marginTop={1} flexDirection="column">
       <Box
@@ -21,6 +50,10 @@ export function InputBar({ input, setInput, onSubmit, disabled, width, disabledR
         flexDirection="column"
         width={Math.max(24, width - 2)}
       >
+        {readOnly && !disabled && readOnlyHint && (
+          <Text color={T.warn}>{readOnlyHint}</Text>
+        )}
+
         <Box>
           <Text color={disabled ? T.fgMuted : T.accent} bold>
             {disabled ? '◌ ' : '❯ '}
@@ -30,7 +63,9 @@ export function InputBar({ input, setInput, onSubmit, disabled, width, disabledR
               value={input}
               onChange={setInput}
               onSubmit={onSubmit}
-              placeholder="Type a message or /help"
+              placeholder={readOnly
+                ? 'Use /stop, /export, /search, or /help'
+                : 'Type a message or /help'}
             />
           ) : (
             <Text color={T.fgMuted} italic>{disabledReason || 'Waiting...'}</Text>
@@ -41,13 +76,21 @@ export function InputBar({ input, setInput, onSubmit, disabled, width, disabledR
 
         <Box>
           <Text color={T.fgSubtle}>
-            {disabled ? (disabledReason || 'busy') : 'Enter send'}
+            {disabled ? (disabledReason || 'busy') : (readOnly ? 'Enter run command' : 'Enter send')}
+            {' · '}
+            {sessionConfigScope}
+            {'/'}
+            {sessionConfigState}
+            {' · '}
+            {enabledToolCount} tool
+            {' · '}
+            {enabledSkillCount} skill
             {' · '}
             /help
             {' · '}
             /sessions
             {' · '}
-            /tools
+            {readOnly ? '/stop' : '/files'}
           </Text>
         </Box>
       </Box>

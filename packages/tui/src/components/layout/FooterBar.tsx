@@ -8,6 +8,8 @@ interface FooterBarProps {
   currentSessionId: string | null;
   workspace?: string;
   isLoading?: boolean;
+  sessionConfigScope: string;
+  sessionConfigState: string;
   width: number;
   totalMessageCount: number;
   panelVisible: boolean;
@@ -19,6 +21,8 @@ export function FooterBar({
   currentSessionId,
   workspace,
   isLoading,
+  sessionConfigScope,
+  sessionConfigState,
   width,
   totalMessageCount,
   panelVisible,
@@ -32,6 +36,7 @@ export function FooterBar({
   const stateColor = isLoading ? T.warn : panelVisible ? T.brandLight : T.accent;
 
   items.push({ label: stateLabel, color: stateColor });
+  items.push({ label: `${sessionConfigScope}/${sessionConfigState}`, color: T.info });
   items.push({ label: `${runtimeConfig.provider}/${truncate(runtimeConfig.model, 18)}`, color: T.fgDim });
   items.push({ label: `${totalMessageCount} msg`, color: T.fgDim });
 

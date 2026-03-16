@@ -7,6 +7,7 @@ import { useRuntimeConfig } from './hooks/useRuntimeConfig.js';
 import { useAgentLoop } from './hooks/useAgentLoop.js';
 import { useCommandHandler } from './hooks/useCommandHandler.js';
 import { usePanel } from './hooks/usePanel.js';
+import { useFileBrowser } from './hooks/useFileBrowser.js';
 import { resolveSessionOnStartup } from './utils/session.js';
 import { AppHeader } from './components/layout/AppHeader.js';
 import { FooterBar } from './components/layout/FooterBar.js';
@@ -17,6 +18,13 @@ import { NoticePanel } from './components/notices/NoticePanel.js';
 import { Panel } from './components/panel/Panel.js';
 import { T } from './theme.js';
 import { getPanelTopOffset } from './utils/layout.js';
+import {
+  getEffectiveSessionSkills,
+  getEffectiveSessionTools,
+  getSessionConfigScopeLabel,
+  isReadOnlySession,
+  isSessionConfigLocked,
+} from './utils/sessionPresentation.js';
 
 const MIN_TERM_COLS = 88;
 
@@ -26,6 +34,7 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
   const state = useAppState();
   const { notices, error, setError, addNotice, clearNotices } = useNotices();
   const [isInitializing, setIsInitializing] = useState(true);
+  const fileBrowser = useFileBrowser({ rootPath: workspace });
 
   /* ── Track terminal size for fullscreen layout ───── */
   const [termSize, setTermSize] = useState({ cols: stdout.columns ?? 80, rows: stdout.rows ?? 24 });
@@ -81,7 +90,11 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     createSession: state.createSession,
     createAgentSession: state.createAgentSession,
     setSessionSystemPrompt: state.setSessionSystemPrompt,
+    setSessionTools: state.setSessionTools,
+    setSessionSkills: state.setSessionSkills,
     setAgentSessionSystemPrompt: state.setAgentSessionSystemPrompt,
+    setAgentSessionTools: state.setAgentSessionTools,
+    setAgentSessionSkills: state.setAgentSessionSkills,
     clearSessionMessages: state.clearSessionMessages,
     loadSessionMessages: state.loadSessionMessages,
     openSession: state.openSession,
@@ -112,6 +125,7 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     runtimeConfigRef,
     applyRuntimeConfig,
     saveRuntimeConfig,
+    fileBrowser,
     handleStop: agentLoop.handleStop,
     sendMessage: agentLoop.sendMessage,
   });
@@ -127,6 +141,7 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     terminalWidth: termSize.cols,
     panelTop,
     sessions: state.sessions,
+    currentSession: state.currentSession,
     currentSessionId: state.currentSessionId,
     currentAgent: state.currentAgent,
     agents: state.agents,
@@ -150,12 +165,16 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     loadSessionMessages: state.loadSessionMessages,
     openSession: state.openSession,
     setSessionSystemPrompt: state.setSessionSystemPrompt,
+    setSessionTools: state.setSessionTools,
+    setSessionSkills: state.setSessionSkills,
     loadAgentSessionMessages: state.loadAgentSessionMessages,
     setAgentCurrentSession: state.setAgentCurrentSession,
     setCurrentAgent: state.setCurrentAgent,
     agentSessions: state.agentSessions,
     createAgentSession: state.createAgentSession,
     setAgentSessionSystemPrompt: state.setAgentSessionSystemPrompt,
+    setAgentSessionTools: state.setAgentSessionTools,
+    setAgentSessionSkills: state.setAgentSessionSkills,
     toggleGlobalTool: state.toggleGlobalTool,
     setAgentEnabledTools: state.setAgentEnabledTools,
     toggleGlobalSkill: state.toggleGlobalSkill,
@@ -166,6 +185,7 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     setSearchProvider: state.setSearchProvider,
     applyRuntimeConfig,
     saveRuntimeConfig,
+    fileBrowser,
     input: cmd.input,
     isInitializing,
     isLoading: agentLoop.isLoading,
@@ -203,6 +223,17 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
   }, [state.createAgentSession, state.currentAgentId, state.currentSession, state.isDefaultAgent, isInitializing, state.setAgentSessionSystemPrompt, systemPrompt]);
 
   const messages = state.currentSession?.messages || [];
+  const readOnlySession = isReadOnlySession(state.currentSession);
+  const sessionConfigScope = getSessionConfigScopeLabel(state.currentSession);
+  const sessionConfigState = readOnlySession
+    ? 'read-only'
+    : isSessionConfigLocked(state.currentSession)
+      ? 'locked'
+      : 'editable';
+  const effectiveToolCount = getEffectiveSessionTools(state.currentSession, state.enabledTools)
+    .filter((id) => id !== 'file_manager')
+    .length;
+  const effectiveSkillCount = getEffectiveSessionSkills(state.currentSession, state.enabledSkills).length;
   const totalMessageCount = messages.length;
   const disabled = agentLoop.isLoading || isInitializing || panel.panelVisible;
   const tooSmall = termSize.cols < MIN_TERM_COLS;
@@ -262,24 +293,37 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
               agentName={agentName}
               runtimeConfig={runtimeConfig}
               sessionCount={state.sessions.length}
-              enabledToolCount={state.enabledTools.filter((id) => id !== 'file_manager').length}
+              sessionConfigScope={sessionConfigScope}
+              sessionConfigState={sessionConfigState}
+              enabledToolCount={effectiveToolCount}
               connectedMcpCount={state.connectedMcpCount}
               mcpCount={state.mcpConnections.length}
               builtinToolCount={state.builtinToolIds.length}
               execLoginShell={state.execLoginShell}
               skillCount={state.skills.length}
-              enabledSkillCount={state.enabledSkills.length}
+              enabledSkillCount={effectiveSkillCount}
               toolExecutionTimeout={state.toolExecutionTimeout}
               searchProvider={state.searchProvider}
+              fileBrowserPath={fileBrowser.currentDisplayPath}
+              fileEntryCount={fileBrowser.entries.length}
               editor={panel.panelEditor}
               onEditorChange={(value) => panel.setPanelEditor((prev) => (prev ? { ...prev, value } : prev))}
               onEditorSubmit={panel.submitPanelEditor}
+              previewTitle={panel.previewTitle}
+              previewMeta={panel.previewMeta}
+              previewLines={panel.previewLines}
+              previewTone={panel.previewTone}
             />
           </Box>
         ) : (
           <>
             <MessageList
+              session={state.currentSession}
               messages={messages}
+              sessionConfigScope={sessionConfigScope}
+              sessionConfigState={sessionConfigState}
+              enabledToolCount={effectiveToolCount}
+              enabledSkillCount={effectiveSkillCount}
               isInitializing={isInitializing}
               isLoading={agentLoop.isLoading}
               currentStatus={agentLoop.currentStatus}
@@ -297,6 +341,12 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
         setInput={cmd.setInput}
         onSubmit={cmd.handleSubmit}
         disabled={disabled}
+        readOnly={readOnlySession}
+        session={state.currentSession}
+        sessionConfigScope={sessionConfigScope}
+        sessionConfigState={sessionConfigState}
+        enabledToolCount={effectiveToolCount}
+        enabledSkillCount={effectiveSkillCount}
         width={termSize.cols}
         disabledReason={disabledReason}
       />
@@ -306,6 +356,8 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
         currentSessionId={state.currentSessionId}
         workspace={workspace}
         isLoading={agentLoop.isLoading}
+        sessionConfigScope={sessionConfigScope}
+        sessionConfigState={sessionConfigState}
         width={termSize.cols}
         totalMessageCount={totalMessageCount}
         panelVisible={panel.panelVisible}

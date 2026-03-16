@@ -1,10 +1,12 @@
 import { useState, useCallback, useRef } from 'react';
 import type { LLMConfig, Message, Session } from '@openbunny/shared/types';
 import { runAgentLoop } from '@openbunny/shared/services/ai';
+import { stopChatConversation } from '@openbunny/shared/services/ai/chat';
 import {
   createAssistantMessage,
   createUserMessage,
 } from '@openbunny/shared/services/ai/messageFactory';
+import { stopMindConversation } from '@openbunny/shared/services/ai/mind';
 import { useSessionStore } from '@openbunny/shared/stores/session';
 import { useAgentStore } from '@openbunny/shared/stores/agent';
 import i18n from '@openbunny/shared/i18n';
@@ -47,16 +49,46 @@ export function useAgentLoop(options: UseAgentLoopOptions) {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleStop = useCallback((currentSessionId: string | null) => {
-    if (!abortControllerRef.current || !currentSessionId) return;
+    if (!currentSessionId) return;
+
+    const currentSession = isDefaultAgent
+      ? useSessionStore.getState().sessions.find((session) => session.id === currentSessionId)
+      : (useAgentStore.getState().agentSessions[currentAgentId] || []).find((session) => session.id === currentSessionId);
+
+    const clearStreamingState = () => {
+      if (isDefaultAgent) {
+        setSessionStreaming(currentSessionId, false);
+      } else {
+        setAgentSessionStreaming(currentAgentId, currentSessionId, false);
+      }
+    };
+
+    if (currentSession?.sessionType === 'mind') {
+      clearStreamingState();
+      setIsLoading(false);
+      setCurrentStatus('');
+      stopMindConversation(currentSessionId);
+      return;
+    }
+
+    if (currentSession?.sessionType === 'agent') {
+      clearStreamingState();
+      setIsLoading(false);
+      setCurrentStatus('');
+      stopChatConversation(currentSessionId);
+      return;
+    }
+
+    if (!abortControllerRef.current) return;
+
     abortControllerRef.current.abort();
     abortControllerRef.current = null;
     setIsLoading(false);
     setCurrentStatus('');
+    clearStreamingState();
     if (isDefaultAgent) {
-      setSessionStreaming(currentSessionId, false);
       addMessage(currentSessionId, createAssistantMessage(i18n.t('chat.stopped')));
     } else {
-      setAgentSessionStreaming(currentAgentId, currentSessionId, false);
       addAgentMessage(currentAgentId, currentSessionId, createAssistantMessage(i18n.t('chat.stopped')));
     }
   }, [addAgentMessage, addMessage, currentAgentId, isDefaultAgent, setAgentSessionStreaming, setSessionStreaming]);

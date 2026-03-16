@@ -2,8 +2,8 @@ import type { LLMConfig } from '@openbunny/shared/types';
 
 export type NoticeTone = 'info' | 'success' | 'warning' | 'error';
 
-// Match web settings sections: profile, general, llm, tools, skills, network(mcp+agents), about
-export type PanelSection = 'general' | 'llm' | 'tools' | 'skills' | 'network' | 'about';
+// Match the main TUI settings/navigation surfaces.
+export type PanelSection = 'general' | 'llm' | 'tools' | 'skills' | 'network' | 'files' | 'about';
 
 export type PanelItemStatus = 'connected' | 'disconnected' | 'connecting';
 
@@ -26,6 +26,7 @@ export interface PanelEditorState {
   value: string;
   placeholder?: string;
   help?: string;
+  targetPath?: string;
 }
 
 export interface Notice {

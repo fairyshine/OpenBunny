@@ -6,8 +6,10 @@ export const MAX_VISIBLE_SESSIONS = 6;
 export const MAX_VISIBLE_SECTION_ITEMS = 12;
 
 export const PANEL_SECTIONS: readonly PanelSection[] = [
-  'general', 'llm', 'tools', 'skills', 'network', 'about',
+  'general', 'llm', 'tools', 'skills', 'network', 'files', 'about',
 ] as const;
+
+export const SESSION_TYPE_FILTERS = ['all', 'user', 'agent', 'mind'] as const;
 
 export const SEARCH_PROVIDER_ORDER = ['exa_free', 'exa', 'brave'] as const;
 export const TOOL_TIMEOUT_PRESETS = [60000, 300000, 900000] as const;

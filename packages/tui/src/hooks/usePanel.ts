@@ -1,18 +1,33 @@
+import path from 'node:path';
 import { useState, useCallback, useEffect } from 'react';
 import { useInput } from 'ink';
 import type { PanelSection, PanelItem, PanelEditorState } from '../types.js';
 import { providerRegistry, getProviderMeta } from '@openbunny/shared/services/ai';
-import { PANEL_SECTIONS, MAX_VISIBLE_SECTION_ITEMS, SEARCH_PROVIDER_ORDER, TOOL_TIMEOUT_PRESETS, TOOL_DESCRIPTIONS, TEMPERATURE_PRESETS, MAX_TOKEN_PRESETS } from '../constants.js';
+import { PANEL_SECTIONS, MAX_VISIBLE_SECTION_ITEMS, SEARCH_PROVIDER_ORDER, SESSION_TYPE_FILTERS, TOOL_TIMEOUT_PRESETS, TOOL_DESCRIPTIONS, TEMPERATURE_PRESETS, MAX_TOKEN_PRESETS } from '../constants.js';
 import { truncate, formatTimeout, getSlidingWindow } from '../utils/formatting.js';
 import { useMouse } from './useMouse.js';
 import type { LLMConfig, Session } from '@openbunny/shared/types';
 import type { MCPConnection, MCPTransportType } from '@openbunny/shared/stores/tools';
 import { getSectionTabLabel } from '../theme.js';
+import type { FileBrowserController } from './useFileBrowser.js';
+import {
+  getEffectiveSessionSkills,
+  getEffectiveSessionTools,
+  getSessionConfigScopeLabel,
+  getSessionStatusLabel,
+  getSessionSummary,
+  getSessionTypeLabel,
+  isSessionConfigLocked,
+  isReadOnlySession,
+} from '../utils/sessionPresentation.js';
+
+type SessionTypeFilter = (typeof SESSION_TYPE_FILTERS)[number];
 
 interface UsePanelOptions {
   terminalWidth: number;
   panelTop: number;
   sessions: Session[];
+  currentSession: Session | null;
   currentSessionId: string | null;
   currentAgent: { name: string; id: string; llmConfig: LLMConfig; isDefault?: boolean; enabledTools?: string[]; enabledSkills?: string[] } | null;
   agents: Array<{ id: string; name: string; llmConfig: LLMConfig; isDefault?: boolean }>;
@@ -37,12 +52,16 @@ interface UsePanelOptions {
   loadSessionMessages: (id: string) => Promise<void>;
   openSession: (id: string) => void;
   setSessionSystemPrompt: (sessionId: string, prompt: string) => void;
+  setSessionTools: (sessionId: string, tools: string[] | undefined) => void;
+  setSessionSkills: (sessionId: string, skills: string[] | undefined) => void;
   loadAgentSessionMessages: (agentId: string, id: string) => Promise<void>;
   setAgentCurrentSession: (agentId: string, id: string) => void;
   setCurrentAgent: (id: string) => void;
   agentSessions: Record<string, Session[]>;
   createAgentSession: (agentId: string, name: string) => Session;
   setAgentSessionSystemPrompt: (agentId: string, sessionId: string, prompt: string) => void;
+  setAgentSessionTools: (agentId: string, sessionId: string, tools: string[] | undefined) => void;
+  setAgentSessionSkills: (agentId: string, sessionId: string, skills: string[] | undefined) => void;
   toggleGlobalTool: (id: string) => void;
   setAgentEnabledTools: (agentId: string, tools: string[]) => void;
   toggleGlobalSkill: (id: string) => void;
@@ -54,6 +73,7 @@ interface UsePanelOptions {
   // runtime config actions
   applyRuntimeConfig: (updates: Partial<LLMConfig>) => LLMConfig;
   saveRuntimeConfig: (config: LLMConfig) => void;
+  fileBrowser: FileBrowserController;
   // input state
   input: string;
   isInitializing: boolean;
@@ -76,6 +96,12 @@ interface PanelMouseRowHit {
 
 const PANEL_BORDER_AND_PADDING_X = 2;
 const PANEL_EDITOR_HEIGHT = 7;
+
+function formatByteSize(size: number): string {
+  if (size < 1024) return `${size}b`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)}k`;
+  return `${(size / (1024 * 1024)).toFixed(1)}m`;
+}
 
 function getPanelItemHeight(item: PanelItem, isSelected: boolean): number {
   if (item.type === 'header') {
@@ -163,12 +189,26 @@ function buildPanelMouseLayout(args: {
   };
 }
 
+function isFileEntryKey(itemKey: string): boolean {
+  return itemKey.startsWith('files:file:') || itemKey.startsWith('files:directory:');
+}
+
+function getFileEntryPath(itemKey: string): string | null {
+  if (!isFileEntryKey(itemKey)) {
+    return null;
+  }
+
+  return itemKey.replace(/^files:(?:file|directory):/, '');
+}
+
 export function usePanel(opts: UsePanelOptions) {
   const [panelSection, setPanelSection] = useState<PanelSection>('general');
   const [panelVisible, setPanelVisible] = useState(false);
   const [panelEditor, setPanelEditor] = useState<PanelEditorState | null>(null);
+  const [sessionTypeFilter, setSessionTypeFilter] = useState<SessionTypeFilter>('all');
+  const [fileActionTargetPath, setFileActionTargetPath] = useState<string | null>(null);
   const [panelSelections, setPanelSelections] = useState<Record<PanelSection, number>>({
-    general: 0, llm: 0, tools: 0, skills: 0, network: 0, about: 0,
+    general: 0, llm: 0, tools: 0, skills: 0, network: 0, files: 0, about: 0,
   });
 
   const terminalWidth = opts.terminalWidth;
@@ -176,6 +216,23 @@ export function usePanel(opts: UsePanelOptions) {
   const providerMeta = getProviderMeta(opts.runtimeConfig.provider);
   const providerModels = providerMeta?.models?.length ? providerMeta.models : [opts.runtimeConfig.model];
   const providerScope = opts.isDefaultAgent ? 'global default' : `agent ${opts.currentAgent?.name || opts.currentAgentId}`;
+  const fileBrowser = opts.fileBrowser;
+  const sessionConfigScope = getSessionConfigScopeLabel(opts.currentSession);
+  const sessionConfigLocked = isSessionConfigLocked(opts.currentSession);
+  const sessionConfigReadOnly = isReadOnlySession(opts.currentSession);
+  const effectiveToolIds = getEffectiveSessionTools(opts.currentSession, opts.enabledTools);
+  const effectiveSkillIds = getEffectiveSessionSkills(opts.currentSession, opts.enabledSkills);
+  const visibleEffectiveToolIds = effectiveToolIds.filter((id) => id !== 'file_manager');
+  const filteredSessions = opts.sessions.filter((session) => (
+    sessionTypeFilter === 'all' ? true : (session.sessionType || 'user') === sessionTypeFilter
+  ));
+  const selectedFileTargetPath = fileActionTargetPath || fileBrowser.preview?.path || null;
+  const selectedFileTargetLabel = selectedFileTargetPath
+    ? truncate(path.basename(selectedFileTargetPath) || selectedFileTargetPath, 26)
+    : '(select item)';
+  const filePreviewMeta = fileBrowser.preview
+    ? `${fileBrowser.preview.kind} · ${formatByteSize(fileBrowser.preview.size)}${fileBrowser.preview.truncated ? ' · truncated' : ''}`
+    : undefined;
 
   const cycleValue = useCallback(<T,>(
     values: readonly T[],
@@ -204,20 +261,95 @@ export function usePanel(opts: UsePanelOptions) {
     return bestIndex;
   }, []);
 
+  const setSessionOverrideConfig = useCallback((session: Session, tools: string[] | undefined, skills: string[] | undefined) => {
+    if (opts.isDefaultAgent) {
+      opts.setSessionTools(session.id, tools);
+      opts.setSessionSkills(session.id, skills);
+      return;
+    }
+
+    opts.setAgentSessionTools(opts.currentAgentId, session.id, tools);
+    opts.setAgentSessionSkills(opts.currentAgentId, session.id, skills);
+  }, [
+    opts.currentAgentId,
+    opts.isDefaultAgent,
+    opts.setAgentSessionSkills,
+    opts.setAgentSessionTools,
+    opts.setSessionSkills,
+    opts.setSessionTools,
+  ]);
+
+  const ensureSessionOverrides = useCallback((session: Session) => {
+    const nextTools = session.sessionTools ?? [...opts.enabledTools];
+    const nextSkills = session.sessionSkills ?? [...opts.enabledSkills];
+    setSessionOverrideConfig(session, nextTools, nextSkills);
+    return { tools: nextTools, skills: nextSkills };
+  }, [opts.enabledSkills, opts.enabledTools, setSessionOverrideConfig]);
+
+  const canMutateSessionOverrides = useCallback((session: Session | null) => {
+    if (!session) {
+      opts.addNotice('No active session selected.', 'warning');
+      return false;
+    }
+
+    if (isReadOnlySession(session)) {
+      opts.addNotice(`${getSessionTypeLabel(session)} is read-only. Session-scoped tools and skills cannot be edited.`, 'warning');
+      return false;
+    }
+
+    if (isSessionConfigLocked(session)) {
+      opts.addNotice('Current session already started. Session-scoped tools and skills are locked, matching the WEB input behavior.', 'warning');
+      return false;
+    }
+
+    return true;
+  }, [opts]);
+
   /* ── General section ───────────────────────────────── */
   const generalItems: PanelItem[] = [
     { key: 'session:new', label: 'New session', meta: 'create', type: 'action', hint: 'Create a fresh TUI chat session' },
     { key: 'workspace', label: 'Workspace', meta: truncate(opts.workspace || process.cwd(), 30), type: 'info' },
+    { key: 'current-session-type', label: 'Session type', meta: getSessionTypeLabel(opts.currentSession), type: 'info' },
+    { key: 'current-session-status', label: 'Session status', meta: getSessionStatusLabel(opts.currentSession), type: 'info' },
+    {
+      key: 'session-scope',
+      label: 'Tool/skill scope',
+      meta: sessionConfigScope,
+      type: 'cycle',
+      hint: sessionConfigReadOnly
+        ? 'Read-only sessions keep their snapshot'
+        : sessionConfigLocked
+          ? 'Session already started; this snapshot is locked'
+          : 'Switch between global defaults and a session snapshot',
+    },
+    {
+      key: 'session-config-state',
+      label: 'Config state',
+      meta: sessionConfigReadOnly ? 'read-only' : sessionConfigLocked ? 'locked' : 'editable',
+      type: 'info',
+      hint: `Effective: ${visibleEffectiveToolIds.length} tool(s), ${effectiveSkillIds.length} skill(s)`,
+    },
+    { key: 'session-filter', label: 'Session filter', meta: sessionTypeFilter, type: 'cycle', hint: 'Match the WEB session filter bar in TUI' },
+    ...(getSessionSummary(opts.currentSession)
+      ? [{
+          key: 'current-session-summary',
+          label: 'Summary',
+          meta: truncate(getSessionSummary(opts.currentSession), 26),
+          type: 'info' as const,
+          hint: 'Live session summary from paired dialogue sessions',
+        }]
+      : []),
     { key: 'exec-login-shell', label: 'Exec login shell', meta: opts.execLoginShell ? 'on' : 'off', active: opts.execLoginShell, type: 'toggle', hint: 'Use login shell for /shell commands' },
     { key: 'tool-timeout', label: 'Tool timeout', meta: formatTimeout(opts.toolExecutionTimeout), type: 'cycle', hint: 'Max execution time per tool call' },
     { key: 'search-provider', label: 'Search provider', meta: opts.searchProvider, type: 'cycle', hint: 'Web search backend' },
     { key: 'sessions-header', label: '── Sessions', type: 'header' },
-    ...opts.sessions.slice(0, 8).map((s) => ({
+    ...filteredSessions.slice(0, 10).map((s) => ({
       key: `session:${s.id}`,
       label: truncate(s.name, 28),
-      meta: `${s.id.slice(0, 8)}  ${s.messages.length} msg`,
+      meta: `${s.id.slice(0, 8)}  ${(s.sessionType || 'user').slice(0, 1)}  ${s.messages.length} msg`,
       active: s.id === opts.currentSessionId,
       type: 'action' as const,
+      hint: `${getSessionTypeLabel(s)} · ${getSessionStatusLabel(s)}${s.projectId ? ` · project ${s.projectId.slice(0, 6)}` : ''}`,
     })),
   ];
 
@@ -238,20 +370,20 @@ export function usePanel(opts: UsePanelOptions) {
   const toolItems: PanelItem[] = opts.builtinToolIds.map((id) => ({
     key: id,
     label: id,
-    meta: opts.enabledTools.includes(id) ? 'on' : 'off',
-    active: opts.enabledTools.includes(id),
+    meta: effectiveToolIds.includes(id) ? 'on' : 'off',
+    active: effectiveToolIds.includes(id),
     type: 'toggle' as const,
-    hint: TOOL_DESCRIPTIONS[id] || '',
+    hint: `${TOOL_DESCRIPTIONS[id] || ''}${sessionConfigScope === 'session' ? ' · session scope' : ' · global scope'}`,
   }));
 
   /* ── Skills section ────────────────────────────────── */
   const skillItems: PanelItem[] = opts.skills.map((s) => ({
     key: s.id,
     label: truncate(s.id, 28),
-    meta: opts.enabledSkills.includes(s.id) ? 'on' : 'off',
-    active: opts.enabledSkills.includes(s.id),
+    meta: effectiveSkillIds.includes(s.id) ? 'on' : 'off',
+    active: effectiveSkillIds.includes(s.id),
     type: 'toggle' as const,
-    hint: truncate(s.description || '', 40),
+    hint: truncate(`${s.description || ''}${sessionConfigScope === 'session' ? ' · session scope' : ' · global scope'}`, 56),
   }));
 
   /* ── Network section (agents + MCP) ────────────────── */
@@ -279,14 +411,51 @@ export function usePanel(opts: UsePanelOptions) {
         }))),
   ];
 
+  /* ── Files section ─────────────────────────────────── */
+  const fileItems: PanelItem[] = [
+    { key: 'files:root', label: 'Workspace root', meta: truncate(fileBrowser.rootPath, 24), type: 'action', hint: 'Jump back to workspace root' },
+    { key: 'files:up', label: 'Parent directory', meta: fileBrowser.currentPath === fileBrowser.rootPath ? '(root)' : '..', type: 'action', hint: 'Go up one directory' },
+    { key: 'files:refresh', label: 'Refresh', meta: fileBrowser.isLoading ? 'loading' : `${fileBrowser.entries.length} item(s)`, type: 'action', hint: 'Reload current directory listing' },
+    { key: 'files:new-file', label: 'New file', meta: 'create', type: 'action', hint: 'Create a file inside the current directory' },
+    { key: 'files:new-dir', label: 'New folder', meta: 'create', type: 'action', hint: 'Create a directory inside the current directory' },
+    { key: 'files:rename', label: 'Rename selected', meta: selectedFileTargetLabel, type: 'action', hint: 'Rename the last selected file or directory' },
+    { key: 'files:delete', label: 'Delete selected', meta: selectedFileTargetLabel, type: 'action', hint: 'Delete the last selected file or directory recursively' },
+    { key: 'files:path', label: 'Current path', meta: truncate(fileBrowser.currentDisplayPath, 26), type: 'info', hint: fileBrowser.currentPath },
+    ...(selectedFileTargetPath
+      ? [{
+          key: 'files:selection',
+          label: 'Selected item',
+          meta: selectedFileTargetLabel,
+          type: 'info' as const,
+          hint: selectedFileTargetPath,
+        }]
+      : []),
+    ...(fileBrowser.error
+      ? [{ key: 'files:error', label: 'File browser error', meta: truncate(fileBrowser.error, 24), type: 'info' as const }]
+      : []),
+    { key: 'files-header', label: '── Workspace Files', type: 'header' },
+    ...(fileBrowser.entries.length === 0
+      ? [{ key: 'files:empty', label: fileBrowser.isLoading ? 'Loading directory...' : '(empty directory)', type: 'info' as const }]
+      : fileBrowser.entries.map((entry) => ({
+          key: `files:${entry.kind}:${entry.path}`,
+          label: truncate(entry.kind === 'directory' ? `${entry.name}/` : entry.name, 28),
+          meta: entry.kind === 'directory'
+            ? 'dir'
+            : `${formatByteSize(entry.size)}  ${new Date(entry.modifiedAt).toLocaleDateString()}`,
+          type: 'action' as const,
+          hint: entry.path,
+        }))),
+  ];
+
   /* ── About section ─────────────────────────────────── */
   const aboutItems: PanelItem[] = [
     { key: 'about-name', label: '🐰 OpenBunny', type: 'info', meta: 'AI-powered assistant' },
     { key: 'about-version', label: 'Version', meta: '0.1.0', type: 'info' },
     { key: 'about-agent', label: 'Current agent', meta: opts.currentAgent?.name || 'OpenBunny', type: 'info' },
     { key: 'about-session', label: 'Session', meta: opts.currentSessionId ? opts.currentSessionId.slice(0, 8) : '(none)', type: 'info' },
-    { key: 'about-tools', label: 'Tools', meta: `${opts.enabledTools.filter((id) => id !== 'file_manager').length} enabled`, type: 'info' },
-    { key: 'about-skills', label: 'Skills', meta: `${opts.enabledSkills.length}/${opts.skills.length} enabled`, type: 'info' },
+    { key: 'about-scope', label: 'Config scope', meta: sessionConfigScope, type: 'info' },
+    { key: 'about-tools', label: 'Tools', meta: `${visibleEffectiveToolIds.length} enabled`, type: 'info' },
+    { key: 'about-skills', label: 'Skills', meta: `${effectiveSkillIds.length}/${opts.skills.length} enabled`, type: 'info' },
     { key: 'about-mcp', label: 'MCP', meta: `${opts.connectedMcpCount}/${opts.mcpConnections.length} connected`, type: 'info' },
     { key: 'about-exec', label: 'Exec', meta: opts.capabilities.supportsExec ? 'available' : 'unavailable', active: opts.capabilities.supportsExec, type: 'info' },
   ];
@@ -298,10 +467,11 @@ export function usePanel(opts: UsePanelOptions) {
       case 'tools':     return toolItems;
       case 'skills':    return skillItems;
       case 'network':   return networkItems;
+      case 'files':     return fileItems;
       case 'about':     return aboutItems;
       default:          return [];
     }
-  }, [generalItems, llmItems, toolItems, skillItems, networkItems, aboutItems]);
+  }, [generalItems, llmItems, toolItems, skillItems, networkItems, fileItems, aboutItems]);
 
   /* ── Clamp selections when items change ────────────── */
   useEffect(() => {
@@ -341,7 +511,7 @@ export function usePanel(opts: UsePanelOptions) {
     setPanelEditor(null);
   }, []);
 
-  const submitEditor = useCallback((value: string) => {
+  const submitEditor = useCallback(async (value: string) => {
     if (!panelEditor) return;
     const trimmed = value.trim();
 
@@ -391,8 +561,63 @@ export function usePanel(opts: UsePanelOptions) {
       opts.applyRuntimeConfig({ apiKey: trimmed || undefined });
       opts.addNotice(trimmed ? 'API key updated for current runtime config.' : 'API key cleared from current runtime config.', 'success');
       setPanelEditor(null);
+      return;
     }
-  }, [opts, panelEditor]);
+
+    if (panelEditor.itemKey === 'files:new-file') {
+      if (!trimmed) {
+        opts.addNotice('File path cannot be empty.', 'warning');
+        return;
+      }
+
+      try {
+        const nextPath = await fileBrowser.createFile(trimmed);
+        setFileActionTargetPath(nextPath);
+        opts.addNotice(`Created file ${nextPath}.`, 'success');
+        setPanelEditor(null);
+      } catch (fileError) {
+        opts.addNotice(`Create file failed: ${fileError instanceof Error ? fileError.message : String(fileError)}`, 'error');
+      }
+      return;
+    }
+
+    if (panelEditor.itemKey === 'files:new-dir') {
+      if (!trimmed) {
+        opts.addNotice('Directory path cannot be empty.', 'warning');
+        return;
+      }
+
+      try {
+        const nextPath = await fileBrowser.createDirectory(trimmed);
+        setFileActionTargetPath(nextPath);
+        opts.addNotice(`Created directory ${nextPath}.`, 'success');
+        setPanelEditor(null);
+      } catch (fileError) {
+        opts.addNotice(`Create directory failed: ${fileError instanceof Error ? fileError.message : String(fileError)}`, 'error');
+      }
+      return;
+    }
+
+    if (panelEditor.itemKey === 'files:rename') {
+      if (!panelEditor.targetPath) {
+        opts.addNotice('Select a file or directory before renaming.', 'warning');
+        return;
+      }
+      if (!trimmed) {
+        opts.addNotice('New name cannot be empty.', 'warning');
+        return;
+      }
+
+      try {
+        const nextPath = await fileBrowser.renamePath(panelEditor.targetPath, trimmed);
+        setFileActionTargetPath(nextPath);
+        opts.addNotice(`Renamed to ${nextPath}.`, 'success');
+        setPanelEditor(null);
+      } catch (fileError) {
+        opts.addNotice(`Rename failed: ${fileError instanceof Error ? fileError.message : String(fileError)}`, 'error');
+      }
+    }
+  }, [fileBrowser, opts, panelEditor]);
 
   useEffect(() => {
     if (!panelVisible && panelEditor) {
@@ -401,10 +626,21 @@ export function usePanel(opts: UsePanelOptions) {
   }, [panelEditor, panelVisible]);
 
   useEffect(() => {
-    if (panelEditor && panelSection !== 'llm') {
+    if (panelEditor && panelSection !== 'llm' && panelSection !== 'files') {
       setPanelEditor(null);
     }
   }, [panelEditor, panelSection]);
+
+  useEffect(() => {
+    if (!panelVisible || panelSection !== 'files' || panelEditor) return;
+    const selectedItem = getSelectedItem();
+    const entryPath = selectedItem ? getFileEntryPath(selectedItem.key) : null;
+    if (entryPath) {
+      setFileActionTargetPath(entryPath);
+    }
+    if (!selectedItem?.key.startsWith('files:file:') || !entryPath) return;
+    void fileBrowser.previewFile(entryPath).catch(() => {});
+  }, [fileBrowser.previewFile, getSelectedItem, panelEditor, panelSection, panelVisible]);
 
   /* ── Run action on Enter ───────────────────────────── */
   const runAction = useCallback(async (mode: 'select' | 'next' | 'prev' = 'select') => {
@@ -431,6 +667,37 @@ export function usePanel(opts: UsePanelOptions) {
         } else {
           opts.addNotice(`Created session ${next.id.slice(0, 8)} for ${opts.currentAgent?.name || opts.currentAgentId}.`, 'success');
         }
+        return;
+      }
+      if (selectedItem.key === 'session-filter') {
+        const nextFilter = cycleValue<(typeof SESSION_TYPE_FILTERS)[number]>(SESSION_TYPE_FILTERS, sessionTypeFilter, delta);
+        setSessionTypeFilter(nextFilter);
+        opts.addNotice(`Session filter set to ${nextFilter}.`, 'success');
+        return;
+      }
+      if (selectedItem.key === 'session-scope') {
+        if (!opts.currentSession) {
+          opts.addNotice('No active session selected.', 'warning');
+          return;
+        }
+
+        const nextScope = cycleValue(['global', 'session'] as const, sessionConfigScope, delta);
+        if (nextScope === sessionConfigScope) {
+          return;
+        }
+
+        if (!canMutateSessionOverrides(opts.currentSession)) {
+          return;
+        }
+
+        if (nextScope === 'session') {
+          const { tools, skills } = ensureSessionOverrides(opts.currentSession);
+          opts.addNotice(`Session scope enabled. Snapshot: ${tools.filter((id) => id !== 'file_manager').length} tool(s), ${skills.length} skill(s).`, 'success');
+          return;
+        }
+
+        setSessionOverrideConfig(opts.currentSession, undefined, undefined);
+        opts.addNotice('Reverted current session back to global defaults.', 'success');
         return;
       }
       if (selectedItem.key === 'exec-login-shell') {
@@ -604,8 +871,24 @@ export function usePanel(opts: UsePanelOptions) {
     // Tools section
     if (panelSection === 'tools') {
       const toolId = selectedItem.key;
-      const isEnabled = opts.enabledTools.includes(toolId);
-      if (opts.isDefaultAgent) {
+      const isEnabled = effectiveToolIds.includes(toolId);
+
+      if (sessionConfigScope === 'session') {
+        if (!canMutateSessionOverrides(opts.currentSession)) {
+          return;
+        }
+
+        const session = opts.currentSession;
+        if (!session) {
+          return;
+        }
+
+        const { tools, skills } = ensureSessionOverrides(session);
+        const nextTools = isEnabled
+          ? tools.filter((id) => id !== toolId)
+          : [...tools, toolId];
+        setSessionOverrideConfig(session, nextTools, skills);
+      } else if (opts.isDefaultAgent) {
         opts.toggleGlobalTool(toolId);
       } else if (opts.currentAgent) {
         opts.setAgentEnabledTools(
@@ -613,15 +896,31 @@ export function usePanel(opts: UsePanelOptions) {
           isEnabled ? opts.enabledTools.filter((id) => id !== toolId) : [...opts.enabledTools, toolId],
         );
       }
-      opts.addNotice(`Tool ${toolId} ${isEnabled ? 'disabled' : 'enabled'}.`, 'success');
+      opts.addNotice(`Tool ${toolId} ${isEnabled ? 'disabled' : 'enabled'} in ${sessionConfigScope} scope.`, 'success');
       return;
     }
 
     // Skills section
     if (panelSection === 'skills') {
       const skillId = selectedItem.key;
-      const isEnabled = opts.enabledSkills.includes(skillId);
-      if (opts.isDefaultAgent) {
+      const isEnabled = effectiveSkillIds.includes(skillId);
+
+      if (sessionConfigScope === 'session') {
+        if (!canMutateSessionOverrides(opts.currentSession)) {
+          return;
+        }
+
+        const session = opts.currentSession;
+        if (!session) {
+          return;
+        }
+
+        const { tools, skills } = ensureSessionOverrides(session);
+        const nextSkills = isEnabled
+          ? skills.filter((id) => id !== skillId)
+          : [...skills, skillId];
+        setSessionOverrideConfig(session, tools, nextSkills);
+      } else if (opts.isDefaultAgent) {
         opts.toggleGlobalSkill(skillId);
       } else if (opts.currentAgent) {
         opts.setAgentEnabledSkills(
@@ -629,7 +928,7 @@ export function usePanel(opts: UsePanelOptions) {
           isEnabled ? opts.enabledSkills.filter((id) => id !== skillId) : [...opts.enabledSkills, skillId],
         );
       }
-      opts.addNotice(`Skill ${skillId} ${isEnabled ? 'disabled' : 'enabled'}.`, 'success');
+      opts.addNotice(`Skill ${skillId} ${isEnabled ? 'disabled' : 'enabled'} in ${sessionConfigScope} scope.`, 'success');
       return;
     }
 
@@ -665,7 +964,115 @@ export function usePanel(opts: UsePanelOptions) {
         return;
       }
     }
-  }, [cycleValue, getSelectedItem, nearestNumericIndex, openEditor, panelSection, providerMeta, providerModels, opts, setPanelVisible]);
+
+    // Files section
+    if (panelSection === 'files') {
+      if (selectedItem.key === 'files:new-file') {
+        if (mode !== 'select') return;
+        openEditor({
+          itemKey: 'files:new-file',
+          label: 'New file',
+          value: '',
+          placeholder: 'notes.md',
+          help: 'Enter a relative path inside the current workspace directory',
+        });
+        return;
+      }
+      if (selectedItem.key === 'files:new-dir') {
+        if (mode !== 'select') return;
+        openEditor({
+          itemKey: 'files:new-dir',
+          label: 'New folder',
+          value: '',
+          placeholder: 'docs',
+          help: 'Enter a relative path inside the current workspace directory',
+        });
+        return;
+      }
+      if (selectedItem.key === 'files:rename') {
+        if (mode !== 'select') return;
+        if (!selectedFileTargetPath) {
+          opts.addNotice('Select a file or directory before renaming.', 'warning');
+          return;
+        }
+        openEditor({
+          itemKey: 'files:rename',
+          label: 'Rename selected',
+          value: path.basename(selectedFileTargetPath),
+          placeholder: path.basename(selectedFileTargetPath),
+          help: 'Rename the selected file or directory. Use a simple name or a relative path.',
+          targetPath: selectedFileTargetPath,
+        });
+        return;
+      }
+      if (selectedItem.key === 'files:delete') {
+        if (!selectedFileTargetPath) {
+          opts.addNotice('Select a file or directory before deleting.', 'warning');
+          return;
+        }
+        try {
+          const deletedPath = await opts.fileBrowser.deletePath(selectedFileTargetPath);
+          if (fileBrowser.preview?.path === deletedPath) {
+            opts.fileBrowser.clearPreview();
+          }
+          setFileActionTargetPath(null);
+          opts.addNotice(`Deleted ${deletedPath}.`, 'success');
+        } catch (fileError) {
+          opts.addNotice(`Delete failed: ${fileError instanceof Error ? fileError.message : String(fileError)}`, 'error');
+        }
+        return;
+      }
+      if (selectedItem.key === 'files:root') {
+        await opts.fileBrowser.changeDirectory(opts.fileBrowser.rootPath);
+        await opts.fileBrowser.refresh(opts.fileBrowser.rootPath);
+        setFileActionTargetPath(null);
+        opts.addNotice(`Jumped to workspace root ${opts.fileBrowser.rootPath}.`, 'success');
+        return;
+      }
+      if (selectedItem.key === 'files:up') {
+        const nextPath = await opts.fileBrowser.goUp();
+        await opts.fileBrowser.refresh(nextPath);
+        setFileActionTargetPath(null);
+        opts.addNotice(`Current directory: ${nextPath}`, 'success');
+        return;
+      }
+      if (selectedItem.key === 'files:refresh') {
+        await opts.fileBrowser.refresh();
+        opts.addNotice(`Reloaded ${opts.fileBrowser.currentPath}.`, 'success');
+        return;
+      }
+      if (selectedItem.key.startsWith('files:file:') || selectedItem.key.startsWith('files:directory:')) {
+        const entryPath = selectedItem.key.replace(/^files:(?:file|directory):/, '');
+        setFileActionTargetPath(entryPath);
+        const result = await opts.fileBrowser.openPath(entryPath);
+        if (result.kind === 'directory') {
+          await opts.fileBrowser.refresh(result.path);
+          opts.addNotice(`Opened directory ${result.path}.`, 'success');
+          return;
+        }
+        opts.addNotice(`Previewing ${result.preview?.displayPath || result.path}.`, 'info');
+      }
+      return;
+    }
+  }, [
+    canMutateSessionOverrides,
+    cycleValue,
+    effectiveSkillIds,
+    effectiveToolIds,
+    ensureSessionOverrides,
+    getSelectedItem,
+    nearestNumericIndex,
+    openEditor,
+    opts,
+    panelSection,
+    providerMeta,
+    providerModels,
+    sessionConfigScope,
+    sessionTypeFilter,
+    selectedFileTargetPath,
+    setPanelVisible,
+    setSessionOverrideConfig,
+  ]);
 
   /* ── Keyboard navigation ───────────────────────────── */
   useInput((inputChar, key) => {
@@ -714,6 +1121,70 @@ export function usePanel(opts: UsePanelOptions) {
       return;
     }
 
+    if (panelSection === 'files' && (key.leftArrow || inputChar === 'h')) {
+      void opts.fileBrowser.goUp().then((nextPath) => opts.fileBrowser.refresh(nextPath));
+      return;
+    }
+
+    if (panelSection === 'files') {
+      if (inputChar === 'n') {
+        openEditor({
+          itemKey: 'files:new-file',
+          label: 'New file',
+          value: '',
+          placeholder: 'notes.md',
+          help: 'Enter a relative path inside the current workspace directory',
+        });
+        return;
+      }
+
+      if (inputChar === 'd') {
+        openEditor({
+          itemKey: 'files:new-dir',
+          label: 'New folder',
+          value: '',
+          placeholder: 'docs',
+          help: 'Enter a relative path inside the current workspace directory',
+        });
+        return;
+      }
+
+      if (inputChar === 'r') {
+        if (!selectedFileTargetPath) {
+          opts.addNotice('Select a file or directory before renaming.', 'warning');
+          return;
+        }
+        openEditor({
+          itemKey: 'files:rename',
+          label: 'Rename selected',
+          value: path.basename(selectedFileTargetPath),
+          placeholder: path.basename(selectedFileTargetPath),
+          help: 'Rename the selected file or directory. Use a simple name or a relative path.',
+          targetPath: selectedFileTargetPath,
+        });
+        return;
+      }
+
+      if (inputChar === 'x') {
+        if (!selectedFileTargetPath) {
+          opts.addNotice('Select a file or directory before deleting.', 'warning');
+          return;
+        }
+        void opts.fileBrowser.deletePath(selectedFileTargetPath)
+          .then((deletedPath) => {
+            if (fileBrowser.preview?.path === deletedPath) {
+              opts.fileBrowser.clearPreview();
+            }
+            setFileActionTargetPath(null);
+            opts.addNotice(`Deleted ${deletedPath}.`, 'success');
+          })
+          .catch((fileError) => {
+            opts.addNotice(`Delete failed: ${fileError instanceof Error ? fileError.message : String(fileError)}`, 'error');
+          });
+        return;
+      }
+    }
+
     if (key.leftArrow || key.rightArrow || inputChar === 'h' || inputChar === 'l') {
       void runAction(key.leftArrow || inputChar === 'h' ? 'prev' : 'next');
       return;
@@ -736,6 +1207,7 @@ export function usePanel(opts: UsePanelOptions) {
       else if (c === 't') setPanelSection('tools');
       else if (c === 'k') setPanelSection('skills');
       else if (c === 'p') setPanelSection('network');
+      else if (c === 'f') setPanelSection('files');
     }
   });
 
@@ -803,6 +1275,21 @@ export function usePanel(opts: UsePanelOptions) {
     hiddenAfter: window.hiddenAfter,
     editor: panelEditor,
   });
+  const previewTitle = panelSection === 'files' && fileBrowser.preview
+    ? `Preview ${fileBrowser.preview.displayPath}`
+    : undefined;
+  const previewMeta = panelSection === 'files' && fileBrowser.preview
+    ? filePreviewMeta
+    : (panelSection === 'files' && fileBrowser.error ? fileBrowser.error : undefined);
+  const previewLines = panelSection === 'files'
+    ? (fileBrowser.preview?.lines || (fileBrowser.error
+        ? ['File browser error.']
+        : [
+            'Select a file to preview it here.',
+            'Shortcuts: n new file · d new folder · r rename · x delete',
+            'Commands: /touch /mkdir /rename /rm /write',
+          ]))
+    : undefined;
 
   useMouse((event) => {
     if (!panelVisible) return;
@@ -898,6 +1385,10 @@ export function usePanel(opts: UsePanelOptions) {
     panelWidth,
     currentItems: visibleItems, currentSelection, window,
     selectedItemKey,
+    previewTitle,
+    previewMeta,
+    previewLines,
+    previewTone: panelSection === 'files' && fileBrowser.preview?.kind === 'binary' ? 'yellow' : undefined,
     getItems, runAction,
   };
 }

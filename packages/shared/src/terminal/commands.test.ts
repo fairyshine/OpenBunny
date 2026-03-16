@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { useSessionStore } from '../stores/session';
 import type { Message, Session } from '../types';
-import { resumeSession } from './commands';
+import { getHelpInfo, resumeSession } from './commands';
 
 function createMessage(overrides: Partial<Message> = {}): Message {
   return {
@@ -77,4 +77,19 @@ test('resumeSession falls back to the stored system prompt when no override is p
   } finally {
     useSessionStore.setState(snapshot);
   }
+});
+
+test('getHelpInfo includes TUI workspace and scope commands', () => {
+  const help = getHelpInfo({
+    provider: 'openai',
+    model: 'gpt-4o-mini',
+    temperature: 0.7,
+    maxTokens: 4096,
+  });
+
+  const commandNames = help.commands.map((command) => command.name);
+  assert.ok(commandNames.includes('/scope [mode]'));
+  assert.ok(commandNames.includes('/files'));
+  assert.ok(commandNames.includes('/open <path>'));
+  assert.ok(commandNames.includes('/write <p> <txt>'));
 });

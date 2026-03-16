@@ -51,6 +51,7 @@ export const T = {
   sTools:      '#fbbf24',
   sSkills:     '#60a5fa',
   sNetwork:    '#22d3ee',
+  sFiles:      '#34d399',
   sAbout:      '#f0abfc',
 
   // ── gradient accent cycle (for spinner) ────────────────
@@ -75,6 +76,7 @@ export function getSectionColor(section: PanelSection): string {
     case 'tools':     return T.sTools;
     case 'skills':    return T.sSkills;
     case 'network':   return T.sNetwork;
+    case 'files':     return T.sFiles;
     case 'about':     return T.sAbout;
     default:          return T.brand;
   }
@@ -87,6 +89,7 @@ export function getSectionTabLabel(section: PanelSection): string {
     case 'tools':     return 'Tools';
     case 'skills':    return 'Skills';
     case 'network':   return 'Network';
+    case 'files':     return 'Files';
     case 'about':     return 'About';
     default:          return section;
   }
@@ -99,6 +102,7 @@ export function getSectionShortcut(section: PanelSection): string | null {
     case 'tools':     return 'Ctrl+T';
     case 'skills':    return 'Ctrl+K';
     case 'network':   return 'Ctrl+P';
+    case 'files':     return 'Ctrl+F';
     default:          return null;
   }
 }

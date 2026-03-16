@@ -21,7 +21,8 @@ export function HintBar({ panelVisible, width, panelEditing }: HintBarProps) {
             ? 'Click select · wheel scroll · right click close'
             : 'Esc/Tab panel'}
         {' · '}
-        {compact ? '/help' : '/help commands'}
+        {compact ? '/help' : '/help · /scope'}
+        {!compact && ' · /files workspace'}
       </Text>
     </Box>
   );

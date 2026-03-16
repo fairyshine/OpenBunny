@@ -34,7 +34,7 @@ export function AppHeader({
   const status = isLoading ? 'thinking' : panelVisible ? 'panel open' : 'ready';
   const tips = panelVisible
     ? 'Tab switch · ↑↓ select · Enter apply · Esc close'
-    : 'Enter send · /help commands · Esc/Tab panel';
+    : 'Enter send · /help commands · /files · Esc/Tab panel';
 
   return (
     <Box paddingX={1} marginBottom={1} width={Math.max(24, width - 2)}>
@@ -67,7 +67,7 @@ export function AppHeader({
         )}
         <Text color={T.border}>{'─'.repeat(Math.max(1, width - 8))}</Text>
         <Text color={T.fgSubtle}>{tips}</Text>
-        <Text color={T.fgSubtle}>/new session · /resume &lt;id&gt; · /tools · /providers</Text>
+        <Text color={T.fgSubtle}>/new session · /resume &lt;id&gt; · /files · /tools · /providers</Text>
       </Box>
     </Box>
   );

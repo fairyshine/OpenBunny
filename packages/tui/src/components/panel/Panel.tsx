@@ -18,6 +18,8 @@ interface PanelProps {
   agentName: string;
   runtimeConfig: LLMConfig;
   sessionCount: number;
+  sessionConfigScope: string;
+  sessionConfigState: string;
   enabledToolCount: number;
   connectedMcpCount: number;
   mcpCount: number;
@@ -27,9 +29,15 @@ interface PanelProps {
   execLoginShell: boolean;
   toolExecutionTimeout: number;
   searchProvider: string;
+  fileBrowserPath: string;
+  fileEntryCount: number;
   editor: PanelEditorState | null;
   onEditorChange: (value: string) => void;
   onEditorSubmit: (value: string) => void;
+  previewTitle?: string;
+  previewMeta?: string;
+  previewLines?: string[];
+  previewTone?: string;
 }
 
 export function Panel(props: PanelProps) {
@@ -52,6 +60,8 @@ export function Panel(props: PanelProps) {
         agentName={props.agentName}
         runtimeConfig={props.runtimeConfig}
         sessionCount={props.sessionCount}
+        sessionConfigScope={props.sessionConfigScope}
+        sessionConfigState={props.sessionConfigState}
         enabledToolCount={props.enabledToolCount}
         connectedMcpCount={props.connectedMcpCount}
         mcpCount={props.mcpCount}
@@ -61,6 +71,8 @@ export function Panel(props: PanelProps) {
         execLoginShell={props.execLoginShell}
         toolExecutionTimeout={props.toolExecutionTimeout}
         searchProvider={props.searchProvider}
+        fileBrowserPath={props.fileBrowserPath}
+        fileEntryCount={props.fileEntryCount}
       />
 
       <Text color={T.border}>{divider}</Text>
@@ -99,11 +111,38 @@ export function Panel(props: PanelProps) {
         </>
       )}
 
+      {props.previewLines && props.previewLines.length > 0 && (
+        <>
+          <Text color={T.border}>{divider}</Text>
+          <Box flexDirection="column" marginTop={1}>
+            {props.previewTitle && (
+              <Text color={props.previewTone || sectionColor} bold>{props.previewTitle}</Text>
+            )}
+            {props.previewMeta && (
+              <Text color={T.fgSubtle}>{props.previewMeta}</Text>
+            )}
+            <Box
+              borderStyle="round"
+              borderColor={props.previewTone || sectionColor}
+              paddingX={1}
+              marginTop={1}
+              flexDirection="column"
+            >
+              {props.previewLines.map((line, index) => (
+                <Text key={`${index}-${line}`} color={T.fgDim} wrap="truncate-end">
+                  {line}
+                </Text>
+              ))}
+            </Box>
+          </Box>
+        </>
+      )}
+
       <Text color={T.border}>{divider}</Text>
       <Text color={T.fgSubtle}>
         {editor
           ? 'Type edit · ↩ apply · Esc/right click cancel · click tab/item switch'
-          : 'Click select · wheel scroll · right click close · ↑↓/←→ keys · 1-6 sections'}
+          : 'Click select · wheel scroll · right click close · ↑↓/←→ keys · 1-7 sections'}
       </Text>
     </Box>
   );
