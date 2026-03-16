@@ -16,9 +16,9 @@ export function HintBar({ panelVisible, width, panelEditing }: HintBarProps) {
         {compact ? '^C quit' : '^C quit · Enter send'}
         {' · '}
         {panelEditing
-          ? 'Esc cancel edit · Enter apply'
+          ? 'Esc/right click cancel edit · Enter apply'
           : panelVisible
-            ? 'Esc close · Tab switch · ↑↓ select · ←→ cycle'
+            ? 'Click select · wheel scroll · right click close'
             : 'Esc/Tab panel'}
         {' · '}
         {compact ? '/help' : '/help commands'}

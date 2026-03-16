@@ -16,6 +16,7 @@ import { MessageList } from './components/chat/MessageList.js';
 import { NoticePanel } from './components/notices/NoticePanel.js';
 import { Panel } from './components/panel/Panel.js';
 import { T } from './theme.js';
+import { getPanelTopOffset } from './utils/layout.js';
 
 const MIN_TERM_COLS = 88;
 
@@ -115,7 +116,16 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     sendMessage: agentLoop.sendMessage,
   });
 
+  const agentName = state.currentAgent?.name || 'OpenBunny';
+  const panelTop = getPanelTopOffset({
+    agentName,
+    currentSessionId: state.currentSessionId,
+    workspace,
+  });
+
   const panel = usePanel({
+    terminalWidth: termSize.cols,
+    panelTop,
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
     currentAgent: state.currentAgent,
@@ -195,7 +205,6 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
   const messages = state.currentSession?.messages || [];
   const totalMessageCount = messages.length;
   const disabled = agentLoop.isLoading || isInitializing || panel.panelVisible;
-  const agentName = state.currentAgent?.name || 'OpenBunny';
   const tooSmall = termSize.cols < MIN_TERM_COLS;
   const disabledReason = isInitializing
     ? 'Initializing'

@@ -102,8 +102,8 @@ export function Panel(props: PanelProps) {
       <Text color={T.border}>{divider}</Text>
       <Text color={T.fgSubtle}>
         {editor
-          ? 'Type edit · ↩ apply · Esc cancel'
-          : '↑↓ navigate · ←→ cycle · ↩ select · Space toggle · 1-6 sections · Esc close'}
+          ? 'Type edit · ↩ apply · Esc/right click cancel · click tab/item switch'
+          : 'Click select · wheel scroll · right click close · ↑↓/←→ keys · 1-6 sections'}
       </Text>
     </Box>
   );

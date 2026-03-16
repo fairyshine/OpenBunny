@@ -4,9 +4,9 @@ import { truncate } from '../../utils/formatting.js';
 import type { LLMConfig } from '@openbunny/shared/types';
 
 const LOGO_LINES = [
-  '  (\\(\\',
-  '  ( -.-)',
-  '  o_(")(")',
+  '   (\\_/)',
+  "  (='.'=)",
+  '  (")_(")',
 ];
 
 interface AppHeaderProps {

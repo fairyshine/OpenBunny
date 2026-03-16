@@ -7,8 +7,11 @@ import { truncate, formatTimeout, getSlidingWindow } from '../utils/formatting.j
 import { useMouse } from './useMouse.js';
 import type { LLMConfig, Session } from '@openbunny/shared/types';
 import type { MCPConnection, MCPTransportType } from '@openbunny/shared/stores/tools';
+import { getSectionTabLabel } from '../theme.js';
 
 interface UsePanelOptions {
+  terminalWidth: number;
+  panelTop: number;
   sessions: Session[];
   currentSessionId: string | null;
   currentAgent: { name: string; id: string; llmConfig: LLMConfig; isDefault?: boolean; enabledTools?: string[]; enabledSkills?: string[] } | null;
@@ -57,6 +60,109 @@ interface UsePanelOptions {
   isLoading: boolean;
 }
 
+interface PanelMouseTabHit {
+  section: PanelSection;
+  xStart: number;
+  xEnd: number;
+}
+
+interface PanelMouseRowHit {
+  type: 'item' | 'scroll';
+  yStart: number;
+  yEnd: number;
+  itemKey?: string;
+  delta?: number;
+}
+
+const PANEL_BORDER_AND_PADDING_X = 2;
+const PANEL_EDITOR_HEIGHT = 7;
+
+function getPanelItemHeight(item: PanelItem, isSelected: boolean): number {
+  if (item.type === 'header') {
+    return 2;
+  }
+
+  return 1 + (isSelected && item.hint ? 1 : 0);
+}
+
+function buildPanelMouseLayout(args: {
+  terminalWidth: number;
+  panelWidth: number;
+  panelTop: number;
+  section: PanelSection;
+  items: PanelItem[];
+  selectedItemKey: string | null;
+  hiddenBefore: number;
+  hiddenAfter: number;
+  editor: PanelEditorState | null;
+}) {
+  const panelLeft = Math.max(1, Math.floor((args.terminalWidth - args.panelWidth) / 2) + 1);
+  const panelRight = panelLeft + args.panelWidth - 1;
+  const contentLeft = panelLeft + PANEL_BORDER_AND_PADDING_X;
+  const tabY = args.panelTop + 1;
+  const tabHits: PanelMouseTabHit[] = [];
+  let tabCursorX = contentLeft;
+
+  for (const section of PANEL_SECTIONS) {
+    const label = args.section === section
+      ? `[${getSectionTabLabel(section)}]`
+      : getSectionTabLabel(section);
+
+    tabHits.push({
+      section,
+      xStart: tabCursorX,
+      xEnd: tabCursorX + label.length - 1,
+    });
+
+    tabCursorX += label.length + 1;
+  }
+
+  const rowHits: PanelMouseRowHit[] = [];
+  let cursorY = args.panelTop + 4;
+
+  if (args.hiddenBefore > 0) {
+    rowHits.push({ type: 'scroll', delta: -1, yStart: cursorY, yEnd: cursorY });
+    cursorY += 1;
+  }
+
+  for (const item of args.items) {
+    if (item.type === 'header') {
+      cursorY += 2;
+      continue;
+    }
+
+    const height = getPanelItemHeight(item, item.key === args.selectedItemKey);
+    rowHits.push({
+      type: 'item',
+      itemKey: item.key,
+      yStart: cursorY,
+      yEnd: cursorY + height - 1,
+    });
+    cursorY += height;
+  }
+
+  if (args.hiddenAfter > 0) {
+    rowHits.push({ type: 'scroll', delta: 1, yStart: cursorY, yEnd: cursorY });
+    cursorY += 1;
+  }
+
+  if (args.editor) {
+    cursorY += PANEL_EDITOR_HEIGHT;
+  }
+
+  return {
+    panelLeft,
+    panelRight,
+    panelTop: args.panelTop,
+    panelBottom: cursorY + 2,
+    tabY,
+    editorTop: args.editor ? cursorY - PANEL_EDITOR_HEIGHT : null,
+    editorBottom: args.editor ? cursorY - 1 : null,
+    tabHits,
+    rowHits,
+  };
+}
+
 export function usePanel(opts: UsePanelOptions) {
   const [panelSection, setPanelSection] = useState<PanelSection>('general');
   const [panelVisible, setPanelVisible] = useState(false);
@@ -65,7 +171,7 @@ export function usePanel(opts: UsePanelOptions) {
     general: 0, llm: 0, tools: 0, skills: 0, network: 0, about: 0,
   });
 
-  const terminalWidth = process.stdout.columns ?? 120;
+  const terminalWidth = opts.terminalWidth;
   const panelWidth = Math.min(72, Math.max(40, Math.floor(terminalWidth * 0.7)));
   const providerMeta = getProviderMeta(opts.runtimeConfig.provider);
   const providerModels = providerMeta?.models?.length ? providerMeta.models : [opts.runtimeConfig.model];
@@ -644,17 +750,19 @@ export function usePanel(opts: UsePanelOptions) {
     });
   }, [getSelectableItems, panelSection]);
 
-  useMouse((event) => {
-    if (!panelVisible) return;
-    if (panelEditor) return;
-    if (event.type === 'wheel') {
-      selectItemByOffset(event.button === 'scrollDown' ? 1 : -1);
-      return;
-    }
-    if (event.type === 'press' && event.button === 'left') {
-      void runAction('select');
-    }
-  }, panelVisible && !panelEditor);
+  const selectItemByKey = useCallback((itemKey: string) => {
+    const selectable = getSelectableItems(panelSection);
+    const nextIndex = selectable.findIndex((item) => item.key === itemKey);
+    if (nextIndex < 0) return;
+
+    setPanelSelections((prev) => {
+      if ((prev[panelSection] ?? 0) === nextIndex) {
+        return prev;
+      }
+
+      return { ...prev, [panelSection]: nextIndex };
+    });
+  }, [getSelectableItems, panelSection]);
 
   /* ── Computed for rendering ────────────────────────── */
   const currentItems = getItems(panelSection);
@@ -683,6 +791,102 @@ export function usePanel(opts: UsePanelOptions) {
 
     visibleItems.push(item);
   }
+
+  const panelMouseLayout = buildPanelMouseLayout({
+    terminalWidth,
+    panelWidth,
+    panelTop: opts.panelTop,
+    section: panelSection,
+    items: visibleItems,
+    selectedItemKey,
+    hiddenBefore: window.hiddenBefore,
+    hiddenAfter: window.hiddenAfter,
+    editor: panelEditor,
+  });
+
+  useMouse((event) => {
+    if (!panelVisible) return;
+
+    const isInsidePanel = event.x >= panelMouseLayout.panelLeft
+      && event.x <= panelMouseLayout.panelRight
+      && event.y >= panelMouseLayout.panelTop
+      && event.y <= panelMouseLayout.panelBottom;
+    const isInsideEditor = panelMouseLayout.editorTop !== null
+      && panelMouseLayout.editorBottom !== null
+      && event.y >= panelMouseLayout.editorTop
+      && event.y <= panelMouseLayout.editorBottom;
+
+    if (event.type === 'wheel') {
+      if (!isInsidePanel) return;
+      if (panelEditor) return;
+      selectItemByOffset(event.button === 'scrollDown' ? 1 : -1);
+      return;
+    }
+
+    if (event.type === 'press' && event.button === 'right') {
+      if (panelEditor) {
+        cancelEditor();
+        return;
+      }
+
+      setPanelVisible(false);
+      return;
+    }
+
+    if (event.type === 'press' && event.button === 'left') {
+      if (!isInsidePanel) {
+        if (panelEditor) {
+          cancelEditor();
+          return;
+        }
+
+        setPanelVisible(false);
+        return;
+      }
+
+      if (event.y === panelMouseLayout.tabY) {
+        const clickedTab = panelMouseLayout.tabHits.find((tab) => event.x >= tab.xStart && event.x <= tab.xEnd);
+        if (!clickedTab) return;
+        if (panelEditor) {
+          cancelEditor();
+        }
+        if (clickedTab.section !== panelSection) {
+          setPanelSection(clickedTab.section);
+        }
+        return;
+      }
+
+      if (isInsideEditor) {
+        return;
+      }
+
+      const rowHit = panelMouseLayout.rowHits.find((row) => event.y >= row.yStart && event.y <= row.yEnd);
+      if (!rowHit) return;
+
+      if (rowHit.type === 'scroll') {
+        if (panelEditor) return;
+        selectItemByOffset(rowHit.delta ?? 0);
+        return;
+      }
+
+      if (!rowHit.itemKey) return;
+
+      if (panelEditor) {
+        if (rowHit.itemKey !== panelEditor.itemKey) {
+          cancelEditor();
+          selectItemByKey(rowHit.itemKey);
+        }
+        return;
+      }
+
+      if (rowHit.itemKey === selectedItemKey) {
+        void runAction('select');
+        return;
+      }
+
+      selectItemByKey(rowHit.itemKey);
+    }
+  }, panelVisible);
 
   return {
     panelVisible, setPanelVisible,
