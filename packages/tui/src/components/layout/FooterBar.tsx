@@ -23,6 +23,10 @@ export function FooterBar({
   totalMessageCount,
   panelVisible,
 }: FooterBarProps) {
+  if (!panelVisible) {
+    return null;
+  }
+
   const items: Array<{ label: string; color: string }> = [];
   const stateLabel = isLoading ? 'streaming' : panelVisible ? 'panel open' : 'idle';
   const stateColor = isLoading ? T.warn : panelVisible ? T.brandLight : T.accent;
@@ -41,16 +45,15 @@ export function FooterBar({
   }
 
   return (
-    <Box flexDirection="column" paddingX={1}>
-      <Text color={T.border}>{'─'.repeat(Math.max(1, width - 2))}</Text>
-      <Box>
+    <Box paddingX={1} marginTop={1} width={Math.max(24, width - 2)}>
       {items.map((item, i) => (
         <Text key={i}>
           {i > 0 && <Text color={T.fgSubtle}> · </Text>}
           <Text color={item.color}>{item.label}</Text>
         </Text>
       ))}
-      </Box>
+      {currentSessionId && <Text color={T.fgSubtle}> · </Text>}
+      {currentSessionId && <Text color={T.info}>/resume {currentSessionId.slice(0, 8)}</Text>}
     </Box>
   );
 }

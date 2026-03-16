@@ -1,6 +1,7 @@
 import { Box, Text } from 'ink';
+import TextInput from 'ink-text-input';
 import type { LLMConfig } from '@openbunny/shared/types';
-import type { PanelItem, PanelSection } from '../../types.js';
+import type { PanelEditorState, PanelItem, PanelSection } from '../../types.js';
 import { T, getSectionColor } from '../../theme.js';
 import { PanelTabs } from './PanelTabs.js';
 import { PanelSummary } from './PanelSummary.js';
@@ -26,10 +27,13 @@ interface PanelProps {
   execLoginShell: boolean;
   toolExecutionTimeout: number;
   searchProvider: string;
+  editor: PanelEditorState | null;
+  onEditorChange: (value: string) => void;
+  onEditorSubmit: (value: string) => void;
 }
 
 export function Panel(props: PanelProps) {
-  const { section, items, selectedItemKey, panelWidth, hiddenBefore, hiddenAfter } = props;
+  const { section, items, selectedItemKey, panelWidth, hiddenBefore, hiddenAfter, editor } = props;
   const sectionColor = getSectionColor(section);
   const divider = '─'.repeat(Math.max(1, panelWidth - 4));
 
@@ -76,8 +80,31 @@ export function Panel(props: PanelProps) {
         <Text color={T.fgSubtle}>↓ {hiddenAfter} more item{hiddenAfter === 1 ? '' : 's'}</Text>
       )}
 
+      {editor && (
+        <>
+          <Text color={T.border}>{divider}</Text>
+          <Box flexDirection="column" marginTop={1}>
+            <Text color={sectionColor} bold>Edit {editor.label}</Text>
+            <Text color={T.fgSubtle}>{editor.help || 'Enter apply · Esc cancel'}</Text>
+            <Box borderStyle="round" borderColor={sectionColor} paddingX={1} marginTop={1}>
+              <Text color={sectionColor}>❯ </Text>
+              <TextInput
+                value={editor.value}
+                onChange={props.onEditorChange}
+                onSubmit={props.onEditorSubmit}
+                placeholder={editor.placeholder}
+              />
+            </Box>
+          </Box>
+        </>
+      )}
+
       <Text color={T.border}>{divider}</Text>
-      <Text color={T.fgSubtle}>↑↓ navigate · ↩ select · Tab switch · Esc close</Text>
+      <Text color={T.fgSubtle}>
+        {editor
+          ? 'Type edit · ↩ apply · Esc cancel'
+          : '↑↓ navigate · ←→ cycle · ↩ select · Space toggle · 1-6 sections · Esc close'}
+      </Text>
     </Box>
   );
 }

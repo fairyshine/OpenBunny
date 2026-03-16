@@ -26,7 +26,10 @@ function getShellArgs(loginShell: boolean): string[] {
     return ['/Q', '/K'];
   }
 
-  return loginShell ? ['-l', '-i'] : ['-i'];
+  // Keep the shell session persistent via stdin without enabling interactive mode.
+  // Interactive shells emit prompts, OSC title updates, and other control sequences
+  // that can corrupt TUI rendering and delay simple commands like `pwd`.
+  return loginShell ? ['-l'] : [];
 }
 
 function getOrCreateSession(sessionId: string, options: Required<Pick<ShellExecOptions, 'cwd' | 'loginShell'>>): ShellSession {
@@ -76,6 +79,7 @@ export async function executeNodeShell(command: string, options: ShellExecOption
   return new Promise<ShellExecResult>((resolve) => {
     let output = '';
     let errorOutput = '';
+    let settled = false;
 
     const endMarker = `__OPENBUNNY_EXEC_END_${Date.now()}_${Math.random().toString(36).slice(2)}__`;
     const exitMarker = `__OPENBUNNY_EXEC_EXIT_${Date.now()}_${Math.random().toString(36).slice(2)}__`;
@@ -83,11 +87,10 @@ export async function executeNodeShell(command: string, options: ShellExecOption
     const timeout = timeoutMs === -1
       ? null
       : setTimeout(() => {
-          cleanup();
-          resolve({
+          settle({
             sessionId,
             exitCode: -1,
-            output: output || errorOutput,
+            output: sanitizeShellOutput(output || errorOutput),
             error: `Command timed out after ${timeoutMs}ms`,
           });
         }, timeoutMs);
@@ -98,6 +101,15 @@ export async function executeNodeShell(command: string, options: ShellExecOption
       }
       child.stdout?.off('data', onStdout);
       child.stderr?.off('data', onStderr);
+      child.off('exit', onExit);
+      child.off('error', onError);
+    };
+
+    const settle = (result: ShellExecResult) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(result);
     };
 
     const onStdout = (data: Buffer) => {
@@ -106,8 +118,6 @@ export async function executeNodeShell(command: string, options: ShellExecOption
       if (!output.includes(endMarker)) {
         return;
       }
-
-      cleanup();
 
       const exitMatch = output.match(new RegExp(`${escapeRegExp(exitMarker)}(\\d+)`));
       const exitCode = exitMatch ? Number.parseInt(exitMatch[1], 10) : 0;
@@ -118,10 +128,10 @@ export async function executeNodeShell(command: string, options: ShellExecOption
         .replace(new RegExp(escapeRegExp(endMarker), 'g'), '')
         .trim();
 
-      resolve({
+      settle({
         sessionId,
         exitCode,
-        output: cleanOutput,
+        output: sanitizeShellOutput(cleanOutput),
       });
     };
 
@@ -129,10 +139,38 @@ export async function executeNodeShell(command: string, options: ShellExecOption
       errorOutput += data.toString();
     };
 
+    const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
+      settle({
+        sessionId,
+        exitCode: code ?? -1,
+        output: sanitizeShellOutput(output || errorOutput),
+        error: `Shell session exited unexpectedly${signal ? ` (${signal})` : ''}`,
+      });
+    };
+
+    const onError = (error: Error) => {
+      settle({
+        sessionId,
+        exitCode: -1,
+        output: sanitizeShellOutput(output || errorOutput),
+        error: error.message,
+      });
+    };
+
     child.stdout?.on('data', onStdout);
     child.stderr?.on('data', onStderr);
+    child.once('exit', onExit);
+    child.once('error', onError);
     child.stdin?.write(`${command}\necho ${exitMarker}$?\necho ${endMarker}\n`);
   });
+}
+
+export function sanitizeShellOutput(output: string): string {
+  return output
+    .replace(/\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)/g, '')
+    .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '')
+    .replace(/[\x00-\x08\x0B-\x1A\x1C-\x1F\x7F]/g, '')
+    .trim();
 }
 
 export async function destroyNodeShellSession(sessionId: string): Promise<void> {

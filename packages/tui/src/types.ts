@@ -8,7 +8,7 @@ export type PanelSection = 'general' | 'llm' | 'tools' | 'skills' | 'network' | 
 export type PanelItemStatus = 'connected' | 'disconnected' | 'connecting';
 
 // Item types for richer rendering
-export type PanelItemType = 'toggle' | 'cycle' | 'action' | 'info' | 'header';
+export type PanelItemType = 'toggle' | 'cycle' | 'action' | 'info' | 'header' | 'input';
 
 export interface PanelItem {
   key: string;
@@ -18,6 +18,14 @@ export interface PanelItem {
   status?: PanelItemStatus;
   type?: PanelItemType;
   hint?: string;
+}
+
+export interface PanelEditorState {
+  itemKey: string;
+  label: string;
+  value: string;
+  placeholder?: string;
+  help?: string;
 }
 
 export interface Notice {

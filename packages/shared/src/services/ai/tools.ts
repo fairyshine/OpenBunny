@@ -494,16 +494,17 @@ export function createChatTool(context?: ToolExecutionContext) {
 
 function createExecTool(context?: ToolExecutionContext) {
   return tool({
-    description: 'Execute shell commands in a persistent session on supported desktop or terminal platforms. Maintains shell state across commands.',
+    description: 'Execute shell commands in a persistent session on supported desktop or terminal platforms. By default the shell session is bound to the current conversation session, so shell state persists across exec calls within the same chat.',
     inputSchema: z.object({
       command: z.string().describe('Shell command to execute'),
-      sessionId: z.string().optional().describe('Session ID for persistent shell (optional, auto-generated if not provided)'),
+      sessionId: z.string().optional().describe('Optional shell session override. Defaults to the current conversation session ID.'),
     }),
     execute: async ({ command, sessionId }) => {
       const { toolExecutionTimeout: timeout, execLoginShell } = resolveToolRuntimeSettings(context);
+      const effectiveSessionId = sessionId || context?.sourceSessionId;
       if (typeof window !== 'undefined' && (window as any).electronAPI?.exec) {
         try {
-          const execPromise = (window as any).electronAPI.exec.execute(command, sessionId, execLoginShell, timeout);
+          const execPromise = (window as any).electronAPI.exec.execute(command, effectiveSessionId, execLoginShell, timeout);
           const result = await execPromise as any;
           if (result.error) {
             return `Error:\n${result.error}`;
@@ -522,7 +523,7 @@ function createExecTool(context?: ToolExecutionContext) {
         }
 
         const result = await platformContext.api.executeShell(command, {
-          sessionId,
+          sessionId: effectiveSessionId,
           loginShell: execLoginShell,
           timeoutMs: timeout,
         });

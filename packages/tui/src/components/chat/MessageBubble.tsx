@@ -11,6 +11,20 @@ interface MessageBubbleProps {
   message: Message;
 }
 
+function simplifyExecToolOutput(content: string): string {
+  const match = content.match(/^Session: .*?\nExit Code: (\d+)\n\nOutput:\n```[\r\n]?([\s\S]*?)\n?```$/);
+  if (!match) return content;
+
+  const exitCode = Number.parseInt(match[1], 10);
+  const output = match[2].trim();
+
+  if (exitCode !== 0) {
+    return output ? `Exit Code: ${exitCode}\n${output}` : `Exit Code: ${exitCode}`;
+  }
+
+  return output || '(no output)';
+}
+
 /* ── Gemini-style role prefixes ────────────────────────── */
 
 function getMessageHeading(message: Message): { prefix: string; label: string; color: string } {
@@ -39,8 +53,7 @@ function getMessageHeading(message: Message): { prefix: string; label: string; c
   if (presentation.kind === 'skill_resource_result') return { prefix: '◈', label: presentation.skillName || 'Skill Resource', color: T.skill };
   if (presentation.kind === 'skill_activation_result') return { prefix: '◈', label: presentation.skillName || 'Skill Loaded', color: T.skill };
 
-  // AI response — sparkle prefix like Gemini
-  return { prefix: '✦', label: 'Bunny', color: T.assistant };
+  return { prefix: '🐰', label: 'Bunny', color: T.assistant };
 }
 
 function getMessageBody(message: Message): string {
@@ -50,12 +63,15 @@ function getMessageBody(message: Message): string {
     case 'process':
       return presentation.toolInput || message.content || '(no content)';
     case 'tool_result': {
+      const content = presentation.toolName === 'exec'
+        ? simplifyExecToolOutput(presentation.content || '')
+        : (presentation.content || '(no output)');
       const imageSummary = presentation.files.length > 0
         ? `\n\nAttached files:\n${presentation.files.map((file, i) => (
             `  ${i + 1}. ${file.filename || 'image'} (${file.mediaType})`
           )).join('\n')}`
         : '';
-      return `${presentation.content || '(no output)'}${imageSummary}`;
+      return `${content}${imageSummary}`;
     }
     case 'skill_activation':
       return [

@@ -76,7 +76,11 @@ Commands inside TUI:
 Panel keys:
   Esc / Tab                 Open panel (when input empty)
   Tab                       Switch section tab (when panel open)
-  Up / Down / Enter         Navigate panel items
+  Up / Down / j / k         Navigate panel items
+  Left / Right              Cycle selected setting values
+  Enter                     Select or open inline editor
+  Space                     Toggle selected toggle/action item
+  1-6                       Jump to panel sections
   Ctrl+G / Ctrl+L           Focus General / LLM
   Ctrl+T / Ctrl+K           Focus Tools / Skills
   Ctrl+P                    Focus Network (agents + MCP)
@@ -95,27 +99,6 @@ const resolvedWorkspace = resolveWorkspace(workspace);
 const startupNotice = (providerMeta?.requiresApiKey ?? true) && !config.apiKey
   ? `Provider "${config.provider}" requires an API key. Use /api-key <key>, switch with /provider <id>, or restart with --api-key.`
   : undefined;
-
-/* ── Startup banner with gradient bunny logo ─────────────── */
-// ANSI 256-color gradient: purple → blue → cyan
-const g = ['\x1b[38;5;141m', '\x1b[38;5;105m', '\x1b[38;5;74m'];
-const r = '\x1b[0m';
-const d = '\x1b[90m';
-
-console.log('');
-console.log(`  ${g[0]}  (\\(\\${r}`);
-console.log(`  ${g[1]}  ( -.- )${r}  ${g[0]}OpenBunny${r} ${d}v0.1.0${r}`);
-console.log(`  ${g[2]}  o_(")(")${r}  ${d}${config.provider}/${config.model}${r}`);
-if (resolvedWorkspace) {
-  console.log(`             ${d}${resolvedWorkspace}${r}`);
-}
-console.log('');
-
-// Enter alternate screen buffer for fullscreen TUI
-process.stdout.write('\x1b[?1049h');
-// Clear alternate screen
-process.stdout.write('\x1b[2J\x1b[H');
-
 const instance = render(React.createElement(App, {
   config,
   systemPrompt: resolvedSystemPrompt,
@@ -124,10 +107,4 @@ const instance = render(React.createElement(App, {
   resumeIdPrefix,
   startupNotice,
 }));
-
-// Restore main screen buffer on exit
-function cleanup() {
-  process.stdout.write('\x1b[?1049l');
-}
-process.on('exit', cleanup);
-instance.waitUntilExit().then(cleanup).catch(cleanup);
+instance.waitUntilExit().catch(() => {});

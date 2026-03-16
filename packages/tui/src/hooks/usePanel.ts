@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useInput } from 'ink';
-import type { PanelSection, PanelItem } from '../types.js';
-import { PANEL_SECTIONS, MAX_VISIBLE_SECTION_ITEMS, SEARCH_PROVIDER_ORDER, TOOL_TIMEOUT_PRESETS, TOOL_DESCRIPTIONS } from '../constants.js';
+import type { PanelSection, PanelItem, PanelEditorState } from '../types.js';
+import { providerRegistry, getProviderMeta } from '@openbunny/shared/services/ai';
+import { PANEL_SECTIONS, MAX_VISIBLE_SECTION_ITEMS, SEARCH_PROVIDER_ORDER, TOOL_TIMEOUT_PRESETS, TOOL_DESCRIPTIONS, TEMPERATURE_PRESETS, MAX_TOKEN_PRESETS } from '../constants.js';
 import { truncate, formatTimeout, getSlidingWindow } from '../utils/formatting.js';
 import { useMouse } from './useMouse.js';
 import type { LLMConfig, Session } from '@openbunny/shared/types';
@@ -19,7 +20,7 @@ interface UsePanelOptions {
   mcpConnections: MCPConnection[];
   execLoginShell: boolean;
   toolExecutionTimeout: number;
-  searchProvider: string;
+  searchProvider: 'exa_free' | 'exa' | 'brave';
   runtimeConfig: LLMConfig;
   workspace?: string;
   capabilities: { supportsExec: boolean };
@@ -29,8 +30,10 @@ interface UsePanelOptions {
   currentAgentId: string;
   systemPrompt?: string;
   addNotice: (content: string, tone?: 'info' | 'success' | 'warning' | 'error') => void;
+  createSession: (name: string) => Session;
   loadSessionMessages: (id: string) => Promise<void>;
   openSession: (id: string) => void;
+  setSessionSystemPrompt: (sessionId: string, prompt: string) => void;
   loadAgentSessionMessages: (agentId: string, id: string) => Promise<void>;
   setAgentCurrentSession: (agentId: string, id: string) => void;
   setCurrentAgent: (id: string) => void;
@@ -57,15 +60,47 @@ interface UsePanelOptions {
 export function usePanel(opts: UsePanelOptions) {
   const [panelSection, setPanelSection] = useState<PanelSection>('general');
   const [panelVisible, setPanelVisible] = useState(false);
+  const [panelEditor, setPanelEditor] = useState<PanelEditorState | null>(null);
   const [panelSelections, setPanelSelections] = useState<Record<PanelSection, number>>({
     general: 0, llm: 0, tools: 0, skills: 0, network: 0, about: 0,
   });
 
   const terminalWidth = process.stdout.columns ?? 120;
   const panelWidth = Math.min(72, Math.max(40, Math.floor(terminalWidth * 0.7)));
+  const providerMeta = getProviderMeta(opts.runtimeConfig.provider);
+  const providerModels = providerMeta?.models?.length ? providerMeta.models : [opts.runtimeConfig.model];
+  const providerScope = opts.isDefaultAgent ? 'global default' : `agent ${opts.currentAgent?.name || opts.currentAgentId}`;
+
+  const cycleValue = useCallback(<T,>(
+    values: readonly T[],
+    current: T,
+    delta: number,
+    getFallbackIndex?: () => number,
+  ) => {
+    if (values.length === 0) return current;
+    let index = values.findIndex((value) => value === current);
+    if (index < 0) {
+      index = getFallbackIndex ? getFallbackIndex() : 0;
+    }
+    return values[(index + delta + values.length) % values.length];
+  }, []);
+
+  const nearestNumericIndex = useCallback((values: readonly number[], current: number) => {
+    let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    values.forEach((value, index) => {
+      const distance = Math.abs(value - current);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    });
+    return bestIndex;
+  }, []);
 
   /* ── General section ───────────────────────────────── */
   const generalItems: PanelItem[] = [
+    { key: 'session:new', label: 'New session', meta: 'create', type: 'action', hint: 'Create a fresh TUI chat session' },
     { key: 'workspace', label: 'Workspace', meta: truncate(opts.workspace || process.cwd(), 30), type: 'info' },
     { key: 'exec-login-shell', label: 'Exec login shell', meta: opts.execLoginShell ? 'on' : 'off', active: opts.execLoginShell, type: 'toggle', hint: 'Use login shell for /shell commands' },
     { key: 'tool-timeout', label: 'Tool timeout', meta: formatTimeout(opts.toolExecutionTimeout), type: 'cycle', hint: 'Max execution time per tool call' },
@@ -82,14 +117,15 @@ export function usePanel(opts: UsePanelOptions) {
 
   /* ── LLM section ───────────────────────────────────── */
   const llmItems: PanelItem[] = [
-    { key: 'llm-provider', label: 'Provider', meta: opts.runtimeConfig.provider, type: 'info' },
-    { key: 'llm-model', label: 'Model', meta: truncate(opts.runtimeConfig.model, 24), type: 'info' },
-    { key: 'llm-temperature', label: 'Temperature', meta: String(opts.runtimeConfig.temperature ?? 0.7), type: 'info' },
-    { key: 'llm-max-tokens', label: 'Max tokens', meta: String(opts.runtimeConfig.maxTokens ?? 4096), type: 'info' },
-    { key: 'llm-base-url', label: 'Base URL', meta: opts.runtimeConfig.baseUrl ? truncate(opts.runtimeConfig.baseUrl, 24) : '(default)', type: 'info' },
-    { key: 'llm-api-key', label: 'API key', meta: opts.runtimeConfig.apiKey ? `${opts.runtimeConfig.apiKey.slice(0, 8)}...` : '(not set)', type: 'info' },
+    { key: 'llm-scope', label: 'Scope', meta: truncate(providerScope, 26), type: 'info' },
+    { key: 'llm-provider', label: 'Provider', meta: providerMeta ? `${providerMeta.name} (${providerMeta.id})` : opts.runtimeConfig.provider, type: 'cycle', hint: 'Left/Right or Enter to cycle provider presets' },
+    { key: 'llm-model', label: 'Model', meta: truncate(opts.runtimeConfig.model, 24), type: 'input', hint: `Enter edits custom model · Left/Right cycles ${providerModels.length} preset${providerModels.length === 1 ? '' : 's'}` },
+    { key: 'llm-temperature', label: 'Temperature', meta: String(opts.runtimeConfig.temperature ?? 0.7), type: 'input', hint: 'Enter edits numeric value · Left/Right cycles presets' },
+    { key: 'llm-max-tokens', label: 'Max tokens', meta: String(opts.runtimeConfig.maxTokens ?? 4096), type: 'input', hint: 'Enter edits numeric value · Left/Right cycles presets' },
+    { key: 'llm-base-url', label: 'Base URL', meta: opts.runtimeConfig.baseUrl ? truncate(opts.runtimeConfig.baseUrl, 24) : '(default)', type: 'input', hint: 'Enter edits base URL · submit empty to reset to default' },
+    { key: 'llm-api-key', label: 'API key', meta: opts.runtimeConfig.apiKey ? `${opts.runtimeConfig.apiKey.slice(0, 8)}...` : (providerMeta?.requiresApiKey ? '(required)' : '(optional)'), type: 'input', hint: 'Enter edits API key · submit empty to clear' },
     { key: 'llm-save', label: '💾 Save current config', type: 'action', hint: 'Persist to disk' },
-    { key: 'llm-hint', label: 'Use /model, /provider, /temperature, /api-key to change', type: 'header' },
+    { key: 'llm-hint', label: '── Panel edits apply immediately; save to persist', type: 'header' },
   ];
 
   /* ── Tools section ─────────────────────────────────── */
@@ -191,28 +227,124 @@ export function usePanel(opts: UsePanelOptions) {
     return selectable[panelSelections[panelSection]] || null;
   }, [getSelectableItems, panelSection, panelSelections]);
 
+  const openEditor = useCallback((editor: PanelEditorState) => {
+    setPanelEditor(editor);
+  }, []);
+
+  const cancelEditor = useCallback(() => {
+    setPanelEditor(null);
+  }, []);
+
+  const submitEditor = useCallback((value: string) => {
+    if (!panelEditor) return;
+    const trimmed = value.trim();
+
+    if (panelEditor.itemKey === 'llm-model') {
+      if (!trimmed) {
+        opts.addNotice('Model cannot be empty.', 'warning');
+        return;
+      }
+      opts.applyRuntimeConfig({ model: trimmed });
+      opts.addNotice(`Model set to ${trimmed}.`, 'success');
+      setPanelEditor(null);
+      return;
+    }
+
+    if (panelEditor.itemKey === 'llm-temperature') {
+      const temperature = Number(trimmed);
+      if (!Number.isFinite(temperature)) {
+        opts.addNotice(`Invalid temperature "${value}".`, 'warning');
+        return;
+      }
+      opts.applyRuntimeConfig({ temperature });
+      opts.addNotice(`Temperature set to ${temperature}.`, 'success');
+      setPanelEditor(null);
+      return;
+    }
+
+    if (panelEditor.itemKey === 'llm-max-tokens') {
+      const maxTokens = Number.parseInt(trimmed, 10);
+      if (!Number.isFinite(maxTokens) || maxTokens <= 0) {
+        opts.addNotice(`Invalid max tokens "${value}".`, 'warning');
+        return;
+      }
+      opts.applyRuntimeConfig({ maxTokens });
+      opts.addNotice(`Max tokens set to ${maxTokens}.`, 'success');
+      setPanelEditor(null);
+      return;
+    }
+
+    if (panelEditor.itemKey === 'llm-base-url') {
+      opts.applyRuntimeConfig({ baseUrl: trimmed || undefined });
+      opts.addNotice(trimmed ? `Base URL set to ${trimmed}.` : 'Base URL reset to provider default.', 'success');
+      setPanelEditor(null);
+      return;
+    }
+
+    if (panelEditor.itemKey === 'llm-api-key') {
+      opts.applyRuntimeConfig({ apiKey: trimmed || undefined });
+      opts.addNotice(trimmed ? 'API key updated for current runtime config.' : 'API key cleared from current runtime config.', 'success');
+      setPanelEditor(null);
+    }
+  }, [opts, panelEditor]);
+
+  useEffect(() => {
+    if (!panelVisible && panelEditor) {
+      setPanelEditor(null);
+    }
+  }, [panelEditor, panelVisible]);
+
+  useEffect(() => {
+    if (panelEditor && panelSection !== 'llm') {
+      setPanelEditor(null);
+    }
+  }, [panelEditor, panelSection]);
+
   /* ── Run action on Enter ───────────────────────────── */
-  const runAction = useCallback(async () => {
+  const runAction = useCallback(async (mode: 'select' | 'next' | 'prev' = 'select') => {
     const selectedItem = getSelectedItem();
     if (!selectedItem) return;
+    const delta = mode === 'prev' ? -1 : 1;
 
     // General section
     if (panelSection === 'general') {
+      if (selectedItem.key === 'session:new') {
+        const next = opts.isDefaultAgent
+          ? opts.createSession('TUI Chat')
+          : opts.createAgentSession(opts.currentAgentId, 'TUI Chat');
+        if (opts.isDefaultAgent) {
+          if (opts.systemPrompt) {
+            opts.setSessionSystemPrompt(next.id, opts.systemPrompt);
+            opts.addNotice(`Created session ${next.id.slice(0, 8)}.`, 'success');
+          } else {
+            opts.addNotice(`Created session ${next.id.slice(0, 8)}.`, 'success');
+          }
+        } else if (opts.systemPrompt) {
+          opts.setAgentSessionSystemPrompt(opts.currentAgentId, next.id, opts.systemPrompt);
+          opts.addNotice(`Created session ${next.id.slice(0, 8)} for ${opts.currentAgent?.name || opts.currentAgentId}.`, 'success');
+        } else {
+          opts.addNotice(`Created session ${next.id.slice(0, 8)} for ${opts.currentAgent?.name || opts.currentAgentId}.`, 'success');
+        }
+        return;
+      }
       if (selectedItem.key === 'exec-login-shell') {
         opts.setExecLoginShell(!opts.execLoginShell);
         opts.addNotice(`Exec login shell ${!opts.execLoginShell ? 'enabled' : 'disabled'}.`, 'success');
         return;
       }
       if (selectedItem.key === 'tool-timeout') {
-        const idx = TOOL_TIMEOUT_PRESETS.findIndex((v) => v === opts.toolExecutionTimeout);
-        const next = TOOL_TIMEOUT_PRESETS[(idx + 1) % TOOL_TIMEOUT_PRESETS.length];
+        const next = cycleValue(
+          TOOL_TIMEOUT_PRESETS,
+          opts.toolExecutionTimeout,
+          delta,
+          () => nearestNumericIndex(TOOL_TIMEOUT_PRESETS, opts.toolExecutionTimeout),
+        );
         opts.setToolExecutionTimeout(next);
         opts.addNotice(`Tool timeout set to ${formatTimeout(next)}.`, 'success');
         return;
       }
       if (selectedItem.key === 'search-provider') {
-        const idx = SEARCH_PROVIDER_ORDER.findIndex((v) => v === opts.searchProvider);
-        const next = SEARCH_PROVIDER_ORDER[(idx + 1) % SEARCH_PROVIDER_ORDER.length];
+        const next = cycleValue<(typeof SEARCH_PROVIDER_ORDER)[number]>(SEARCH_PROVIDER_ORDER, opts.searchProvider, delta);
         opts.setSearchProvider(next);
         opts.addNotice(`Search provider set to ${next}.`, 'success');
         return;
@@ -237,13 +369,129 @@ export function usePanel(opts: UsePanelOptions) {
 
     // LLM section
     if (panelSection === 'llm') {
+      if (selectedItem.key === 'llm-provider') {
+        const nextProviderId = cycleValue(
+          providerRegistry.map((provider) => provider.id),
+          opts.runtimeConfig.provider,
+          delta,
+        );
+        const nextProvider = getProviderMeta(nextProviderId);
+        if (!nextProvider) return;
+        const currentConfig = opts.runtimeConfig;
+        const previousProvider = getProviderMeta(currentConfig.provider);
+        const shouldResetBaseUrl = !currentConfig.baseUrl || currentConfig.baseUrl === previousProvider?.defaultBaseUrl;
+        const nextModel = nextProvider.models.includes(currentConfig.model)
+          ? currentConfig.model
+          : (nextProvider.models[0] || currentConfig.model);
+        const nextConfig = opts.applyRuntimeConfig({
+          provider: nextProvider.id,
+          model: nextModel,
+          baseUrl: shouldResetBaseUrl ? nextProvider.defaultBaseUrl : currentConfig.baseUrl,
+        });
+        const warnings = [];
+        if (nextProvider.requiresApiKey && !nextConfig.apiKey) {
+          warnings.push('API key is still missing.');
+        }
+        opts.addNotice([
+          `Provider set to ${nextProvider.name} (${nextProvider.id})`,
+          `Model: ${nextConfig.model}`,
+          nextConfig.baseUrl ? `Base URL: ${nextConfig.baseUrl}` : 'Base URL: default',
+          ...warnings,
+        ].join('\n'), warnings.length > 0 ? 'warning' : 'success');
+        return;
+      }
+      if (selectedItem.key === 'llm-model') {
+        if (mode === 'select') {
+          openEditor({
+            itemKey: 'llm-model',
+            label: 'Model',
+            value: opts.runtimeConfig.model,
+            placeholder: providerModels[0] || 'Enter model name',
+            help: 'Enter apply custom model · Esc cancel · Left/Right still cycles provider presets outside edit mode',
+          });
+          return;
+        }
+        if (providerModels.length <= 1) {
+          opts.addNotice('Current provider does not expose multiple preset models. Use /model <name> for a custom model.', 'info');
+          return;
+        }
+        const nextModel = cycleValue(providerModels, opts.runtimeConfig.model, delta);
+        opts.applyRuntimeConfig({ model: nextModel });
+        opts.addNotice(`Model set to ${nextModel}.`, 'success');
+        return;
+      }
+      if (selectedItem.key === 'llm-temperature') {
+        if (mode === 'select') {
+          openEditor({
+            itemKey: 'llm-temperature',
+            label: 'Temperature',
+            value: String(opts.runtimeConfig.temperature ?? 0.7),
+            placeholder: '0.7',
+            help: 'Enter a numeric value such as 0, 0.7, or 1.2',
+          });
+          return;
+        }
+        const currentTemperature = Number(opts.runtimeConfig.temperature ?? 0.7);
+        const nextTemperature = cycleValue(
+          TEMPERATURE_PRESETS,
+          currentTemperature,
+          delta,
+          () => nearestNumericIndex(TEMPERATURE_PRESETS, currentTemperature),
+        );
+        opts.applyRuntimeConfig({ temperature: nextTemperature });
+        opts.addNotice(`Temperature set to ${nextTemperature}.`, 'success');
+        return;
+      }
+      if (selectedItem.key === 'llm-max-tokens') {
+        if (mode === 'select') {
+          openEditor({
+            itemKey: 'llm-max-tokens',
+            label: 'Max tokens',
+            value: String(opts.runtimeConfig.maxTokens ?? 4096),
+            placeholder: '4096',
+            help: 'Enter a positive integer token limit',
+          });
+          return;
+        }
+        const currentMaxTokens = Number(opts.runtimeConfig.maxTokens ?? 4096);
+        const nextMaxTokens = cycleValue(
+          MAX_TOKEN_PRESETS,
+          currentMaxTokens,
+          delta,
+          () => nearestNumericIndex(MAX_TOKEN_PRESETS, currentMaxTokens),
+        );
+        opts.applyRuntimeConfig({ maxTokens: nextMaxTokens });
+        opts.addNotice(`Max tokens set to ${nextMaxTokens}.`, 'success');
+        return;
+      }
+      if (selectedItem.key === 'llm-base-url') {
+        if (mode !== 'select') return;
+        openEditor({
+          itemKey: 'llm-base-url',
+          label: 'Base URL',
+          value: opts.runtimeConfig.baseUrl || '',
+          placeholder: providerMeta?.defaultBaseUrl || 'Use provider default',
+          help: 'Submit empty to restore the provider default base URL',
+        });
+        return;
+      }
+      if (selectedItem.key === 'llm-api-key') {
+        if (mode !== 'select') return;
+        openEditor({
+          itemKey: 'llm-api-key',
+          label: 'API key',
+          value: opts.runtimeConfig.apiKey || '',
+          placeholder: providerMeta?.requiresApiKey ? 'Required for this provider' : 'Optional for this provider',
+          help: 'Submit empty to clear the API key from current runtime config',
+        });
+        return;
+      }
       if (selectedItem.key === 'llm-save') {
         opts.saveRuntimeConfig(opts.runtimeConfig);
         opts.addNotice('Runtime config saved to disk.', 'success');
         return;
       }
-      // Info items: show a hint to use slash commands
-      opts.addNotice(`Use /${selectedItem.key.replace('llm-', '')} <value> to change this setting.`, 'info');
+      opts.addNotice('Panel currently exposes direct controls for provider, model, temperature, max tokens, and save.', 'info');
       return;
     }
 
@@ -311,19 +559,24 @@ export function usePanel(opts: UsePanelOptions) {
         return;
       }
     }
-  }, [getSelectedItem, panelSection, opts, setPanelVisible]);
+  }, [cycleValue, getSelectedItem, nearestNumericIndex, openEditor, panelSection, providerMeta, providerModels, opts, setPanelVisible]);
 
   /* ── Keyboard navigation ───────────────────────────── */
   useInput((inputChar, key) => {
     const hasTypedInput = opts.input.trim().length > 0;
 
     if (key.escape) {
+      if (panelEditor) {
+        cancelEditor();
+        return;
+      }
       if (hasTypedInput) return;
       setPanelVisible((prev) => !prev);
       return;
     }
 
     if (key.tab) {
+      if (panelEditor) return;
       if (!panelVisible) {
         setPanelVisible(true);
         return;
@@ -335,21 +588,38 @@ export function usePanel(opts: UsePanelOptions) {
 
     if (!panelVisible || opts.isInitializing || opts.isLoading) return;
     if (hasTypedInput) return;
+    if (panelEditor) return;
 
-    if (key.upArrow || key.downArrow) {
+    const sectionShortcut = Number.parseInt(inputChar, 10);
+    if (sectionShortcut >= 1 && sectionShortcut <= PANEL_SECTIONS.length) {
+      setPanelSection(PANEL_SECTIONS[sectionShortcut - 1]);
+      return;
+    }
+
+    if (key.upArrow || key.downArrow || inputChar === 'j' || inputChar === 'k') {
       const selectable = getSelectableItems(panelSection);
       if (selectable.length === 0) return;
       setPanelSelections((prev) => {
         const current = prev[panelSection] ?? 0;
-        const delta = key.upArrow ? -1 : 1;
+        const delta = key.upArrow || inputChar === 'k' ? -1 : 1;
         const next = (current + delta + selectable.length) % selectable.length;
         return { ...prev, [panelSection]: next };
       });
       return;
     }
 
+    if (key.leftArrow || key.rightArrow || inputChar === 'h' || inputChar === 'l') {
+      void runAction(key.leftArrow || inputChar === 'h' ? 'prev' : 'next');
+      return;
+    }
+
     if (key.return) {
-      void runAction();
+      void runAction('select');
+      return;
+    }
+
+    if (inputChar === ' ') {
+      void runAction('select');
       return;
     }
 
@@ -376,14 +646,15 @@ export function usePanel(opts: UsePanelOptions) {
 
   useMouse((event) => {
     if (!panelVisible) return;
+    if (panelEditor) return;
     if (event.type === 'wheel') {
       selectItemByOffset(event.button === 'scrollDown' ? 1 : -1);
       return;
     }
     if (event.type === 'press' && event.button === 'left') {
-      void runAction();
+      void runAction('select');
     }
-  }, panelVisible);
+  }, panelVisible && !panelEditor);
 
   /* ── Computed for rendering ────────────────────────── */
   const currentItems = getItems(panelSection);
@@ -416,6 +687,10 @@ export function usePanel(opts: UsePanelOptions) {
   return {
     panelVisible, setPanelVisible,
     panelSection, setPanelSection,
+    panelEditor,
+    setPanelEditor,
+    submitPanelEditor: submitEditor,
+    cancelPanelEditor: cancelEditor,
     panelWidth,
     currentItems: visibleItems, currentSelection, window,
     selectedItemKey,

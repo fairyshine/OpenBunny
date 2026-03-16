@@ -23,21 +23,9 @@ export function NoticePanel({ notices, error, width }: NoticePanelProps) {
   if (visibleNotices.length === 0 && !error) return null;
 
   return (
-    <Box
-      marginX={1}
-      marginTop={1}
-      borderStyle="round"
-      borderColor={error ? T.err : T.borderLight}
-      paddingX={1}
-      flexDirection="column"
-      width={Math.max(24, width - 4)}
-    >
-      <Box justifyContent="space-between">
-        <Text color={error ? T.err : T.info} bold>Activity</Text>
-        <Text color={T.fgSubtle}>{error ? 'error present' : `${visibleNotices.length} recent`}</Text>
-      </Box>
+    <Box marginX={1} marginTop={1} flexDirection="column" width={Math.max(24, width - 2)}>
       {hiddenCount > 0 && (
-        <Text color={T.fgSubtle} italic>+{hiddenCount} older</Text>
+        <Text color={T.fgSubtle} italic>... {hiddenCount} older notices</Text>
       )}
       {visibleNotices.map((notice) => (
         <Box key={notice.id} marginTop={1}>

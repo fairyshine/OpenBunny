@@ -12,23 +12,16 @@ interface InputBarProps {
 }
 
 export function InputBar({ input, setInput, onSubmit, disabled, width, disabledReason }: InputBarProps) {
-  const borderColor = disabled ? T.borderLight : T.borderFocus;
-
   return (
     <Box paddingX={1} marginTop={1} flexDirection="column">
       <Box
         borderStyle="round"
-        borderColor={borderColor}
+        borderColor={disabled ? T.borderLight : T.borderFocus}
         paddingX={1}
         flexDirection="column"
-        width={Math.max(24, width - 4)}
+        width={Math.max(24, width - 2)}
       >
-        <Box justifyContent="space-between">
-          <Text color={disabled ? T.fgMuted : T.accent} bold>Prompt</Text>
-          <Text color={T.fgSubtle}>{disabled ? disabledReason || 'busy' : 'Enter send'}</Text>
-        </Box>
-
-        <Box marginTop={1}>
+        <Box>
           <Text color={disabled ? T.fgMuted : T.accent} bold>
             {disabled ? '◌ ' : '❯ '}
           </Text>
@@ -44,13 +37,18 @@ export function InputBar({ input, setInput, onSubmit, disabled, width, disabledR
           )}
         </Box>
 
-        <Box marginTop={1}>
-          <Text color={T.fgSubtle}>Slash commands: </Text>
-          <Text color={T.fgMuted}>/help</Text>
-          <Text color={T.fgSubtle}> · </Text>
-          <Text color={T.fgMuted}>/sessions</Text>
-          <Text color={T.fgSubtle}> · </Text>
-          <Text color={T.fgMuted}>/tools</Text>
+        <Text color={T.border}>{'─'.repeat(Math.max(1, width - 8))}</Text>
+
+        <Box>
+          <Text color={T.fgSubtle}>
+            {disabled ? (disabledReason || 'busy') : 'Enter send'}
+            {' · '}
+            /help
+            {' · '}
+            /sessions
+            {' · '}
+            /tools
+          </Text>
         </Box>
       </Box>
     </Box>

@@ -18,7 +18,6 @@ import { Panel } from './components/panel/Panel.js';
 import { T } from './theme.js';
 
 const MIN_TERM_COLS = 88;
-const MIN_TERM_ROWS = 24;
 
 function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, startupNotice }: AppProps) {
   const { exit } = useApp();
@@ -137,8 +136,10 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     currentAgentId: state.currentAgentId,
     systemPrompt,
     addNotice,
+    createSession: state.createSession,
     loadSessionMessages: state.loadSessionMessages,
     openSession: state.openSession,
+    setSessionSystemPrompt: state.setSessionSystemPrompt,
     loadAgentSessionMessages: state.loadAgentSessionMessages,
     setAgentCurrentSession: state.setAgentCurrentSession,
     setCurrentAgent: state.setCurrentAgent,
@@ -195,11 +196,13 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
   const totalMessageCount = messages.length;
   const disabled = agentLoop.isLoading || isInitializing || panel.panelVisible;
   const agentName = state.currentAgent?.name || 'OpenBunny';
-  const tooSmall = termSize.cols < MIN_TERM_COLS || termSize.rows < MIN_TERM_ROWS;
+  const tooSmall = termSize.cols < MIN_TERM_COLS;
   const disabledReason = isInitializing
     ? 'Initializing'
     : agentLoop.isLoading
       ? agentLoop.activityLabel || 'Streaming response'
+      : panel.panelEditor
+        ? `Editing ${panel.panelEditor.label}`
       : panel.panelVisible
         ? 'Panel navigation active'
         : undefined;
@@ -217,7 +220,7 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
         <Box borderStyle="round" borderColor={T.warn} paddingX={2} flexDirection="column">
           <Text color={T.warn} bold>Terminal too small for TUI layout</Text>
           <Text color={T.fgDim}>Current: {termSize.cols}x{termSize.rows}</Text>
-          <Text color={T.fgDim}>Recommended: {MIN_TERM_COLS}x{MIN_TERM_ROWS} or larger</Text>
+          <Text color={T.fgDim}>Recommended width: {MIN_TERM_COLS}+ columns</Text>
           <Text color={T.fgSubtle}>Resize the terminal to restore the full panel and chat layout.</Text>
         </Box>
       </Box>
@@ -225,7 +228,7 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
   }
 
   return (
-    <Box flexDirection="column" width={termSize.cols} height={termSize.rows}>
+    <Box flexDirection="column" width={termSize.cols} minHeight={termSize.rows}>
       <AppHeader
         agentName={agentName}
         runtimeConfig={runtimeConfig}
@@ -259,13 +262,15 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
               enabledSkillCount={state.enabledSkills.length}
               toolExecutionTimeout={state.toolExecutionTimeout}
               searchProvider={state.searchProvider}
+              editor={panel.panelEditor}
+              onEditorChange={(value) => panel.setPanelEditor((prev) => (prev ? { ...prev, value } : prev))}
+              onEditorSubmit={panel.submitPanelEditor}
             />
           </Box>
         ) : (
           <>
             <MessageList
               messages={messages}
-              totalCount={totalMessageCount}
               isInitializing={isInitializing}
               isLoading={agentLoop.isLoading}
               currentStatus={agentLoop.currentStatus}
@@ -297,7 +302,7 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
         panelVisible={panel.panelVisible}
       />
 
-      <HintBar panelVisible={panel.panelVisible} width={termSize.cols} />
+      <HintBar panelVisible={panel.panelVisible} panelEditing={Boolean(panel.panelEditor)} width={termSize.cols} />
     </Box>
   );
 }

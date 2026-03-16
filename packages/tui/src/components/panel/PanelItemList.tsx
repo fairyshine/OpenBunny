@@ -36,6 +36,7 @@ export function PanelItemList({ section, items, selectedItemKey, panelWidth }: P
         const isToggle = item.type === 'toggle';
         const isCycle = item.type === 'cycle';
         const isInfo = item.type === 'info';
+        const isInput = item.type === 'input';
 
         // Color logic
         let itemColor: string = isSelected
@@ -52,6 +53,8 @@ export function PanelItemList({ section, items, selectedItemKey, panelWidth }: P
           icon = isActive ? ' ◉' : ' ○';
         } else if (isCycle) {
           icon = ' ⟳';
+        } else if (isInput) {
+          icon = ' ✎';
         } else if (hasStatus) {
           const st = (item as PanelItem & { status: PanelItemStatus }).status!;
           icon = st === 'connected' ? ' ●' : st === 'connecting' ? ' ◌' : ' ○';

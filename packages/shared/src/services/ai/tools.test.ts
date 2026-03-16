@@ -15,13 +15,13 @@ const llmConfig: LLMConfig = {
 
 test('getEnabledTools wires exec tool with injected runtime settings', async () => {
   const previousWindow = (globalThis as any).window;
-  const executeCalls: Array<{ loginShell: boolean; timeout: number }> = [];
+  const executeCalls: Array<{ sessionId?: string; loginShell: boolean; timeout: number }> = [];
 
   (globalThis as any).window = {
     electronAPI: {
       exec: {
-        execute: async (_command: string, _sessionId: string | undefined, loginShell: boolean, timeout: number) => {
-          executeCalls.push({ loginShell, timeout });
+        execute: async (_command: string, sessionId: string | undefined, loginShell: boolean, timeout: number) => {
+          executeCalls.push({ sessionId, loginShell, timeout });
           return {
             sessionId: 'session-1',
             exitCode: 0,
@@ -44,7 +44,7 @@ test('getEnabledTools wires exec tool with injected runtime settings', async () 
 
     const result = await (tools.exec as any).execute({ command: 'pwd', sessionId: undefined });
     assert.equal(executeCalls.length, 1);
-    assert.deepEqual(executeCalls[0], { loginShell: false, timeout: 1234 });
+    assert.deepEqual(executeCalls[0], { sessionId: 'source-session', loginShell: false, timeout: 1234 });
     assert.match(result, /Session: session-1/);
   } finally {
     (globalThis as any).window = previousWindow;
@@ -56,7 +56,7 @@ test.afterEach(() => {
 });
 
 test('getEnabledTools uses platform executeShell when running in Node terminal environments', async () => {
-  const executeCalls: Array<{ command: string; loginShell?: boolean; timeoutMs?: number }> = [];
+  const executeCalls: Array<{ command: string; sessionId?: string; loginShell?: boolean; timeoutMs?: number }> = [];
 
   setPlatformContext({
     info: {
@@ -78,6 +78,7 @@ test('getEnabledTools uses platform executeShell when running in Node terminal e
       executeShell: async (command, options) => {
         executeCalls.push({
           command,
+          sessionId: options?.sessionId,
           loginShell: options?.loginShell,
           timeoutMs: options?.timeoutMs,
         });
@@ -100,9 +101,53 @@ test('getEnabledTools uses platform executeShell when running in Node terminal e
   });
 
   const result = await (tools.exec as any).execute({ command: 'pwd', sessionId: undefined });
-  assert.deepEqual(executeCalls, [{ command: 'pwd', loginShell: false, timeoutMs: 1234 }]);
+  assert.deepEqual(executeCalls, [{ command: 'pwd', sessionId: 'source-session', loginShell: false, timeoutMs: 1234 }]);
   assert.match(result, /Session: shell-1/);
   assert.match(result, /pwd-output/);
+});
+
+test('exec tool lets explicit shell session overrides take precedence over conversation session', async () => {
+  const executeCalls: Array<{ command: string; sessionId?: string }> = [];
+
+  setPlatformContext({
+    info: {
+      type: 'tui',
+      os: 'linux',
+      isBrowser: false,
+      isDesktop: false,
+      isMobile: false,
+      isCLI: false,
+      isTUI: true,
+    },
+    storage: {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    },
+    api: {
+      fetch: globalThis.fetch,
+      executeShell: async (command, options) => {
+        executeCalls.push({ command, sessionId: options?.sessionId });
+        return {
+          sessionId: options?.sessionId || 'shell-override',
+          exitCode: 0,
+          output: 'ok',
+        };
+      },
+    },
+  } as IPlatformContext);
+
+  const tools = getEnabledTools(['exec'], {
+    sourceSessionId: 'source-session',
+    llmConfig,
+    runtimeContext: {
+      execLoginShell: false,
+      toolExecutionTimeout: 1234,
+    },
+  });
+
+  await (tools.exec as any).execute({ command: 'pwd', sessionId: 'custom-shell' });
+  assert.deepEqual(executeCalls, [{ command: 'pwd', sessionId: 'custom-shell' }]);
 });
 
 test('getEnabledTools wires web search tool with injected search settings', async () => {
