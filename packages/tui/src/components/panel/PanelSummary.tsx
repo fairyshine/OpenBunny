@@ -12,6 +12,7 @@ interface PanelSummaryProps {
   sessionConfigScope: string;
   sessionConfigState: string;
   enabledToolCount: number;
+  availableToolCount: number;
   connectedMcpCount: number;
   mcpCount: number;
   builtinToolCount: number;
@@ -33,7 +34,7 @@ export function PanelSummary(props: PanelSummaryProps) {
     case 'llm':
       return <Text color={T.fgDim}>{props.runtimeConfig.provider}/{truncate(props.runtimeConfig.model, 20)} · temp {props.runtimeConfig.temperature}</Text>;
     case 'tools':
-      return <Text color={T.fgDim}>{props.enabledToolCount}/{props.builtinToolCount} enabled · {props.sessionConfigScope} scope · {props.sessionConfigState}</Text>;
+      return <Text color={T.fgDim}>{props.enabledToolCount}/{props.availableToolCount} enabled · {props.connectedMcpCount}/{props.mcpCount} MCP connected · {props.sessionConfigScope} scope</Text>;
     case 'skills':
       return <Text color={T.fgDim}>{props.enabledSkillCount}/{props.skillCount} enabled · {props.sessionConfigScope} scope</Text>;
     case 'network':

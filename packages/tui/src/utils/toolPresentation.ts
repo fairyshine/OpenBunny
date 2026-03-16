@@ -65,34 +65,6 @@ export function getAvailableToolEntries(
   return [...builtinEntries, ...mcpEntries];
 }
 
-export function resolveToolEntry(
-  toolId: string,
-  entries: ToolEntry[],
-): ToolEntry {
-  const existing = entries.find((entry) => entry.id === toolId);
-  if (existing) {
-    return existing;
-  }
-
-  const parsed = parseMCPToolId(toolId);
-  if (!parsed) {
-    return {
-      id: toolId,
-      label: getBuiltinToolLabel(toolId),
-      description: TOOL_DESCRIPTIONS[toolId] || toolId,
-      isMcp: false,
-    };
-  }
-
-  return {
-    id: toolId,
-    label: `${parsed.connectionId} / ${parsed.toolName}`,
-    description: toolId,
-    isMcp: true,
-    connectionId: parsed.connectionId,
-  };
-}
-
 export function findToolEntries(query: string, entries: ToolEntry[]): ToolEntry[] {
   const normalizedQuery = normalizeCandidate(query);
   if (!normalizedQuery) {

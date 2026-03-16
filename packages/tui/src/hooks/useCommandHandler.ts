@@ -9,6 +9,7 @@ import { flushAllSessionPersistence } from '@openbunny/shared/services/storage/s
 import { getPlatformCapabilities, getPlatformContext } from '@openbunny/shared/platform';
 import { useSessionStore } from '@openbunny/shared/stores/session';
 import { useAgentStore } from '@openbunny/shared/stores/agent';
+import { getBuiltinToolIds } from '@openbunny/shared/stores/tools';
 import type { MCPTransportType } from '@openbunny/shared/stores/tools';
 import {
   parseCommand,
@@ -21,6 +22,10 @@ import { getMessageDisplayType, getMessageToolName } from '@openbunny/shared/uti
 import { formatConfigSummary, truncate } from '../utils/formatting.js';
 import type { NoticeTone } from '../types.js';
 import type { FileBrowserController } from './useFileBrowser.js';
+import {
+  findToolEntries,
+  getAvailableToolEntries,
+} from '../utils/toolPresentation.js';
 import {
   getEffectiveSessionSkills,
   getEffectiveSessionTools,
@@ -56,6 +61,7 @@ interface UseCommandHandlerOptions {
   setAgentSessionSystemPrompt: (agentId: string, sessionId: string, prompt: string) => void;
   setAgentSessionTools: (agentId: string, sessionId: string, tools: string[] | undefined) => void;
   setAgentSessionSkills: (agentId: string, sessionId: string, skills: string[] | undefined) => void;
+  clearAgentSessionMessages: (agentId: string, sessionId: string) => void;
   clearSessionMessages: (sessionId: string) => void;
   loadSessionMessages: (sessionId: string) => Promise<void>;
   openSession: (sessionId: string) => void;
@@ -74,7 +80,7 @@ interface UseCommandHandlerOptions {
   toggleGlobalSkill: (id: string) => void;
   setAgentEnabledSkills: (agentId: string, skills: string[]) => void;
   skills: Array<{ id: string; description: string }>;
-  mcpConnections: Array<{ id: string; name: string; url: string; transport: MCPTransportType; status: 'connected' | 'disconnected' | 'connecting'; tools: Array<{ id: string; name: string }>; lastError?: string | null }>;
+  mcpConnections: Array<{ id: string; name: string; url: string; transport: MCPTransportType; status: 'connected' | 'disconnected' | 'connecting'; tools: Array<{ id: string; name: string; title?: string; description?: string }>; lastError?: string | null }>;
   addMCPConnection: (name: string, url: string, transport: MCPTransportType) => string;
   removeMCPConnection: (id: string) => void;
   updateMCPStatus: (id: string, status: 'connected' | 'disconnected' | 'connecting') => void;
@@ -198,6 +204,7 @@ function getSessionConfigStatus(session: Session, enabledTools: string[], enable
 export function useCommandHandler(opts: UseCommandHandlerOptions) {
   const [input, setInput] = useState('');
   const shellSessionIdRef = useRef<string | undefined>(undefined);
+  const availableToolEntries = getAvailableToolEntries(getBuiltinToolIds(), opts.mcpConnections);
 
   const ensureActiveSession = useCallback((): Session => {
     const existing = opts.isDefaultAgent
@@ -437,7 +444,11 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
       }
 
       case 'clear':
-        opts.clearSessionMessages(session.id);
+        if (opts.isDefaultAgent) {
+          opts.clearSessionMessages(session.id);
+        } else {
+          opts.clearAgentSessionMessages(opts.currentAgentId, session.id);
+        }
         opts.clearNotices();
         opts.addNotice('Conversation cleared.', 'success');
         setInput('');
@@ -717,10 +728,17 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
 
       case 'tools': {
         const config = getSessionConfigStatus(session, opts.enabledTools, opts.enabledSkills);
-        const filtered = config.effectiveTools.filter((id) => id !== 'file_manager');
+        const enabledSet = new Set(config.effectiveTools.filter((id) => id !== 'file_manager'));
         const lines = [
           `Tools (${config.scope} scope · ${config.readOnly ? 'read-only' : config.locked ? 'locked' : 'editable'}):`,
-          ...filtered.map((id) => `  - ${id}`),
+          ...(availableToolEntries.length === 0
+            ? ['  (no built-in or MCP tools discovered)']
+            : availableToolEntries.map((tool) => {
+                const statusSuffix = tool.isMcp && tool.connectionStatus
+                  ? ` · ${tool.connectionStatus}`
+                  : '';
+                return `  ${enabledSet.has(tool.id) ? '[x]' : '[ ]'} ${tool.label} (${tool.id})${statusSuffix} · ${tool.description}`;
+              })),
         ];
         if (config.effectiveTools.includes('file_manager')) lines.push('', 'Suppressed in TUI: file_manager');
         opts.addNotice(lines.join('\n'));
@@ -729,12 +747,33 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
       }
 
       case 'tool': {
-        const [op, toolId] = command.args.split(/\s+/, 2);
-        if (!op || !toolId || !['on', 'off'].includes(op)) { opts.addNotice('Usage: /tool on <tool-id> | /tool off <tool-id>', 'warning'); setInput(''); return; }
-        const didUpdate = updateScopedTool(session, toolId, op === 'on');
+        const [op, toolQuery] = command.args.split(/\s+/, 2);
+        if (!op || !toolQuery || !['on', 'off'].includes(op)) { opts.addNotice('Usage: /tool on <tool-id> | /tool off <tool-id>', 'warning'); setInput(''); return; }
+        if (toolQuery === 'file_manager') {
+          opts.addNotice('file_manager is not available in TUI. Use /files, /open, /write, or /shell instead.', 'warning');
+          setInput('');
+          return;
+        }
+        const matches = findToolEntries(toolQuery, availableToolEntries);
+        if (matches.length === 0) {
+          opts.addNotice(`No tool matched "${toolQuery}". Use /tools to inspect built-in and MCP tools.`, 'warning');
+          setInput('');
+          return;
+        }
+        if (matches.length > 1) {
+          opts.addNotice([
+            `Tool query "${toolQuery}" is ambiguous.`,
+            ...matches.slice(0, 6).map((match) => `  ${match.label} (${match.id})`),
+            ...(matches.length > 6 ? [`  ... ${matches.length - 6} more match(es)`] : []),
+          ].join('\n'), 'warning');
+          setInput('');
+          return;
+        }
+        const tool = matches[0];
+        const didUpdate = updateScopedTool(session, tool.id, op === 'on');
         if (didUpdate) {
           const scope = getSessionConfigScopeLabel(session);
-          opts.addNotice(`Tool ${toolId} ${op === 'on' ? 'enabled' : 'disabled'} in ${scope} scope.`, 'success');
+          opts.addNotice(`Tool ${tool.label} (${tool.id}) ${op === 'on' ? 'enabled' : 'disabled'} in ${scope} scope.`, 'success');
         }
         setInput('');
         return;

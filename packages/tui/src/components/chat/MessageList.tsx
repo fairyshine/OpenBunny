@@ -118,8 +118,16 @@ export function MessageList({
       )}
 
       {messages.length === 0 && !isInitializing && (
-        <Box marginBottom={1} flexDirection="column">
-          <Text color={T.fgDim}>No messages yet.</Text>
+        <Box
+          marginBottom={1}
+          borderStyle="round"
+          borderColor={T.borderLight}
+          paddingX={1}
+          flexDirection="column"
+        >
+          <Text bold color={T.brand}>OpenBunny</Text>
+          <Text color={T.fgDim}>Terminal workspace for tools, search, files, and multi-agent sessions.</Text>
+          <Text color={T.fgMuted}>Features: python · search · shell · files · MCP · skills</Text>
           <Box>
             <Text color={T.fgMuted}>Start a conversation or use </Text>
             <Text color={T.accent}>/help</Text>
@@ -142,6 +150,7 @@ export function MessageList({
           flexDirection="column"
         >
           <Text bold color={T.assistant}>Summary</Text>
+          <Text color={T.fgSubtle}>Session summary mirrored from paired dialogue state.</Text>
           {summaryLines.map((line, index) => (
             <Text key={`${index}-${line}`} wrap="wrap" color={T.fgDim}>
               {line || ' '}

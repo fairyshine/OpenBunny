@@ -3,13 +3,14 @@ import { useState, useCallback, useEffect } from 'react';
 import { useInput } from 'ink';
 import type { PanelSection, PanelItem, PanelEditorState } from '../types.js';
 import { providerRegistry, getProviderMeta } from '@openbunny/shared/services/ai';
-import { PANEL_SECTIONS, MAX_VISIBLE_SECTION_ITEMS, SEARCH_PROVIDER_ORDER, SESSION_TYPE_FILTERS, TOOL_TIMEOUT_PRESETS, TOOL_DESCRIPTIONS, TEMPERATURE_PRESETS, MAX_TOKEN_PRESETS } from '../constants.js';
+import { PANEL_SECTIONS, MAX_VISIBLE_SECTION_ITEMS, SEARCH_PROVIDER_ORDER, SESSION_TYPE_FILTERS, TOOL_TIMEOUT_PRESETS, TEMPERATURE_PRESETS, MAX_TOKEN_PRESETS } from '../constants.js';
 import { truncate, formatTimeout, getSlidingWindow } from '../utils/formatting.js';
 import { useMouse } from './useMouse.js';
 import type { LLMConfig, Session } from '@openbunny/shared/types';
 import type { MCPConnection, MCPTransportType } from '@openbunny/shared/stores/tools';
 import { getSectionTabLabel } from '../theme.js';
 import type { FileBrowserController } from './useFileBrowser.js';
+import { getAvailableToolEntries } from '../utils/toolPresentation.js';
 import {
   getEffectiveSessionSkills,
   getEffectiveSessionTools,
@@ -25,7 +26,7 @@ type SessionTypeFilter = (typeof SESSION_TYPE_FILTERS)[number];
 
 interface UsePanelOptions {
   terminalWidth: number;
-  panelTop: number;
+  terminalHeight: number;
   sessions: Session[];
   currentSession: Session | null;
   currentSessionId: string | null;
@@ -95,7 +96,15 @@ interface PanelMouseRowHit {
 }
 
 const PANEL_BORDER_AND_PADDING_X = 2;
-const PANEL_EDITOR_HEIGHT = 7;
+const PANEL_MIN_WIDTH = 60;
+const PANEL_PREFERRED_WIDTH = 96;
+const PANEL_MIN_HEIGHT = 20;
+const PANEL_PREFERRED_HEIGHT = 28;
+const PANEL_STATIC_CHROME_HEIGHT = 5;
+const PANEL_EDITOR_HEIGHT = 5;
+const PANEL_PREVIEW_SECTION_OVERHEAD = 2;
+const PANEL_PREVIEW_BODY_MAX_HEIGHT = 7;
+const MIN_VISIBLE_PANEL_ITEMS = 4;
 
 function formatByteSize(size: number): string {
   if (size < 1024) return `${size}b`;
@@ -113,6 +122,7 @@ function getPanelItemHeight(item: PanelItem, isSelected: boolean): number {
 
 function buildPanelMouseLayout(args: {
   terminalWidth: number;
+  panelHeight: number;
   panelWidth: number;
   panelTop: number;
   section: PanelSection;
@@ -172,18 +182,14 @@ function buildPanelMouseLayout(args: {
     cursorY += 1;
   }
 
-  if (args.editor) {
-    cursorY += PANEL_EDITOR_HEIGHT;
-  }
-
   return {
     panelLeft,
     panelRight,
     panelTop: args.panelTop,
-    panelBottom: cursorY + 2,
+    panelBottom: args.panelTop + args.panelHeight - 1,
     tabY,
-    editorTop: args.editor ? cursorY - PANEL_EDITOR_HEIGHT : null,
-    editorBottom: args.editor ? cursorY - 1 : null,
+    editorTop: null,
+    editorBottom: null,
     tabHits,
     rowHits,
   };
@@ -212,7 +218,10 @@ export function usePanel(opts: UsePanelOptions) {
   });
 
   const terminalWidth = opts.terminalWidth;
-  const panelWidth = Math.min(72, Math.max(40, Math.floor(terminalWidth * 0.7)));
+  const terminalHeight = opts.terminalHeight;
+  const panelWidth = Math.max(PANEL_MIN_WIDTH, Math.min(PANEL_PREFERRED_WIDTH, terminalWidth - 4));
+  const panelHeight = Math.max(PANEL_MIN_HEIGHT, Math.min(PANEL_PREFERRED_HEIGHT, terminalHeight - 2));
+  const panelTop = Math.max(1, Math.floor((terminalHeight - panelHeight) / 2) + 1);
   const providerMeta = getProviderMeta(opts.runtimeConfig.provider);
   const providerModels = providerMeta?.models?.length ? providerMeta.models : [opts.runtimeConfig.model];
   const providerScope = opts.isDefaultAgent ? 'global default' : `agent ${opts.currentAgent?.name || opts.currentAgentId}`;
@@ -223,6 +232,9 @@ export function usePanel(opts: UsePanelOptions) {
   const effectiveToolIds = getEffectiveSessionTools(opts.currentSession, opts.enabledTools);
   const effectiveSkillIds = getEffectiveSessionSkills(opts.currentSession, opts.enabledSkills);
   const visibleEffectiveToolIds = effectiveToolIds.filter((id) => id !== 'file_manager');
+  const availableToolEntries = getAvailableToolEntries(opts.builtinToolIds, opts.mcpConnections);
+  const builtinToolEntries = availableToolEntries.filter((entry) => !entry.isMcp);
+  const mcpToolEntries = availableToolEntries.filter((entry) => entry.isMcp);
   const filteredSessions = opts.sessions.filter((session) => (
     sessionTypeFilter === 'all' ? true : (session.sessionType || 'user') === sessionTypeFilter
   ));
@@ -367,14 +379,35 @@ export function usePanel(opts: UsePanelOptions) {
   ];
 
   /* ── Tools section ─────────────────────────────────── */
-  const toolItems: PanelItem[] = opts.builtinToolIds.map((id) => ({
-    key: id,
-    label: id,
-    meta: effectiveToolIds.includes(id) ? 'on' : 'off',
-    active: effectiveToolIds.includes(id),
-    type: 'toggle' as const,
-    hint: `${TOOL_DESCRIPTIONS[id] || ''}${sessionConfigScope === 'session' ? ' · session scope' : ' · global scope'}`,
-  }));
+  const toolItems: PanelItem[] = [
+    ...(builtinToolEntries.length > 0
+      ? [{ key: 'tools:builtin-header', label: '── Built-in Tools', type: 'header' as const }]
+      : []),
+    ...builtinToolEntries.map((tool) => ({
+      key: tool.id,
+      label: truncate(tool.label, 28),
+      meta: effectiveToolIds.includes(tool.id) ? 'on' : 'off',
+      active: effectiveToolIds.includes(tool.id),
+      type: 'toggle' as const,
+      hint: `${tool.description}${sessionConfigScope === 'session' ? ' · session scope' : ' · global scope'}`,
+    })),
+    ...(mcpToolEntries.length > 0
+      ? [{ key: 'tools:mcp-header', label: '── MCP Tools', type: 'header' as const }]
+      : []),
+    ...mcpToolEntries.map((tool) => ({
+      key: tool.id,
+      label: truncate(tool.label, 28),
+      meta: effectiveToolIds.includes(tool.id)
+        ? (tool.connectionStatus === 'connected' ? 'on' : `on/${tool.connectionStatus}`)
+        : (tool.connectionStatus === 'connected' ? 'off' : `off/${tool.connectionStatus}`),
+      active: effectiveToolIds.includes(tool.id),
+      type: 'toggle' as const,
+      hint: `${tool.description}${tool.connectionStatus ? ` · ${tool.connectionStatus}` : ''}${sessionConfigScope === 'session' ? ' · session scope' : ' · global scope'}`,
+    })),
+    ...(availableToolEntries.length === 0
+      ? [{ key: 'tools:empty', label: 'No tools discovered', meta: 'Use /mcp add or check tool config', type: 'info' as const }]
+      : []),
+  ];
 
   /* ── Skills section ────────────────────────────────── */
   const skillItems: PanelItem[] = opts.skills.map((s) => ({
@@ -454,7 +487,7 @@ export function usePanel(opts: UsePanelOptions) {
     { key: 'about-agent', label: 'Current agent', meta: opts.currentAgent?.name || 'OpenBunny', type: 'info' },
     { key: 'about-session', label: 'Session', meta: opts.currentSessionId ? opts.currentSessionId.slice(0, 8) : '(none)', type: 'info' },
     { key: 'about-scope', label: 'Config scope', meta: sessionConfigScope, type: 'info' },
-    { key: 'about-tools', label: 'Tools', meta: `${visibleEffectiveToolIds.length} enabled`, type: 'info' },
+    { key: 'about-tools', label: 'Tools', meta: `${visibleEffectiveToolIds.length}/${availableToolEntries.length} enabled`, type: 'info' },
     { key: 'about-skills', label: 'Skills', meta: `${effectiveSkillIds.length}/${opts.skills.length} enabled`, type: 'info' },
     { key: 'about-mcp', label: 'MCP', meta: `${opts.connectedMcpCount}/${opts.mcpConnections.length} connected`, type: 'info' },
     { key: 'about-exec', label: 'Exec', meta: opts.capabilities.supportsExec ? 'available' : 'unavailable', active: opts.capabilities.supportsExec, type: 'info' },
@@ -1237,10 +1270,23 @@ export function usePanel(opts: UsePanelOptions) {
   }, [getSelectableItems, panelSection]);
 
   /* ── Computed for rendering ────────────────────────── */
+  const previewBodyHeight = panelSection === 'files' && !panelEditor
+    ? Math.max(4, Math.min(PANEL_PREVIEW_BODY_MAX_HEIGHT, Math.floor(panelHeight * 0.25)))
+    : 0;
+  const previewSectionHeight = previewBodyHeight > 0 ? previewBodyHeight + PANEL_PREVIEW_SECTION_OVERHEAD : 0;
+  const listHeightBudget = Math.max(
+    MIN_VISIBLE_PANEL_ITEMS,
+    panelHeight - 2 - PANEL_STATIC_CHROME_HEIGHT - PANEL_EDITOR_HEIGHT * Number(Boolean(panelEditor)) - previewSectionHeight,
+  );
+  const maxVisibleItems = Math.max(
+    MIN_VISIBLE_PANEL_ITEMS,
+    Math.min(MAX_VISIBLE_SECTION_ITEMS, listHeightBudget - 1),
+  );
+
   const currentItems = getItems(panelSection);
   const selectableItems = getSelectableItems(panelSection);
   const currentSelection = panelSelections[panelSection] ?? 0;
-  const window = getSlidingWindow(selectableItems, currentSelection, MAX_VISIBLE_SECTION_ITEMS);
+  const window = getSlidingWindow(selectableItems, currentSelection, maxVisibleItems);
   const selectedItemKey = selectableItems[currentSelection]?.key ?? null;
   const visibleKeys = new Set(window.items.map((item) => item.key));
   const visibleItems: PanelItem[] = [];
@@ -1266,8 +1312,9 @@ export function usePanel(opts: UsePanelOptions) {
 
   const panelMouseLayout = buildPanelMouseLayout({
     terminalWidth,
+    panelHeight,
     panelWidth,
-    panelTop: opts.panelTop,
+    panelTop,
     section: panelSection,
     items: visibleItems,
     selectedItemKey,
@@ -1282,13 +1329,13 @@ export function usePanel(opts: UsePanelOptions) {
     ? filePreviewMeta
     : (panelSection === 'files' && fileBrowser.error ? fileBrowser.error : undefined);
   const previewLines = panelSection === 'files'
-    ? (fileBrowser.preview?.lines || (fileBrowser.error
+    ? ((fileBrowser.preview?.lines || (fileBrowser.error
         ? ['File browser error.']
         : [
             'Select a file to preview it here.',
             'Shortcuts: n new file · d new folder · r rename · x delete',
             'Commands: /touch /mkdir /rename /rm /write',
-          ]))
+          ])).slice(0, Math.max(1, previewBodyHeight - 2)))
     : undefined;
 
   useMouse((event) => {
@@ -1383,11 +1430,15 @@ export function usePanel(opts: UsePanelOptions) {
     submitPanelEditor: submitEditor,
     cancelPanelEditor: cancelEditor,
     panelWidth,
+    panelHeight,
+    panelTop,
+    panelLeft: panelMouseLayout.panelLeft,
     currentItems: visibleItems, currentSelection, window,
     selectedItemKey,
     previewTitle,
     previewMeta,
     previewLines,
+    previewBodyHeight,
     previewTone: panelSection === 'files' && fileBrowser.preview?.kind === 'binary' ? 'yellow' : undefined,
     getItems, runAction,
   };

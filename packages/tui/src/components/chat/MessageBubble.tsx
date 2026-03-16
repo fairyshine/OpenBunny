@@ -3,6 +3,7 @@ import type { Message, MessageFileAttachment, MessagePresentation, MessageSkillR
 import {
   deriveMessagePresentation,
   formatFileSize,
+  getMessageImageFiles,
 } from '@openbunny/shared/utils/messagePresentation';
 import { T } from '../../theme.js';
 import { formatTime, truncate } from '../../utils/formatting.js';
@@ -30,17 +31,27 @@ function simplifyExecToolOutput(content: string): string {
   return output || '(no output)';
 }
 
-function simplifyMarkdown(content: string): string {
-  const trimmed = content.trim();
-  const fencedMatch = trimmed.match(/^```(?:[\w-]+)?\n?([\s\S]*?)\n?```$/);
-  if (fencedMatch) return fencedMatch[1].trim();
-
+function compactText(content: string): string {
   return content
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/__(.*?)__/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+function simplifyMarkdown(content: string): string {
+  const trimmed = compactText(content);
+  if (!trimmed) return '';
+
+  const fencedMatch = trimmed.match(/^```(?:[\w-]+)?\n?([\s\S]*?)\n?```$/);
+  if (fencedMatch) {
+    return fencedMatch[1].trim();
+  }
+
+  return trimmed
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '• ')
+    .replace(/^\s*\d+\.\s+/gm, '• ')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)');
 }
 
 function prettyToolInput(toolInput?: string): string {
@@ -53,13 +64,6 @@ function prettyToolInput(toolInput?: string): string {
   } catch {
     return trimmed;
   }
-}
-
-function compactText(content: string): string {
-  return content
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
 }
 
 function sliceVisibleLines(content: string, maxLines: number): LineWindow {
@@ -103,6 +107,11 @@ function formatSkillResources(resources: MessageSkillResource[]): string[] {
   ));
 }
 
+function formatPlotSummary(plots: string[]): string[] {
+  if (plots.length === 0) return [];
+  return plots.map((_, index) => `Plot ${index + 1} generated (render in WEB/Desktop).`);
+}
+
 function formatResponseBody(message: Message, presentation: MessagePresentation): string {
   const body = simplifyMarkdown(message.content || '(no content)');
   const plotCount = presentation.kind === 'markdown' ? presentation.plots.length : 0;
@@ -119,14 +128,9 @@ function getToolResultBody(message: Message, presentation: MessagePresentation):
     return message.content || '(no output)';
   }
 
-  const content = presentation.toolName === 'exec'
+  return presentation.toolName === 'exec'
     ? simplifyExecToolOutput(presentation.content || '')
     : (presentation.content || '(no output)');
-  const attachments = formatAttachmentSummary(presentation.files);
-
-  return attachments.length > 0
-    ? `${content}\n\n${attachments.join('\n')}`
-    : content;
 }
 
 function getSkillActivationBody(presentation: MessagePresentation): string {
@@ -149,17 +153,11 @@ function getSkillResultBody(presentation: MessagePresentation): string {
       `Path: ${presentation.resourcePath}`,
       `Format: ${presentation.resourceFormat}`,
       presentation.fileContent,
-      ...formatAttachmentSummary(presentation.files),
     ].filter(Boolean).join('\n\n');
   }
 
   if (presentation.kind === 'skill_activation_result') {
-    return [
-      presentation.skillBody,
-      presentation.resources.length > 0
-        ? ['Resources:', ...formatSkillResources(presentation.resources)].join('\n')
-        : null,
-    ].filter(Boolean).join('\n\n');
+    return presentation.skillBody || '(skill loaded)';
   }
 
   return '';
@@ -222,35 +220,36 @@ function DetailBlock({
   );
 }
 
-/* ── Gemini-style role prefixes ────────────────────────── */
-
 function getMessageHeading(message: Message): { prefix: string; label: string; color: string } {
   const presentation = deriveMessagePresentation(message);
+  const speaker = typeof message.metadata?.speakerAgentName === 'string'
+    ? message.metadata.speakerAgentName
+    : undefined;
 
-  if (message.role === 'system') return { prefix: '⚙', label: 'System', color: T.system };
+  if (message.role === 'system') return { prefix: '!', label: 'System', color: T.system };
   if (message.role === 'user') return { prefix: '>', label: 'You', color: T.user };
 
   if (presentation.kind === 'process') {
     if (presentation.stage === 'tool_call') {
-      return { prefix: '⚡', label: presentation.toolName || 'Tool Call', color: T.tool };
+      return { prefix: '+', label: presentation.toolName || 'Tool Call', color: T.tool };
     }
-    return { prefix: '◌', label: 'Thinking', color: T.thinking };
+    return { prefix: '~', label: speaker || 'Thinking', color: T.thinking };
   }
 
   if (presentation.kind === 'tool_result') {
     return {
-      prefix: presentation.isError ? '✕' : '✓',
+      prefix: presentation.isError ? 'x' : 'v',
       label: presentation.toolName || 'Tool Result',
       color: presentation.isError ? T.err : T.toolResult,
     };
   }
 
-  if (presentation.kind === 'skill_activation') return { prefix: '◈', label: presentation.skillName || 'Skill', color: T.skill };
-  if (presentation.kind === 'skill_result_error') return { prefix: '✕', label: 'Skill Error', color: T.err };
-  if (presentation.kind === 'skill_resource_result') return { prefix: '◈', label: presentation.skillName || 'Skill Resource', color: T.skill };
-  if (presentation.kind === 'skill_activation_result') return { prefix: '◈', label: presentation.skillName || 'Skill Loaded', color: T.skill };
+  if (presentation.kind === 'skill_activation') return { prefix: '*', label: presentation.skillName || 'Skill', color: T.skill };
+  if (presentation.kind === 'skill_result_error') return { prefix: 'x', label: 'Skill Error', color: T.err };
+  if (presentation.kind === 'skill_resource_result') return { prefix: '*', label: presentation.skillName || 'Skill Resource', color: T.skill };
+  if (presentation.kind === 'skill_activation_result') return { prefix: '*', label: presentation.skillName || 'Skill Loaded', color: T.skill };
 
-  return { prefix: '🐰', label: 'Bunny', color: T.assistant };
+  return { prefix: '@', label: speaker || 'Bunny', color: T.assistant };
 }
 
 function getMessageBody(message: Message): string {
@@ -259,9 +258,8 @@ function getMessageBody(message: Message): string {
   switch (presentation.kind) {
     case 'process':
       return presentation.toolInput || message.content || '(no content)';
-    case 'tool_result': {
+    case 'tool_result':
       return getToolResultBody(message, presentation);
-    }
     case 'skill_activation':
       return getSkillActivationBody(presentation) || 'Activating skill...';
     case 'skill_result_error':
@@ -278,12 +276,14 @@ function getMessageBody(message: Message): string {
 
 const TOOL_RESULT_MAX_LINES = 10;
 const DETAIL_MAX_LINES = 14;
+const RESPONSE_MAX_LINES = 18;
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const presentation = deriveMessagePresentation(message);
   const heading = getMessageHeading(message);
   const rawBody = getMessageBody(message);
   const timestamp = formatTime(message.timestamp);
+  const imageFiles = getMessageImageFiles(message);
   const detailMeta = presentation.kind === 'process'
     ? [
         presentation.stage === 'tool_call' ? 'call' : 'step',
@@ -350,6 +350,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   if (presentation.kind === 'tool_result') {
     const bodyLines = sliceVisibleLines(rawBody, TOOL_RESULT_MAX_LINES);
+    const attachmentLines = formatAttachmentSummary(presentation.files);
     const footer = [
       bodyLines.hiddenLineCount > 0 ? `... ${bodyLines.hiddenLineCount} more line(s)` : null,
       presentation.files.length > 0 ? `${presentation.files.length} image attachment(s)` : null,
@@ -371,6 +372,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           borderColor={presentation.isError ? T.err : T.toolResult}
           footer={footer || undefined}
         />
+        {attachmentLines.length > 0 && (
+          <DetailBlock
+            title="Artifacts"
+            lines={attachmentLines}
+            color={T.fgMuted}
+            borderColor={T.toolResult}
+          />
+        )}
       </Box>
     );
   }
@@ -380,6 +389,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       rawBody || (presentation.kind === 'skill_activation' ? 'Activating skill...' : '(no content)'),
       presentation.kind === 'skill_activation' ? 8 : TOOL_RESULT_MAX_LINES,
     );
+    const resourceLines = presentation.kind === 'skill_activation_result'
+      ? formatSkillResources(presentation.resources)
+      : [];
+    const attachmentLines = presentation.kind === 'skill_resource_result'
+      ? formatAttachmentSummary(presentation.files)
+      : [];
 
     return (
       <Box marginBottom={1} flexDirection="column">
@@ -397,6 +412,22 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           borderColor={presentation.kind === 'skill_result_error' ? T.err : T.skill}
           footer={bodyLines.hiddenLineCount > 0 ? `... ${bodyLines.hiddenLineCount} more line(s)` : undefined}
         />
+        {resourceLines.length > 0 && (
+          <DetailBlock
+            title="Resources"
+            lines={resourceLines}
+            color={T.fgMuted}
+            borderColor={T.skill}
+          />
+        )}
+        {attachmentLines.length > 0 && (
+          <DetailBlock
+            title="Artifacts"
+            lines={attachmentLines}
+            color={T.fgMuted}
+            borderColor={T.skill}
+          />
+        )}
       </Box>
     );
   }
@@ -421,7 +452,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     );
   }
 
-  const responseLines = sliceVisibleLines(rawBody, DETAIL_MAX_LINES);
+  const responseLines = sliceVisibleLines(rawBody, RESPONSE_MAX_LINES);
+  const artifactLines = presentation.kind === 'markdown'
+    ? [
+        ...formatPlotSummary(presentation.plots),
+        ...formatAttachmentSummary(imageFiles),
+      ]
+    : [];
 
   return (
     <Box marginBottom={1} flexDirection="column">
@@ -436,6 +473,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         borderColor={message.role === 'system' ? T.system : T.assistant}
         footer={responseLines.hiddenLineCount > 0 ? `... ${responseLines.hiddenLineCount} more line(s)` : undefined}
       />
+      {artifactLines.length > 0 && (
+        <DetailBlock
+          title="Artifacts"
+          lines={artifactLines}
+          color={T.fgMuted}
+          borderColor={T.assistant}
+        />
+      )}
     </Box>
   );
 }

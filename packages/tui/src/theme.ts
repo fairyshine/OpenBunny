@@ -82,6 +82,19 @@ export function getSectionColor(section: PanelSection): string {
   }
 }
 
+export function getSectionSurfaceColor(section: PanelSection): string {
+  switch (section) {
+    case 'general':   return '#20172e';
+    case 'llm':       return '#26162f';
+    case 'tools':     return '#2d2411';
+    case 'skills':    return '#122338';
+    case 'network':   return '#0f2730';
+    case 'files':     return '#10261f';
+    case 'about':     return '#2a1830';
+    default:          return T.surface;
+  }
+}
+
 export function getSectionTabLabel(section: PanelSection): string {
   switch (section) {
     case 'general':   return 'General';

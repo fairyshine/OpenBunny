@@ -84,6 +84,7 @@ interface AgentState {
   deleteAgentSession: (agentId: string, sessionId: string) => void;
   setAgentCurrentSession: (agentId: string, sessionId: string | null) => void;
   addAgentMessage: (agentId: string, sessionId: string, message: Message) => void;
+  clearAgentSessionMessages: (agentId: string, sessionId: string) => void;
   updateAgentMessage: (agentId: string, sessionId: string, messageId: string, updates: Partial<Message>) => void;
   setAgentSessionStreaming: (agentId: string, sessionId: string, isStreaming: boolean) => void;
   markStreamingAgentSessionsInterrupted: () => void;
@@ -327,6 +328,35 @@ export const useAgentStore = create<AgentState>()(
             persistSessionMessages(sessionId, updated.messages);
           }
           return { agentSessions: { ...state.agentSessions, [agentId]: sessions } };
+        });
+      },
+
+      clearAgentSessionMessages: (agentId, sessionId) => {
+        set((state) => {
+          const session = (state.agentSessions[agentId] || []).find((candidate) => candidate.id === sessionId);
+          if (!session || session.messages.length === 0) {
+            return state;
+          }
+
+          const clearedAt = Date.now();
+          const { sessions } = replaceSessionMessagesState(
+            state.agentSessions[agentId] || [],
+            sessionId,
+            [],
+          );
+
+          persistSessionMessages(sessionId, []);
+
+          return {
+            agentSessions: {
+              ...state.agentSessions,
+              [agentId]: sessions.map((candidate) => (
+                candidate.id === sessionId
+                  ? { ...candidate, updatedAt: clearedAt }
+                  : candidate
+              )),
+            },
+          };
         });
       },
 

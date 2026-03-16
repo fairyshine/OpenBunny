@@ -10,6 +10,7 @@ export function useAppState() {
   /* ── Session store ─────────────────────────────────── */
   const globalSessions = useSessionStore((s) => s.sessions);
   const globalCurrentSessionId = useSessionStore((s) => s.currentSessionId);
+  const globalOpenSessionIds = useSessionStore((s) => s.openSessionIds);
   const globalLLMConfig = useSessionStore((s) => s.llmConfig);
   const createSession = useSessionStore((s) => s.createSession);
   const renameSession = useSessionStore((s) => s.renameSession);
@@ -22,6 +23,7 @@ export function useAppState() {
   const setSessionTools = useSessionStore((s) => s.setSessionTools);
   const setSessionSkills = useSessionStore((s) => s.setSessionSkills);
   const openSession = useSessionStore((s) => s.openSession);
+  const closeSession = useSessionStore((s) => s.closeSession);
   const loadSessionMessages = useSessionStore((s) => s.loadSessionMessages);
   const flushMessages = useSessionStore((s) => s.flushMessages);
   const permanentlyDeleteSession = useSessionStore((s) => s.permanentlyDeleteSession);
@@ -37,6 +39,7 @@ export function useAppState() {
   const renameAgentSession = useAgentStore((s) => s.renameAgentSession);
   const deleteAgentSession = useAgentStore((s) => s.deleteAgentSession);
   const addAgentMessage = useAgentStore((s) => s.addAgentMessage);
+  const clearAgentSessionMessages = useAgentStore((s) => s.clearAgentSessionMessages);
   const updateAgentMessage = useAgentStore((s) => s.updateAgentMessage);
   const setAgentSessionStreaming = useAgentStore((s) => s.setAgentSessionStreaming);
   const setAgentSessionSystemPrompt = useAgentStore((s) => s.setAgentSessionSystemPrompt);
@@ -118,17 +121,17 @@ export function useAppState() {
 
   return {
     // session store
-    globalSessions, globalCurrentSessionId, globalLLMConfig,
+    globalSessions, globalCurrentSessionId, globalOpenSessionIds, globalLLMConfig,
     createSession, renameSession, addMessage, updateMessage,
     clearSessionMessages, setGlobalLLMConfig, setSessionStreaming,
     setSessionSystemPrompt, setSessionTools, setSessionSkills,
-    openSession, loadSessionMessages,
+    openSession, closeSession, loadSessionMessages,
     flushMessages, permanentlyDeleteSession,
     // agent store
     agents, currentAgentId, setCurrentAgent, createAgent,
     agentSessions, agentCurrentSessionId,
     createAgentSession, renameAgentSession, deleteAgentSession,
-    addAgentMessage, updateAgentMessage,
+    addAgentMessage, clearAgentSessionMessages, updateAgentMessage,
     setAgentSessionStreaming, setAgentSessionSystemPrompt,
     setAgentSessionTools, setAgentSessionSkills,
     loadAgentSessionMessages, flushAgentMessages,
