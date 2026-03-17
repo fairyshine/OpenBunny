@@ -9,6 +9,7 @@ interface InputBarProps {
   input: string;
   setInput: (value: string) => void;
   onSubmit: (value: string) => void;
+  onExit: () => void;
   disabled: boolean;
   isLoading: boolean;
   readOnly: boolean;
@@ -21,6 +22,8 @@ interface InputBarProps {
   totalSkillCount: number;
   width: number;
   disabledReason?: string;
+  modeLabel?: string | null;
+  contextLabels?: string[];
 }
 
 function getAbsolutePosition(node: DOMElement | null) {
@@ -106,7 +109,22 @@ function ManagedInput({
   }, [input]);
 
   useEffect(() => {
-    setCursorBasePosition(getAbsolutePosition(inputRef.current));
+    const nextPosition = getAbsolutePosition(inputRef.current);
+    setCursorBasePosition((current) => {
+      if (!nextPosition && !current) {
+        return current;
+      }
+
+      if (!nextPosition || !current) {
+        return nextPosition;
+      }
+
+      if (nextPosition.x === current.x && nextPosition.y === current.y) {
+        return current;
+      }
+
+      return nextPosition;
+    });
   });
 
   useInput((value, key) => {
@@ -182,6 +200,7 @@ export function InputBar({
   input,
   setInput,
   onSubmit,
+  onExit,
   disabled,
   isLoading,
   readOnly,
@@ -194,11 +213,19 @@ export function InputBar({
   totalSkillCount,
   width,
   disabledReason,
+  modeLabel,
+  contextLabels = [],
 }: InputBarProps) {
   const readOnlySession = isReadOnlySession(session);
   const readOnlyHint = readOnlySession
     ? `${getSessionTypeLabel(session)} is read-only. Slash commands still work.`
     : null;
+
+  useInput((value, key) => {
+    if (key.ctrl && value === 'c') {
+      onExit();
+    }
+  });
 
   return (
     <Box paddingX={1} marginTop={1} flexDirection="column" flexShrink={0}>
@@ -219,6 +246,14 @@ export function InputBar({
             <Text color={T.fgSubtle}> · </Text>
             Skills <Text color={T.sSkills}>{enabledSkillCount}/{totalSkillCount}</Text>
           </Text>
+          {modeLabel && (
+            <Text color={T.info}>{modeLabel}</Text>
+          )}
+          {contextLabels.map((label) => (
+            <Text key={label} color={T.fgMuted} wrap="truncate-end">
+              {label}
+            </Text>
+          ))}
         </Box>
 
         <Box>
@@ -236,7 +271,7 @@ export function InputBar({
                 ? (readOnly ? 'Use /stop while replying' : 'Type while OpenBunny replies. Enter sends after /stop')
               : readOnly
                 ? 'Use /stop, /export, /search, or /help'
-                : 'Type a message or /help'}
+                : 'Ask anything, use @file for context, !cmd for shell, or /help'}
           />
         </Box>
 
@@ -272,7 +307,7 @@ export function InputBar({
             {' · '}
             /write
             {' · '}
-            /trash
+            Ctrl+C
           </Text>
         </Box>
       </Box>

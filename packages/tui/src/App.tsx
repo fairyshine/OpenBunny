@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, Static, useApp, useStdout } from 'ink';
-import type { Message } from '@openbunny/shared/types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Box, useApp, useStdout } from 'ink';
 import { flushAllSessionPersistence } from '@openbunny/shared/services/storage/sessionPersistence';
-import type { AppProps, NoticeTone } from './types.js';
+import type { AppProps } from './types.js';
 import { useAppState } from './hooks/useAppState.js';
 import { useNotices } from './hooks/useNotices.js';
 import { useRuntimeConfig } from './hooks/useRuntimeConfig.js';
@@ -10,16 +9,15 @@ import { useAgentLoop } from './hooks/useAgentLoop.js';
 import { useCommandHandler } from './hooks/useCommandHandler.js';
 import { useFileBrowser } from './hooks/useFileBrowser.js';
 import { usePanel } from './hooks/usePanel.js';
+import { useMessageViewport } from './hooks/useMessageViewport.js';
 import { resolveSessionOnStartup } from './utils/session.js';
-import {
-  TranscriptMessage,
-  TranscriptNotice,
-  TranscriptBanner,
-  isStreamingMessage,
-} from './components/chat/TranscriptMessage.js';
+import { MessageList } from './components/chat/MessageList.js';
+import { NoticePanel } from './components/notices/NoticePanel.js';
+import { AppHeader } from './components/layout/AppHeader.js';
+import { SessionStrip } from './components/layout/SessionStrip.js';
 import { FooterBar } from './components/layout/FooterBar.js';
 import { HintBar } from './components/layout/HintBar.js';
-import { PromptBar } from './components/layout/PromptBar.js';
+import { InputBar } from './components/layout/InputBar.js';
 import { Panel } from './components/panel/Panel.js';
 import { getAvailableToolEntries } from './utils/toolPresentation.js';
 import {
@@ -29,24 +27,7 @@ import {
   isReadOnlySession,
   isSessionConfigLocked,
 } from './utils/sessionPresentation.js';
-
-type PrintedEntry =
-  | {
-      id: string;
-      kind: 'banner';
-    }
-  | {
-      id: string;
-      kind: 'message';
-      message: Message;
-    }
-  | {
-      id: string;
-      kind: 'notice';
-      content: string;
-      tone: NoticeTone;
-      label?: string;
-    };
+import type { MessageSearchResults } from './hooks/useMessageViewport.js';
 
 function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, startupNotice }: AppProps) {
   const { exit } = useApp();
@@ -54,14 +35,9 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
   const state = useAppState();
   const { notices, error, setError, addNotice, clearNotices } = useNotices();
   const [isInitializing, setIsInitializing] = useState(true);
-  const [printedEntries, setPrintedEntries] = useState<PrintedEntry[]>([]);
   const [termSize, setTermSize] = useState({ cols: stdout.columns ?? 80, rows: stdout.rows ?? 24 });
+  const [searchResults, setSearchResults] = useState<MessageSearchResults | null>(null);
   const fileBrowser = useFileBrowser({ rootPath: workspace });
-  const printedMessageIdsRef = useRef(new Set<string>());
-  const printedNoticeIdsRef = useRef(new Set<string>());
-  const hydratedSessionIdsRef = useRef(new Set<string>());
-  const lastErrorRef = useRef('');
-  const printedBannerRef = useRef(false);
 
   useEffect(() => {
     const onResize = () => {
@@ -104,14 +80,6 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     enabledTools: state.enabledTools,
     enabledSkills: state.enabledSkills,
   });
-
-  const appendEntries = useCallback((entries: PrintedEntry[]) => {
-    if (entries.length === 0) {
-      return;
-    }
-
-    setPrintedEntries((previous) => [...previous, ...entries]);
-  }, []);
 
   const cmd = useCommandHandler({
     workspace,
@@ -174,14 +142,13 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     applyRuntimeConfig,
     saveRuntimeConfig,
     fileBrowser,
-    showSearchResults: () => {},
+    showSearchResults: setSearchResults,
     handleStop: agentLoop.handleStop,
     sendMessage: agentLoop.sendMessage,
   });
 
   const currentSession = state.currentSession;
   const messages = currentSession?.messages || [];
-  const liveMessage = [...messages].reverse().find(isStreamingMessage) || null;
   const readOnlySession = isReadOnlySession(currentSession);
   const sessionConfigScope = getSessionConfigScopeLabel(currentSession);
   const sessionConfigState = readOnlySession
@@ -195,18 +162,6 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
   const effectiveSkillCount = getEffectiveSessionSkills(currentSession, state.enabledSkills).length;
   const availableToolCount = getAvailableToolEntries(state.builtinToolIds, state.mcpConnections).length;
   const agentName = state.currentAgent?.isDefault ? 'OpenBunny' : (state.currentAgent?.name || 'OpenBunny');
-
-  useEffect(() => {
-    if (printedBannerRef.current) {
-      return;
-    }
-
-    printedBannerRef.current = true;
-    appendEntries([{
-      id: crypto.randomUUID(),
-      kind: 'banner',
-    }]);
-  }, [appendEntries]);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,88 +212,6 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     state.setAgentSessionSystemPrompt,
     systemPrompt,
   ]);
-
-  useEffect(() => {
-    if (!currentSession || hydratedSessionIdsRef.current.has(currentSession.id)) {
-      return;
-    }
-
-    hydratedSessionIdsRef.current.add(currentSession.id);
-    const historyEntries: PrintedEntry[] = [];
-
-    for (const message of currentSession.messages) {
-      if (isStreamingMessage(message)) {
-        continue;
-      }
-
-      printedMessageIdsRef.current.add(`${currentSession.id}:${message.id}`);
-      historyEntries.push({
-        id: crypto.randomUUID(),
-        kind: 'message',
-        message,
-      });
-    }
-
-    appendEntries(historyEntries);
-  }, [appendEntries, currentSession]);
-
-  useEffect(() => {
-    if (!currentSession) {
-      return;
-    }
-
-    const nextEntries: PrintedEntry[] = [];
-    for (const message of currentSession.messages) {
-      const printedId = `${currentSession.id}:${message.id}`;
-      if (printedMessageIdsRef.current.has(printedId) || isStreamingMessage(message)) {
-        continue;
-      }
-
-      printedMessageIdsRef.current.add(printedId);
-      nextEntries.push({
-        id: crypto.randomUUID(),
-        kind: 'message',
-        message,
-      });
-    }
-
-    appendEntries(nextEntries);
-  }, [appendEntries, currentSession, messages]);
-
-  useEffect(() => {
-    const nextEntries: PrintedEntry[] = [];
-
-    for (const notice of notices) {
-      if (printedNoticeIdsRef.current.has(notice.id)) {
-        continue;
-      }
-
-      printedNoticeIdsRef.current.add(notice.id);
-      nextEntries.push({
-        id: notice.id,
-        kind: 'notice',
-        content: notice.content,
-        tone: notice.tone,
-      });
-    }
-
-    appendEntries(nextEntries);
-  }, [appendEntries, notices]);
-
-  useEffect(() => {
-    if (!error || lastErrorRef.current === error) {
-      return;
-    }
-
-    lastErrorRef.current = error;
-    appendEntries([{
-      id: crypto.randomUUID(),
-      kind: 'notice',
-      content: error,
-      tone: 'error',
-      label: 'error',
-    }]);
-  }, [appendEntries, error]);
 
   const handleExit = useCallback(() => {
     void flushAllSessionPersistence().finally(() => {
@@ -417,59 +290,88 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     input: cmd.input,
     isInitializing,
     isLoading: agentLoop.isLoading,
-    showSearchResults: () => {},
+    showSearchResults: setSearchResults,
   });
+
+  const messageViewport = useMessageViewport({
+    sessionId: currentSession?.id || null,
+    messages,
+    preferredVisibleCount: Math.max(6, termSize.rows - (notices.length > 0 || error ? 16 : 13)),
+    panelVisible: panel.panelVisible,
+  });
+
+  useEffect(() => {
+    messageViewport.applySearchResults(searchResults);
+  }, [messageViewport.applySearchResults, searchResults]);
 
   const statusLabel = isInitializing
     ? 'Initializing...'
     : agentLoop.currentStatus || (agentLoop.isLoading ? agentLoop.activityLabel : '');
   const width = Math.max(24, termSize.cols);
-  const panelOverlayLift = 4;
-  const panelBottomOffset = Math.max(
-    0,
-    termSize.rows - (panel.panelTop + panel.panelHeight - 1) + panelOverlayLift,
-  );
-  const promptStatusLabel = panel.panelEditor
-    ? `Editing ${panel.panelEditor.label}`
-    : panel.panelVisible
-      ? 'Panel navigation active'
-      : statusLabel;
+  const activeSessions = useMemo(() => {
+    if (!state.isDefaultAgent) {
+      return state.sessions;
+    }
+
+    const byId = new Map(state.globalSessions.map((session) => [session.id, session]));
+    return state.globalOpenSessionIds
+      .map((sessionId) => byId.get(sessionId))
+      .filter((session): session is NonNullable<typeof session> => Boolean(session && !session.deletedAt));
+  }, [state.globalOpenSessionIds, state.globalSessions, state.isDefaultAgent, state.sessions]);
 
   return (
-    <Box width={termSize.cols} height={panel.panelVisible ? termSize.rows : undefined}>
-      <Box flexDirection="column" width={termSize.cols}>
-        <Box flexDirection="column">
-          <Static items={printedEntries}>
-            {(entry) => {
-              if (entry.kind === 'banner') {
-                return <TranscriptBanner />;
-              }
-
-              if (entry.kind === 'message') {
-                return <TranscriptMessage message={entry.message} />;
-              }
-
-              return (
-                <TranscriptNotice
-                  content={entry.content}
-                  tone={entry.tone}
-                  label={entry.label}
-                />
-              );
-            }}
-          </Static>
-
-          {liveMessage && <TranscriptMessage message={liveMessage} />}
-        </Box>
-
-        <PromptBar
+    <Box width={termSize.cols} height={termSize.rows} flexDirection="column" overflow="hidden">
+      <Box width={termSize.cols} height={termSize.rows} flexDirection="column" overflow="hidden">
+        <AppHeader
+          agentName={agentName}
+          runtimeConfig={runtimeConfig}
+          workspace={workspace}
+          width={width}
+          totalMessageCount={messages.length}
+          isLoading={agentLoop.isLoading}
+          panelVisible={panel.panelVisible}
+        />
+        <SessionStrip
+          sessions={activeSessions}
+          currentSessionId={state.currentSessionId}
+          width={width}
+          modeLabel={state.isDefaultAgent ? 'workspace' : `agent:${state.currentAgent?.name || state.currentAgentId}`}
+        />
+        <NoticePanel notices={notices} error={error} width={width} />
+        <MessageList
+          session={currentSession}
+          messages={messages}
+          visibleMessages={messageViewport.visibleMessages}
+          focusedMessageId={messageViewport.focusedMessageId}
+          activeSearchMessageId={messageViewport.activeSearchMessageId}
+          searchState={messageViewport.searchState}
+          isInitializing={isInitializing}
+          isLoading={agentLoop.isLoading}
+          currentStatus={statusLabel}
+          activityLabel={agentLoop.activityLabel}
+          width={width}
+        />
+        <InputBar
           input={cmd.input}
           setInput={cmd.setInput}
           onSubmit={handleSubmit}
           onExit={handleExit}
-          isLoading={agentLoop.isLoading}
           disabled={isInitializing || panel.panelVisible}
-          statusLabel={promptStatusLabel}
+          isLoading={agentLoop.isLoading}
+          readOnly={readOnlySession}
+          session={currentSession}
+          sessionConfigScope={sessionConfigScope}
+          sessionConfigState={sessionConfigState}
+          enabledToolCount={effectiveToolCount}
+          availableToolCount={availableToolCount}
+          enabledSkillCount={effectiveSkillCount}
+          totalSkillCount={state.skills.length}
+          width={width}
+          disabledReason={panel.panelEditor
+            ? `Editing ${panel.panelEditor.label}`
+            : panel.panelVisible
+              ? 'Panel navigation active'
+              : 'Initializing session'}
         />
         <FooterBar
           runtimeConfig={runtimeConfig}
@@ -490,9 +392,12 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
           width={termSize.cols}
           height={termSize.rows}
           flexDirection="column"
-          justifyContent="flex-end"
+          overflow="hidden"
         >
-          <Box marginLeft={Math.max(0, panel.panelLeft - 1)} marginBottom={panelBottomOffset}>
+          <Box
+            marginLeft={Math.max(0, panel.panelLeft - 1)}
+            marginTop={Math.max(0, panel.panelTop - 1)}
+          >
             <Panel
               section={panel.panelSection}
               items={panel.currentItems}

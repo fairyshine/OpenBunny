@@ -122,8 +122,10 @@ Prompt keys:
   }
 }
 
-const { configDir } = initTerminal({ type: 'tui' });
 process.env.OPENBUNNY_DISABLE_CONSOLE_LOGGER = '1';
+const restoreConsole = installTuiConsoleSilencer();
+
+const { configDir } = initTerminal({ type: 'tui' });
 
 const config = resolveLLMConfig({ apiKey, baseUrl, maxTokens, model, provider, temperature });
 const providerMeta = getProviderMeta(config.provider);
@@ -132,7 +134,6 @@ const resolvedWorkspace = resolveWorkspace(workspace);
 const startupNotice = (providerMeta?.requiresApiKey ?? true) && !config.apiKey
   ? `Provider "${config.provider}" requires an API key. Use /api-key <key>, switch with /provider <id>, or restart with --api-key.`
   : undefined;
-const restoreConsole = installTuiConsoleSilencer();
 const instance = render(React.createElement(App, {
   config,
   systemPrompt: resolvedSystemPrompt,

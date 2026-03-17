@@ -276,6 +276,11 @@ export function useFileBrowser({ rootPath }: UseFileBrowserOptions) {
     return nextTextFile;
   }, [resolvePath, root]);
 
+  const readContextFile = useCallback(async (inputPath: string) => {
+    const nextPath = resolvePath(inputPath);
+    return loadTextFile(root, nextPath);
+  }, [resolvePath, root]);
+
   const clearPreview = useCallback(() => {
     setPreview(null);
   }, []);
@@ -388,6 +393,7 @@ export function useFileBrowser({ rootPath }: UseFileBrowserOptions) {
     goUp,
     openPath,
     readTextFile,
+    readContextFile,
     previewFile,
     refresh,
     clearPreview,

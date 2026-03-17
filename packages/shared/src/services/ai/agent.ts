@@ -127,7 +127,7 @@ export async function runAgentLoop(
   const currentAgentId = resolvedRuntime.currentAgentId;
   const systemPrompt = buildAgentAssistantSystemPrompt(currentAgentId, sessionSkillIds, resolvedRuntime);
 
-  console.log('[Agent] Starting agent loop with config:', {
+  logLLM('info', 'Starting agent loop', {
     provider: llmConfig.provider,
     model: llmConfig.model,
     temperature: llmConfig.temperature,
@@ -187,7 +187,7 @@ export async function runAgentLoop(
   };
 
   try {
-    console.log('[Agent] Creating streamText with:', {
+    logLLM('debug', 'Creating streamText', {
       hasModel: !!model,
       hasSystemPrompt: !!systemPrompt,
       hasMessages: true,
@@ -213,7 +213,6 @@ export async function runAgentLoop(
 
         // Log chunk info every 30 seconds or on first chunk
         if (totalChunks === 1 || now - lastChunkLogTime >= 30000) {
-          console.log(`[Agent] Chunk received (${totalChunks} total), type:`, c.type);
           logLLM('debug', `Chunk received: ${c.type} (${totalChunks} total)`);
           lastChunkLogTime = now;
         }
@@ -363,31 +362,29 @@ export async function runAgentLoop(
     // Consume the stream (callbacks handle UI updates via onChunk)
     let chunkCount = 0;
     let hasError = false;
-    console.log('[Agent] Starting to consume textStream...');
+    logLLM('debug', 'Starting to consume textStream');
 
     try {
       for await (const chunk of result.textStream) {
         // textStream must be consumed to drive the stream
         chunkCount++;
         if (chunkCount === 1) {
-          console.log('[Agent] First chunk received from textStream:', chunk.slice(0, 50));
+          logLLM('debug', `First chunk received from textStream: ${chunk.slice(0, 50)}`);
         }
       }
     } catch (streamError) {
       hasError = true;
-      console.error('[Agent] Error consuming textStream:', streamError);
-      logLLM('error', `Stream consumption error: ${streamError instanceof Error ? streamError.message : String(streamError)}`);
+      logLLM('error', `Error consuming textStream: ${streamError instanceof Error ? streamError.message : String(streamError)}`);
       renderPendingToolErrors(streamError);
       throw streamError;
     }
 
-    console.log('[Agent] Stream consumed, total chunks:', chunkCount, 'hasError:', hasError);
-    logLLM('info', `Stream consumed, total chunks: ${chunkCount}`);
+    logLLM('info', `Stream consumed, total chunks: ${chunkCount}, hasError: ${hasError}`);
 
     // Get token usage and save to the last assistant message
     try {
       const usage = await result.usage;
-      console.log('[Agent] Token usage:', usage);
+      logLLM('info', 'Token usage', usage);
 
       const inputTokens = usage?.inputTokens || 0;
       const outputTokens = usage?.outputTokens || 0;
@@ -441,22 +438,18 @@ export async function runAgentLoop(
       };
       statsStorage.record(record);
     } catch (e) {
-      console.error('[Agent] Could not get usage info:', e);
+      logLLM('error', 'Could not get usage info', e);
     }
 
     // Check if we got any response at all
     if (chunkCount === 0 && !hasError) {
-      console.warn('[Agent] WARNING: No chunks received and no error. Possible causes:');
-      console.warn('  1. API request failed silently');
-      console.warn('  2. Model returned empty response');
-      console.warn('  3. Network/CORS issue');
-      console.warn('  4. Invalid API key or model name');
+      logLLM('warning', 'No chunks received and no error. Possible causes: API request failed silently, model returned empty response, network/CORS issue, or invalid API key/model name');
 
       try {
         const finishReason = await result.finishReason;
-        console.log('[Agent] Finish reason:', finishReason);
+        logLLM('debug', `Finish reason: ${finishReason}`);
       } catch (e) {
-        console.error('[Agent] Could not get finish reason:', e);
+        logLLM('error', 'Could not get finish reason', e);
       }
     }
 
@@ -464,17 +457,7 @@ export async function runAgentLoop(
     return systemPrompt;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error('[Agent] Error in agent loop:', error);
-
-    // Log more details about the error
-    if (error instanceof Error) {
-      console.error('[Agent] Error name:', error.name);
-      console.error('[Agent] Error message:', error.message);
-      console.error('[Agent] Error stack:', error.stack);
-    }
-
-    logLLM('error', `Agent loop error: ${errorMsg}`);
-    console.error('[Agent] Full error:', error);
+    logLLM('error', `Agent loop error: ${errorMsg}`, error);
 
     // Parse API error for user-friendly message
     let userMessage = errorMsg;
