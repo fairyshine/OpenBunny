@@ -293,11 +293,15 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
     showSearchResults: setSearchResults,
   });
 
+  const width = Math.max(24, termSize.cols);
+
   const messageViewport = useMessageViewport({
     sessionId: currentSession?.id || null,
+    session: currentSession,
     messages,
     preferredVisibleCount: Math.max(6, termSize.rows - (notices.length > 0 || error ? 16 : 13)),
     panelVisible: panel.panelVisible,
+    contentWidth: Math.max(20, width - 4),
   });
 
   useEffect(() => {
@@ -307,7 +311,6 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
   const statusLabel = isInitializing
     ? 'Initializing...'
     : agentLoop.currentStatus || (agentLoop.isLoading ? agentLoop.activityLabel : '');
-  const width = Math.max(24, termSize.cols);
   const activeSessions = useMemo(() => {
     if (!state.isDefaultAgent) {
       return state.sessions;
@@ -339,11 +342,13 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
         />
         <NoticePanel notices={notices} error={error} width={width} />
         <MessageList
-          session={currentSession}
           messages={messages}
-          visibleMessages={messageViewport.visibleMessages}
-          focusedMessageId={messageViewport.focusedMessageId}
-          activeSearchMessageId={messageViewport.activeSearchMessageId}
+          visibleLines={messageViewport.visibleLines}
+          hiddenBefore={messageViewport.hiddenBefore}
+          hiddenAfter={messageViewport.hiddenAfter}
+          rangeStart={messageViewport.rangeStart}
+          rangeEnd={messageViewport.rangeEnd}
+          totalLines={messageViewport.totalLines}
           searchState={messageViewport.searchState}
           isInitializing={isInitializing}
           isLoading={agentLoop.isLoading}
@@ -356,6 +361,8 @@ function App({ config, systemPrompt, workspace, configDir, resumeIdPrefix, start
           setInput={cmd.setInput}
           onSubmit={handleSubmit}
           onExit={handleExit}
+          onHistoryPrev={cmd.showPreviousInput}
+          onHistoryNext={cmd.showNextInput}
           disabled={isInitializing || panel.panelVisible}
           isLoading={agentLoop.isLoading}
           readOnly={readOnlySession}

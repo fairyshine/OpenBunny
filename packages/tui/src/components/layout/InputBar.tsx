@@ -10,6 +10,8 @@ interface InputBarProps {
   setInput: (value: string) => void;
   onSubmit: (value: string) => void;
   onExit: () => void;
+  onHistoryPrev?: () => void;
+  onHistoryNext?: () => void;
   disabled: boolean;
   isLoading: boolean;
   readOnly: boolean;
@@ -71,16 +73,54 @@ function getDisplayWidth(text: string) {
   return width;
 }
 
+function isPrintableInput(value: string) {
+  if (!value) {
+    return false;
+  }
+
+  if (value.includes('\u001b')) {
+    return false;
+  }
+
+  for (const char of value) {
+    const codePoint = char.codePointAt(0);
+    if (!codePoint) {
+      return false;
+    }
+
+    const isControl = codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
+    if (isControl) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isAnsiSequenceTerminator(value: string) {
+  return /[A-Za-z~]/.test(value);
+}
+
+function isMouseSequenceChunk(value: string) {
+  return /^\[<\d+;\d+;\d+[Mm]$/.test(value)
+    || /^<\d+;\d+;\d+[Mm]$/.test(value)
+    || /^\[<[\d;]+$/.test(value);
+}
+
 function ManagedInput({
   input,
   setInput,
   onSubmit,
+  onHistoryPrev,
+  onHistoryNext,
   disabled,
   placeholder,
 }: {
   input: string;
   setInput: (value: string) => void;
   onSubmit: (value: string) => void;
+  onHistoryPrev?: () => void;
+  onHistoryNext?: () => void;
   disabled: boolean;
   placeholder: string;
 }) {
@@ -93,6 +133,7 @@ function ManagedInput({
   });
   const wasDisabledRef = useRef(disabled);
   const inputRef = useRef<DOMElement | null>(null);
+  const isDiscardingAnsiRef = useRef(false);
   const [cursorOffset, setCursorOffset] = useState(input.length);
   const [cursorBasePosition, setCursorBasePosition] = useState<{ x: number; y: number } | null>(null);
 
@@ -128,7 +169,36 @@ function ManagedInput({
   });
 
   useInput((value, key) => {
-    if (key.upArrow || key.downArrow || key.tab || (key.ctrl && value === 'c')) {
+    if (key.tab || (key.ctrl && value === 'c')) {
+      return;
+    }
+
+    if (key.escape || value === '\u001b') {
+      isDiscardingAnsiRef.current = true;
+      return;
+    }
+
+    if (isDiscardingAnsiRef.current) {
+      if (value && isAnsiSequenceTerminator(value)) {
+        isDiscardingAnsiRef.current = false;
+      }
+      return;
+    }
+
+    if (isMouseSequenceChunk(value)) {
+      if (!/[Mm]$/.test(value)) {
+        isDiscardingAnsiRef.current = true;
+      }
+      return;
+    }
+
+    if (key.upArrow) {
+      onHistoryPrev?.();
+      return;
+    }
+
+    if (key.downArrow) {
+      onHistoryNext?.();
       return;
     }
 
@@ -168,7 +238,7 @@ function ManagedInput({
       return;
     }
 
-    if (!value) {
+    if (!isPrintableInput(value)) {
       return;
     }
 
@@ -201,6 +271,8 @@ export function InputBar({
   setInput,
   onSubmit,
   onExit,
+  onHistoryPrev,
+  onHistoryNext,
   disabled,
   isLoading,
   readOnly,
@@ -264,6 +336,8 @@ export function InputBar({
             input={input}
             setInput={setInput}
             onSubmit={onSubmit}
+            onHistoryPrev={onHistoryPrev}
+            onHistoryNext={onHistoryNext}
             disabled={disabled}
             placeholder={disabled
               ? (disabledReason || 'Waiting...')

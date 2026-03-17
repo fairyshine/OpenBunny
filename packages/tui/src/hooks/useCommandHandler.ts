@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { LLMConfig, Session } from '@openbunny/shared/types';
@@ -169,8 +169,85 @@ function getSessionConfigStatus(session: Session, enabledTools: string[], enable
 
 export function useCommandHandler(opts: UseCommandHandlerOptions) {
   const [input, setInput] = useState('');
+  const [inputHistory, setInputHistory] = useState<string[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<number | null>(null);
   const shellSessionIdRef = useRef<string | undefined>(undefined);
+  const inputRef = useRef(input);
+  const inputHistoryRef = useRef<string[]>([]);
+  const draftInputRef = useRef('');
   const availableToolEntries = getAvailableToolEntries(getBuiltinToolIds(), opts.mcpConnections);
+
+  useEffect(() => {
+    inputRef.current = input;
+  }, [input]);
+
+  useEffect(() => {
+    inputHistoryRef.current = inputHistory;
+  }, [inputHistory]);
+
+  const setInputValue = useCallback((value: string) => {
+    setInput(value);
+    if (historyCursor !== null) {
+      setHistoryCursor(null);
+      draftInputRef.current = '';
+    }
+  }, [historyCursor]);
+
+  const recordInputHistory = useCallback((value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setInputHistory((previous) => {
+      if (previous[previous.length - 1] === trimmed) {
+        return previous;
+      }
+
+      return [...previous.slice(-99), trimmed];
+    });
+    setHistoryCursor(null);
+    draftInputRef.current = '';
+  }, []);
+
+  const showPreviousInput = useCallback(() => {
+    const history = inputHistoryRef.current;
+    if (history.length === 0) {
+      return;
+    }
+
+    setHistoryCursor((current) => {
+      const nextIndex = current === null ? history.length - 1 : Math.max(0, current - 1);
+      if (current === null) {
+        draftInputRef.current = inputRef.current;
+      }
+      setInput(history[nextIndex] || '');
+      return nextIndex;
+    });
+  }, []);
+
+  const showNextInput = useCallback(() => {
+    const history = inputHistoryRef.current;
+    if (history.length === 0) {
+      return;
+    }
+
+    setHistoryCursor((current) => {
+      if (current === null) {
+        return current;
+      }
+
+      const nextIndex = current + 1;
+      if (nextIndex >= history.length) {
+        setInput(draftInputRef.current);
+        draftInputRef.current = '';
+        return null;
+      }
+
+      setInput(history[nextIndex] || '');
+      return nextIndex;
+    });
+  }, []);
 
   const ensureActiveSession = useCallback((): Session => {
     const existing = opts.isDefaultAgent
@@ -423,6 +500,7 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
   const handleSubmit = useCallback(async (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return;
+    recordInputHistory(trimmed);
 
     const session = ensureActiveSession();
     const command = parseCommand(trimmed);
@@ -1340,7 +1418,14 @@ export function useCommandHandler(opts: UseCommandHandlerOptions) {
         opts.addNotice(`Unknown command: /${command.command}. Type /help for available commands.`, 'warning');
         setInput('');
     }
-  }, [ensureActiveSession, opts, setScopeMode, syncMCPConnection, updateScopedSkill, updateScopedTool]);
+  }, [ensureActiveSession, opts, recordInputHistory, setScopeMode, syncMCPConnection, updateScopedSkill, updateScopedTool]);
 
-  return { input, setInput, handleSubmit, syncMCPConnection };
+  return {
+    input,
+    setInput: setInputValue,
+    handleSubmit,
+    syncMCPConnection,
+    showPreviousInput,
+    showNextInput,
+  };
 }

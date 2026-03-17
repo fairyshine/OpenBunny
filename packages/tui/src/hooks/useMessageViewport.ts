@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInput } from 'ink';
-import type { Message } from '@openbunny/shared/types';
+import type { Message, Session } from '@openbunny/shared/types';
 import { MAX_VISIBLE_MESSAGES } from '../constants.js';
-import { getSlidingWindow } from '../utils/formatting.js';
+import { buildTranscriptDocument } from '../utils/transcript.js';
+import { useMouse } from './useMouse.js';
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -19,9 +20,11 @@ export interface MessageSearchResults {
 
 interface UseMessageViewportOptions {
   sessionId: string | null;
+  session: Session | null;
   messages: Message[];
   preferredVisibleCount: number;
   panelVisible: boolean;
+  contentWidth: number;
 }
 
 interface SearchState extends MessageSearchResults {
@@ -30,41 +33,68 @@ interface SearchState extends MessageSearchResults {
 
 export function useMessageViewport({
   sessionId,
+  session,
   messages,
   preferredVisibleCount,
   panelVisible,
+  contentWidth,
 }: UseMessageViewportOptions) {
   const visibleCount = clamp(preferredVisibleCount, 3, MAX_VISIBLE_MESSAGES);
-  const [focusedIndex, setFocusedIndex] = useState(Math.max(0, messages.length - 1));
+  const [scrollOffset, setScrollOffset] = useState(0);
   const [searchState, setSearchState] = useState<SearchState | null>(null);
   const previousSessionIdRef = useRef<string | null>(sessionId);
   const previousMessageCountRef = useRef(messages.length);
+  const previousLineCountRef = useRef(0);
+  const dragYRef = useRef<number | null>(null);
+  const activeSearchMessageId = searchState?.matchIds[searchState.activeIndex] || null;
+
+  const transcript = useMemo(
+    () => buildTranscriptDocument({
+      session,
+      messages,
+      width: contentWidth,
+      activeSearchMessageId,
+    }),
+    [activeSearchMessageId, contentWidth, messages, session],
+  );
+
+  const maxScrollOffset = Math.max(0, transcript.lines.length - visibleCount);
 
   useEffect(() => {
-    if (previousSessionIdRef.current !== sessionId) {
-      previousSessionIdRef.current = sessionId;
-      previousMessageCountRef.current = messages.length;
-      setFocusedIndex(Math.max(0, messages.length - 1));
+    const previousSessionId = previousSessionIdRef.current;
+    const previousMessageCount = previousMessageCountRef.current;
+    const previousLineCount = previousLineCountRef.current;
+    const nextMaxOffset = Math.max(0, transcript.lines.length - visibleCount);
+
+    previousSessionIdRef.current = sessionId;
+    previousMessageCountRef.current = messages.length;
+    previousLineCountRef.current = transcript.lines.length;
+
+    if (previousSessionId !== sessionId) {
+      setScrollOffset(nextMaxOffset);
       setSearchState(null);
       return;
     }
 
-    const previousCount = previousMessageCountRef.current;
-    previousMessageCountRef.current = messages.length;
-    const lastIndex = Math.max(0, messages.length - 1);
-
-    setFocusedIndex((current) => {
-      if (messages.length === 0) {
+    setScrollOffset((current) => {
+      if (transcript.lines.length === 0) {
         return 0;
       }
 
-      if (current >= previousCount - 1) {
-        return lastIndex;
+      const previousMaxOffset = Math.max(0, previousLineCount - visibleCount);
+      const wasPinnedToBottom = current >= Math.max(0, previousMaxOffset - 1);
+
+      if (messages.length > previousMessageCount && wasPinnedToBottom) {
+        return nextMaxOffset;
       }
 
-      return clamp(current, 0, lastIndex);
+      if (transcript.lines.length !== previousLineCount && wasPinnedToBottom) {
+        return nextMaxOffset;
+      }
+
+      return clamp(current, 0, nextMaxOffset);
     });
-  }, [messages.length, sessionId]);
+  }, [messages.length, sessionId, transcript.lines.length, visibleCount]);
 
   useEffect(() => {
     if (!searchState) {
@@ -95,21 +125,24 @@ export function useMessageViewport({
     });
   }, [messages, searchState, sessionId]);
 
-  useEffect(() => {
-    if (!searchState) {
+  const moveScroll = useCallback((delta: number) => {
+    setScrollOffset((current) => clamp(current + delta, 0, Math.max(0, transcript.lines.length - visibleCount)));
+  }, [transcript.lines.length, visibleCount]);
+
+  const jumpToOffset = useCallback((nextOffset: number) => {
+    setScrollOffset(clamp(nextOffset, 0, Math.max(0, transcript.lines.length - visibleCount)));
+  }, [transcript.lines.length, visibleCount]);
+
+  const jumpToMessage = useCallback((messageId: string | null | undefined) => {
+    if (!messageId) {
       return;
     }
 
-    const activeMessageId = searchState.matchIds[searchState.activeIndex];
-    if (!activeMessageId) {
-      return;
+    const nextOffset = transcript.messageStartIndices.get(messageId);
+    if (typeof nextOffset === 'number') {
+      jumpToOffset(nextOffset);
     }
-
-    const activeMessageIndex = messages.findIndex((message) => message.id === activeMessageId);
-    if (activeMessageIndex >= 0 && activeMessageIndex !== focusedIndex) {
-      setFocusedIndex(activeMessageIndex);
-    }
-  }, [focusedIndex, messages, searchState]);
+  }, [jumpToOffset, transcript.messageStartIndices]);
 
   const applySearchResults = useCallback((results: MessageSearchResults | null) => {
     if (!results || results.matchIds.length === 0) {
@@ -123,21 +156,8 @@ export function useMessageViewport({
 
     const activeIndex = clamp(results.activeIndex ?? (results.matchIds.length - 1), 0, results.matchIds.length - 1);
     setSearchState({ ...results, activeIndex });
-
-    const targetMessageId = results.matchIds[activeIndex];
-    const targetIndex = messages.findIndex((message) => message.id === targetMessageId);
-    if (targetIndex >= 0) {
-      setFocusedIndex(targetIndex);
-    }
-  }, [messages, sessionId]);
-
-  const moveFocus = useCallback((delta: number) => {
-    setFocusedIndex((current) => clamp(current + delta, 0, Math.max(0, messages.length - 1)));
-  }, [messages.length]);
-
-  const jumpToIndex = useCallback((nextIndex: number) => {
-    setFocusedIndex(clamp(nextIndex, 0, Math.max(0, messages.length - 1)));
-  }, [messages.length]);
+    jumpToMessage(results.matchIds[activeIndex]);
+  }, [jumpToMessage, sessionId]);
 
   const jumpSearchMatch = useCallback((delta: number) => {
     setSearchState((current) => {
@@ -146,43 +166,39 @@ export function useMessageViewport({
       }
 
       const nextActiveIndex = (current.activeIndex + delta + current.matchIds.length) % current.matchIds.length;
-      const targetMessageId = current.matchIds[nextActiveIndex];
-      const targetIndex = messages.findIndex((message) => message.id === targetMessageId);
-      if (targetIndex >= 0) {
-        setFocusedIndex(targetIndex);
-      }
+      jumpToMessage(current.matchIds[nextActiveIndex]);
 
       return {
         ...current,
         activeIndex: nextActiveIndex,
       };
     });
-  }, [messages]);
+  }, [jumpToMessage]);
 
   useInput((input, key) => {
-    if (panelVisible || messages.length === 0) {
+    if (panelVisible || transcript.lines.length === 0) {
       return;
     }
 
     const pageStep = Math.max(1, visibleCount - 1);
 
     if (key.pageUp || (key.ctrl && input === 'u')) {
-      moveFocus(-pageStep);
+      moveScroll(-pageStep);
       return;
     }
 
     if (key.pageDown || (key.ctrl && input === 'd')) {
-      moveFocus(pageStep);
+      moveScroll(pageStep);
       return;
     }
 
     if (key.home) {
-      jumpToIndex(0);
+      jumpToOffset(0);
       return;
     }
 
     if (key.end) {
-      jumpToIndex(messages.length - 1);
+      jumpToOffset(maxScrollOffset);
       return;
     }
 
@@ -196,34 +212,73 @@ export function useMessageViewport({
     }
   }, { isActive: true });
 
-  const window = useMemo(
-    () => getSlidingWindow(messages, focusedIndex, visibleCount),
-    [focusedIndex, messages, visibleCount],
+  useMouse((event) => {
+    if (panelVisible || transcript.lines.length === 0) {
+      dragYRef.current = null;
+      return;
+    }
+
+    if (event.type === 'wheel') {
+      moveScroll(event.button === 'scrollUp' ? -2 : 2);
+      return;
+    }
+
+    if (event.type === 'press' && event.button === 'left') {
+      dragYRef.current = event.y;
+      return;
+    }
+
+    if (event.type === 'release') {
+      dragYRef.current = null;
+      return;
+    }
+
+    if (event.type !== 'move' || event.button !== 'left' || dragYRef.current === null) {
+      return;
+    }
+
+    const delta = event.y - dragYRef.current;
+    if (delta === 0) {
+      return;
+    }
+
+    dragYRef.current = event.y;
+    moveScroll(delta);
+  }, !panelVisible && transcript.lines.length > 0);
+
+  const visibleLines = useMemo(
+    () => transcript.lines.slice(scrollOffset, scrollOffset + visibleCount),
+    [scrollOffset, transcript.lines, visibleCount],
   );
 
-  const visibleMessages = useMemo(
-    () => window.items.map((message, index) => ({
-      message,
-      absoluteIndex: window.startIndex + index,
-    })),
-    [window.items, window.startIndex],
-  );
+  const focusedMessageId = useMemo(() => {
+    for (const line of visibleLines) {
+      if (line.messageId) {
+        return line.messageId;
+      }
+    }
 
-  const focusedMessage = messages[focusedIndex] || null;
-  const focusedMessageId = focusedMessage?.id || null;
-  const activeSearchMessageId = searchState?.matchIds[searchState.activeIndex] || null;
+    for (let index = scrollOffset - 1; index >= 0; index -= 1) {
+      const messageId = transcript.lines[index]?.messageId;
+      if (messageId) {
+        return messageId;
+      }
+    }
+
+    return messages.at(-1)?.id || null;
+  }, [messages, scrollOffset, transcript.lines, visibleLines]);
 
   return {
     applySearchResults,
-    visibleMessages,
+    visibleLines,
     visibleCount,
     focusedMessageId,
-    focusedIndex,
     activeSearchMessageId,
-    hiddenBefore: window.hiddenBefore,
-    hiddenAfter: window.hiddenAfter,
-    rangeStart: visibleMessages.length > 0 ? window.startIndex + 1 : 0,
-    rangeEnd: visibleMessages.length > 0 ? window.startIndex + visibleMessages.length : 0,
+    hiddenBefore: scrollOffset,
+    hiddenAfter: Math.max(0, transcript.lines.length - (scrollOffset + visibleLines.length)),
+    rangeStart: visibleLines.length > 0 ? scrollOffset + 1 : 0,
+    rangeEnd: visibleLines.length > 0 ? scrollOffset + visibleLines.length : 0,
+    totalLines: transcript.lines.length,
     searchState,
   };
 }
