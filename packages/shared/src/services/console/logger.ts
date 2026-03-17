@@ -24,16 +24,27 @@ export interface LogEntry {
   metadata?: Record<string, unknown>;
 }
 
+interface RuntimeProcess {
+  env?: Record<string, string | undefined>;
+  argv?: string[];
+}
+
+function getRuntimeProcess(): RuntimeProcess | undefined {
+  return (globalThis as typeof globalThis & { process?: RuntimeProcess }).process;
+}
+
 function shouldEchoToConsole(): boolean {
-  if (typeof process === 'undefined') {
+  const runtimeProcess = getRuntimeProcess();
+
+  if (!runtimeProcess) {
     return true;
   }
 
-  if (process.env.OPENBUNNY_DISABLE_CONSOLE_LOGGER === '1') {
+  if (runtimeProcess.env?.OPENBUNNY_DISABLE_CONSOLE_LOGGER === '1') {
     return false;
   }
 
-  const argv = process.argv || [];
+  const argv = runtimeProcess.argv ?? [];
   const scriptPath = argv[1] || '';
 
   if (
