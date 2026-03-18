@@ -21,6 +21,14 @@ export interface AgentProfile {
   createdAt: number;
 }
 
+export type NetworkProtocol = 'disabled' | 'quadra-a/a4';
+
+export interface NetworkProtocolConfig {
+  protocol: NetworkProtocol;
+  a4RelayUrl: string;
+  a4InviteToken: string;
+}
+
 export interface MessageFileAttachment {
   data: string;
   mediaType: string;

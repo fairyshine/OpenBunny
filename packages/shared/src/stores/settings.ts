@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { logSettings } from '../services/console/logger';
 import { isMCPToolId } from '../services/ai/mcpToolId';
-import type { UserProfile, AgentProfile, LLMPreset } from '../types';
+import type { UserProfile, AgentProfile, LLMPreset, NetworkProtocol } from '../types';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'zh-CN' | 'en-US' | 'system';
@@ -80,6 +80,14 @@ interface SettingsState {
   // CORS proxy settings
   proxyUrl: string;
   setProxyUrl: (url: string) => void;
+
+  // Agent networking settings
+  networkProtocol: NetworkProtocol;
+  setNetworkProtocol: (protocol: NetworkProtocol) => void;
+  a4RelayUrl: string;
+  setA4RelayUrl: (url: string) => void;
+  a4InviteToken: string;
+  setA4InviteToken: (token: string) => void;
 
   // Web search settings
   searchProvider: 'exa_free' | 'exa' | 'brave';
@@ -198,6 +206,24 @@ export const useSettingsStore = create<SettingsState>()(
       setProxyUrl: (url) => {
         logSettings('info', `CORS proxy URL: ${url || '(not set)'}`);
         set({ proxyUrl: url });
+      },
+
+      networkProtocol: 'disabled',
+      setNetworkProtocol: (protocol) => {
+        logSettings('info', `Network protocol: ${protocol}`);
+        set({ networkProtocol: protocol });
+      },
+
+      a4RelayUrl: 'ws://relay-sg-1.quadra-a.com:8080',
+      setA4RelayUrl: (url) => {
+        logSettings('info', `A4 relay URL: ${url || '(not set)'}`);
+        set({ a4RelayUrl: url });
+      },
+
+      a4InviteToken: '',
+      setA4InviteToken: (token) => {
+        logSettings('info', `A4 invite token: ${token ? 'configured' : '(not set)'}`);
+        set({ a4InviteToken: token });
       },
 
       exaApiKey: '',

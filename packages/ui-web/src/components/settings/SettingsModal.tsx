@@ -314,6 +314,12 @@ function SkillsSection() {
 function NetworkSection() {
   const { t } = useTranslation();
   const {
+    networkProtocol,
+    setNetworkProtocol,
+    a4RelayUrl,
+    setA4RelayUrl,
+    a4InviteToken,
+    setA4InviteToken,
     agentProfiles,
     addAgentProfile,
     updateAgentProfile,
@@ -342,23 +348,93 @@ function NetworkSection() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{t('settings.nav.network')}</h2>
-        <button
-          onClick={() => setShowNewAgent(true)}
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md bg-muted hover:bg-accent transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          {t('settings.profile.addAgent')}
-        </button>
-      </div>
+      <h2 className="text-lg font-semibold">{t('settings.nav.network')}</h2>
 
       <SettingsGroup>
         <div className="flex items-center gap-2 mb-1">
           <Globe className="w-4 h-4 text-muted-foreground" />
           <div>
-            <h3 className="text-sm font-medium">{t('settings.profile.agentTitle')}</h3>
-            <p className="text-xs text-muted-foreground">{t('settings.profile.agentDesc')}</p>
+            <h3 className="text-sm font-medium">{t('settings.network.protocolTitle')}</h3>
+            <p className="text-xs text-muted-foreground">{t('settings.network.protocolDesc')}</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm">{t('settings.network.protocol')}</Label>
+          <Select value={networkProtocol} onValueChange={(value) => setNetworkProtocol(value as 'disabled' | 'quadra-a/a4')}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="disabled">{t('settings.network.protocol.disabled')}</SelectItem>
+              <SelectItem value="quadra-a/a4">{t('settings.network.protocol.a4')}</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{t('settings.network.protocolHint')}</p>
+        </div>
+
+        {networkProtocol === 'quadra-a/a4' && (
+          <>
+            <Separator />
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-6 items-center rounded-full border border-primary/20 bg-primary/10 px-2 text-[11px] font-medium text-primary">
+                  {t('settings.network.protocol.a4')}
+                </span>
+                <p className="text-xs text-muted-foreground">{t('settings.network.a4Desc')}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm">{t('settings.network.a4RelayUrl')}</Label>
+              <Input
+                value={a4RelayUrl}
+                onChange={(e) => setA4RelayUrl(e.target.value)}
+                placeholder={t('settings.network.a4RelayUrlPlaceholder')}
+                className="h-9"
+              />
+              <p className="text-xs text-muted-foreground">{t('settings.network.a4RelayUrlHint')}</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm">{t('settings.network.a4InviteToken')}</Label>
+              <Input
+                value={a4InviteToken}
+                onChange={(e) => setA4InviteToken(e.target.value)}
+                placeholder={t('settings.network.a4InviteTokenPlaceholder')}
+                className="h-9"
+              />
+              <p className="text-xs text-muted-foreground">{t('settings.network.a4InviteTokenHint')}</p>
+            </div>
+          </>
+        )}
+      </SettingsGroup>
+
+      <SettingsGroup>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 mb-1">
+            <Globe className="w-4 h-4 text-muted-foreground" />
+            <div>
+              <h3 className="text-sm font-medium">{t('settings.profile.agentTitle')}</h3>
+              <p className="text-xs text-muted-foreground">{t('settings.profile.agentDesc')}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowNewAgent(true)}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md bg-muted hover:bg-accent transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {t('settings.profile.addAgent')}
+          </button>
+        </div>
+        <div>
+          <div>
+            <p className="text-xs text-muted-foreground">
+              {networkProtocol === 'quadra-a/a4'
+                ? t('settings.network.protocol.a4')
+                : t('settings.network.protocol.disabled')}
+            </p>
           </div>
         </div>
 
