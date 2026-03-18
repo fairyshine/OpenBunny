@@ -26,6 +26,8 @@
     "typecheck": "pnpm -r typecheck",
     "version:sync": "node scripts/sync-version.mjs",
     "version:set": "node scripts/sync-version.mjs",
+    "publish:npm": "node scripts/publish-npm-packages.mjs",
+    "publish:npm:dry-run": "node scripts/publish-npm-packages.mjs --dry-run",
     "check:boundaries": "node scripts/check-package-boundaries.mjs",
     "verify:packages": "node scripts/verify-package-contracts.mjs",
     "check:exports": "node scripts/check-package-exports.mjs",

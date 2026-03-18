@@ -4,6 +4,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -231,6 +234,9 @@
     "test": "node ./scripts/run-node-tests.mjs",
     "build": "node ./scripts/build.mjs",
     "watch": "node ./scripts/watch.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "peerDependencies": {
     "react": "catalog:"

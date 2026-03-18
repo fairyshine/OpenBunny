@@ -2,6 +2,9 @@
   "name": "@openbunny/tui",
   "version": "0.1.0",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "openbunny-tui": "./dist/index.js"
   },
@@ -9,6 +12,9 @@
     "dev": "tsx src/index.tsx",
     "build": "pnpm --filter @openbunny/shared build && tsc -p tsconfig.build.json && chmod +x dist/index.js",
     "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@openbunny/shared": "workspace:*",

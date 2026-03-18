@@ -1,4 +1,5 @@
 .claude/**
+.tmp-openbunny-config
 
 # Dependencies
 node_modules

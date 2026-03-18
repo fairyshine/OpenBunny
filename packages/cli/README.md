@@ -330,10 +330,12 @@ openbunny ask "test"
 ### 发布到 npm
 
 ```bash
-# 更新版本
-cd packages/cli
-npm version patch
+# 在仓库根目录统一更新版本
+pnpm version:set 0.2.0
 
-# 发布
-npm publish --access public
+# 先 dry-run 检查打包内容
+pnpm publish:npm:dry-run
+
+# 正式发布
+pnpm publish:npm --access public
 ```

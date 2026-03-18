@@ -1,6 +1,7 @@
 {
   "name": "@openbunny/desktop",
   "version": "0.1.0",
+  "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",

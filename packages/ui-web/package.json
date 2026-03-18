@@ -4,6 +4,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -26,6 +29,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "node ./scripts-build.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "peerDependencies": {
     "@openbunny/shared": "workspace:*",

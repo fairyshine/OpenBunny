@@ -2,6 +2,10 @@
   "name": "@openbunny/cli",
   "version": "0.1.0",
   "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "bin": {
     "openbunny": "./dist/index.js"
   },
@@ -9,6 +13,9 @@
     "dev": "tsx src/index.ts",
     "build": "pnpm --filter @openbunny/shared build && tsc -p tsconfig.build.json && chmod +x dist/index.js",
     "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@openbunny/shared": "workspace:*",
