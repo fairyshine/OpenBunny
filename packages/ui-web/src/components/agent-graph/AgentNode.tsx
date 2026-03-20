@@ -10,18 +10,32 @@ export const AGENT_AVATAR_CENTER_Y = 32;
 
 export interface AgentNodeData {
   agent: Agent;
-  isEditMode?: boolean;
-  isPendingSource?: boolean;
-  willConnect?: boolean;
-  willDisconnect?: boolean;
+  interactionMode?: 'arrange' | 'connect';
+  isSourceActive?: boolean;
+  isConnectedToSource?: boolean;
+  isPreviewTarget?: boolean;
+  previewAction?: 'connect' | 'disconnect' | null;
+  isDimmed?: boolean;
   isStatic?: boolean;
   isStreaming?: boolean;
   isCore?: boolean;
 }
 
 export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => {
-  const { agent, isEditMode, isPendingSource, willConnect, willDisconnect, isStatic, isStreaming, isCore } = data;
+  const {
+    agent,
+    interactionMode,
+    isSourceActive,
+    isConnectedToSource,
+    isPreviewTarget,
+    previewAction,
+    isDimmed,
+    isStatic,
+    isStreaming,
+    isCore,
+  } = data;
   const isDefault = agent.isDefault;
+  const isConnectMode = interactionMode === 'connect';
 
   const accentColor = isDefault ? 'hsl(var(--primary))' : agent.color;
 
@@ -30,81 +44,97 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
   let avatarBorder = 'transparent';
   let labelColor = 'hsl(var(--muted-foreground))';
   let cardShadow = '0 1px 3px hsl(var(--foreground) / 0.04), 0 4px 12px hsl(var(--foreground) / 0.03)';
+  let badgeText: string | null = null;
+  let badgeColor = 'hsl(var(--muted-foreground))';
+  let cardOpacity = isDimmed ? 0.48 : 1;
 
-  if (isPendingSource) {
+  if (isSourceActive) {
     borderColor = 'hsl(var(--primary))';
-    ringStyle = '0 0 0 2px hsl(var(--primary) / 0.2)';
+    ringStyle = '0 0 0 2px hsl(var(--primary) / 0.22)';
     avatarBorder = 'hsl(var(--primary))';
     labelColor = 'hsl(var(--primary))';
-    cardShadow = '0 2px 8px hsl(var(--primary) / 0.15), 0 8px 24px hsl(var(--primary) / 0.1)';
-  } else if (willDisconnect) {
+    cardShadow = '0 2px 8px hsl(var(--primary) / 0.16), 0 8px 24px hsl(var(--primary) / 0.12)';
+    badgeText = 'SRC';
+    badgeColor = 'hsl(var(--primary))';
+    cardOpacity = 1;
+  } else if (isPreviewTarget && previewAction === 'disconnect') {
     borderColor = 'hsl(var(--destructive))';
-    ringStyle = '0 0 0 2px hsl(var(--destructive) / 0.15)';
+    ringStyle = '0 0 0 2px hsl(var(--destructive) / 0.16)';
     avatarBorder = 'hsl(var(--destructive))';
     labelColor = 'hsl(var(--destructive))';
-    cardShadow = '0 2px 8px hsl(var(--destructive) / 0.12)';
-  } else if (willConnect) {
+    cardShadow = '0 2px 8px hsl(var(--destructive) / 0.14)';
+    badgeText = '-';
+    badgeColor = 'hsl(var(--destructive))';
+    cardOpacity = 1;
+  } else if (isPreviewTarget && previewAction === 'connect') {
     borderColor = 'hsl(142 76% 36%)';
     ringStyle = '0 0 0 2px hsl(142 76% 36% / 0.15)';
     avatarBorder = 'hsl(142 76% 36%)';
     labelColor = 'hsl(142 76% 36%)';
     cardShadow = '0 2px 8px hsl(142 76% 36% / 0.12)';
+    badgeText = '+';
+    badgeColor = 'hsl(142 76% 36%)';
+    cardOpacity = 1;
+  } else if (isConnectedToSource) {
+    borderColor = 'hsl(var(--primary) / 0.55)';
+    ringStyle = '0 0 0 1px hsl(var(--primary) / 0.1)';
+    avatarBorder = 'hsl(var(--primary) / 0.7)';
+    labelColor = accentColor;
+    cardShadow = '0 2px 8px hsl(var(--primary) / 0.08)';
+    badgeText = 'LINK';
+    badgeColor = 'hsl(var(--primary))';
   } else if (selected) {
     borderColor = accentColor;
     ringStyle = isDefault ? '0 0 0 2px hsl(var(--primary) / 0.15)' : `0 0 0 2px ${agent.color}22`;
     avatarBorder = accentColor;
     labelColor = accentColor;
     cardShadow = '0 2px 8px hsl(var(--foreground) / 0.08), 0 8px 20px hsl(var(--foreground) / 0.06)';
-  } else if (isEditMode) {
+  } else if (isConnectMode) {
     borderColor = 'hsl(var(--primary) / 0.25)';
   }
 
-  const cursor = isEditMode ? 'cursor-crosshair' : isStatic ? 'cursor-default' : 'cursor-grab active:cursor-grabbing';
-
-  const interactiveHandleClassName = '!absolute !rounded-full !border-0 !bg-transparent !opacity-0 !pointer-events-auto';
+  const cursor = isConnectMode ? 'cursor-pointer' : isStatic ? 'cursor-default' : 'cursor-grab active:cursor-grabbing';
   const hiddenHandleClassName = '!w-px !h-px !opacity-0 !border-0 !bg-transparent !pointer-events-none';
-
-  const centerHandleStyle = isEditMode
-    ? {
-        top: AGENT_AVATAR_CENTER_Y,
-        left: AGENT_AVATAR_CENTER_X,
-        right: 'auto',
-        bottom: 'auto',
-        width: 28,
-        height: 28,
-        transform: 'translate(-50%, -50%)',
-        zIndex: 3,
-      }
-    : undefined;
+  const centerHandleStyle = {
+    top: AGENT_AVATAR_CENTER_Y,
+    left: AGENT_AVATAR_CENTER_X,
+    right: 'auto',
+    bottom: 'auto',
+    width: 1,
+    height: 1,
+    transform: 'translate(-50%, -50%)',
+    zIndex: -1,
+  } as const;
 
   return (
     <div className={`relative flex flex-col items-center ${cursor}`} style={{ width: AGENT_NODE_WIDTH, height: AGENT_NODE_HEIGHT }}>
       <Handle
         type="target"
         position={Position.Top}
-        isConnectable={Boolean(isEditMode)}
-        className={isEditMode ? interactiveHandleClassName : hiddenHandleClassName}
+        isConnectable={false}
+        className={hiddenHandleClassName}
         style={centerHandleStyle}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        isConnectable={Boolean(isEditMode)}
-        className={isEditMode ? interactiveHandleClassName : hiddenHandleClassName}
+        isConnectable={false}
+        className={hiddenHandleClassName}
         style={centerHandleStyle}
       />
 
       <div
-        className={`relative flex flex-col items-center gap-2 px-3 pt-3 pb-3.5 rounded-xl transition-all duration-200 ${isPendingSource ? 'animate-pulse' : ''} ${isStreaming ? 'streaming-border' : ''}`}
+        className={`relative flex flex-col items-center gap-2 px-3 pt-3 pb-3.5 rounded-xl transition-all duration-200 ${isSourceActive ? 'animate-pulse' : ''} ${isStreaming ? 'streaming-border' : ''}`}
         style={{
           background: 'hsl(var(--card))',
           border: `1px solid ${borderColor}`,
           boxShadow: `${cardShadow}${ringStyle !== 'none' ? `, ${ringStyle}` : ''}`,
           width: AGENT_NODE_WIDTH,
           minHeight: AGENT_NODE_HEIGHT,
+          opacity: cardOpacity,
         }}
       >
-        {isEditMode && !isPendingSource && !willConnect && !willDisconnect && !selected && (
+        {isConnectMode && !isSourceActive && !isPreviewTarget && !isConnectedToSource && !selected && (
           <div className="absolute inset-[-3px] rounded-[14px] border border-dashed border-primary/30 pointer-events-none" />
         )}
 
@@ -127,6 +157,18 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
               ? <img src={agent.avatar} alt="avatar" className="w-full h-full object-cover rounded-full" draggable={false} />
               : <span className="select-none leading-none">{agent.avatar}</span>}
           </div>
+          {badgeText && (
+            <div
+              className="absolute -bottom-1 left-1/2 -translate-x-1/2 min-w-[20px] h-4 px-1 rounded-full flex items-center justify-center text-[8px] font-semibold tracking-[0.08em]"
+              style={{
+                background: 'hsl(var(--card))',
+                color: badgeColor,
+                border: `1px solid ${badgeColor}33`,
+              }}
+            >
+              {badgeText}
+            </div>
+          )}
           {isCore && (
             <div
               className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"

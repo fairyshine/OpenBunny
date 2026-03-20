@@ -9,14 +9,9 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   useNodes,
-  useStore,
   NodeTypes,
   EdgeTypes,
   EdgeProps,
-  Connection,
-  ConnectionMode,
-  ConnectionLineType,
-  ConnectionLineComponentProps,
   ReactFlowProvider,
   useReactFlow,
   getStraightPath,
@@ -102,39 +97,6 @@ const edgeTypes: EdgeTypes = {
   centerEdge: CenterEdge,
 };
 
-function CenterConnectionLine({ fromNode, toX, toY }: ConnectionLineComponentProps) {
-  if (!fromNode) return null;
-
-  const sourceX = (fromNode.positionAbsolute?.x ?? fromNode.position.x) + AGENT_AVATAR_CENTER_X;
-  const sourceY = (fromNode.positionAbsolute?.y ?? fromNode.position.y) + AGENT_AVATAR_CENTER_Y;
-
-  // Snap to target node's avatar center if hovering over one
-  const nodeLookup = useStore((s) => s.nodeInternals);
-  let finalX = toX;
-  let finalY = toY;
-
-  nodeLookup.forEach((node) => {
-    if (node.type !== 'agentNode' || node.id === fromNode.id) return;
-    const nx = node.positionAbsolute?.x ?? node.position.x;
-    const ny = node.positionAbsolute?.y ?? node.position.y;
-    const cx = nx + AGENT_AVATAR_CENTER_X;
-    const cy = ny + AGENT_AVATAR_CENTER_Y;
-    const dist = Math.hypot(toX - cx, toY - cy);
-    if (dist < 40) {
-      finalX = cx;
-      finalY = cy;
-    }
-  });
-
-  const [path] = getStraightPath({ sourceX, sourceY, targetX: finalX, targetY: finalY });
-
-  return (
-    <g>
-      <path d={path} fill="none" stroke="hsl(var(--primary) / 0.65)" strokeWidth={2} strokeDasharray="6 4" />
-    </g>
-  );
-}
-
 interface AgentLike { id: string }
 
 function circleLayout(agents: AgentLike[]): Map<string, { x: number; y: number }> {
@@ -176,10 +138,6 @@ function buildOverviewNodes(agents: Agent[], agentGroups: AgentGroup[], streamin
   let currentY = 0;
   let rowHeight = 0;
   let columnIndex = 0;
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
 
   for (const entry of groupedEntries) {
     const { width, height, columns } = getGroupDimensions(entry.agents.length);
@@ -240,21 +198,9 @@ function buildOverviewNodes(agents: Agent[], agentGroups: AgentGroup[], streamin
       });
     });
 
-    minX = Math.min(minX, currentX);
-    minY = Math.min(minY, currentY);
-    maxX = Math.max(maxX, currentX + width);
-    maxY = Math.max(maxY, currentY + height);
-
     currentX += width + GROUP_LAYOUT_GAP_X;
     rowHeight = Math.max(rowHeight, height);
     columnIndex += 1;
-  }
-
-  if (!groupedEntries.length) {
-    minX = -180;
-    minY = -120;
-    maxX = 180;
-    maxY = 120;
   }
 
   return nodes;
@@ -264,6 +210,8 @@ interface GraphContentProps {
   onClose: () => void;
   groupId?: string;
 }
+
+type InteractionMode = 'arrange' | 'connect';
 
 function GraphContent({ onClose, groupId }: GraphContentProps) {
   const { t } = useTranslation();
@@ -277,7 +225,6 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
   } = useAgentStore();
   const { fitView } = useReactFlow();
 
-  // Track which agents have streaming sessions
   const agentSessions = useAgentStore((s) => s.agentSessions);
   const defaultAgentSessions = useSessionStore((s) => s.sessions);
   const streamingAgentIds = useMemo(() => {
@@ -329,11 +276,13 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [pendingSourceId, setPendingSourceId] = useState<string | null>(null);
+  const [interactionMode, setInteractionMode] = useState<InteractionMode>('arrange');
+  const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const [hoverTargetId, setHoverTargetId] = useState<string | null>(null);
   const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
   const initializedRef = useRef(false);
 
+  const isConnectMode = interactionMode === 'connect';
   const agentIdKey = useMemo(() => agents.map((agent) => agent.id).sort().join(','), [agents]);
   const overviewKey = useMemo(
     () => [
@@ -343,24 +292,87 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
     [allAgents, agentGroups],
   );
 
+  const activeSourceAgent = useMemo(
+    () => (activeSourceId ? agents.find((agent) => agent.id === activeSourceId) ?? null : null),
+    [activeSourceId, agents],
+  );
+
+  const relationshipBetween = useCallback(
+    (sourceAgentId: string, targetAgentId: string) => (
+      relationships.find(
+        (relationship) =>
+          (relationship.sourceAgentId === sourceAgentId && relationship.targetAgentId === targetAgentId)
+          || (relationship.sourceAgentId === targetAgentId && relationship.targetAgentId === sourceAgentId),
+      )
+    ),
+    [relationships],
+  );
+
+  const connectedAgentIds = useMemo(() => {
+    if (!activeSourceId) return new Set<string>();
+
+    return new Set(
+      relationships
+        .filter(
+          (relationship) => relationship.sourceAgentId === activeSourceId || relationship.targetAgentId === activeSourceId,
+        )
+        .map((relationship) => (
+          relationship.sourceAgentId === activeSourceId ? relationship.targetAgentId : relationship.sourceAgentId
+        )),
+    );
+  }, [activeSourceId, relationships]);
+
   const buildEdges = useCallback((): Edge[] => {
-    return relationships.map((relationship) => ({
-      id: relationship.id,
-      source: relationship.sourceAgentId,
-      target: relationship.targetAgentId,
-      label: relationship.label || '',
-      type: 'centerEdge',
-      markerStart: undefined,
-      markerEnd: undefined,
-      style: {
-        strokeWidth: selectedEdge === relationship.id ? 2.5 : 1.5,
-        stroke: selectedEdge === relationship.id
-          ? 'hsl(var(--primary))'
-          : 'hsl(var(--muted-foreground) / 0.35)',
-        strokeDasharray: selectedEdge === relationship.id ? undefined : '6 4',
-      },
-    }));
-  }, [relationships, selectedEdge]);
+    return relationships.map((relationship) => {
+      const touchesActiveSource = activeSourceId != null && (
+        relationship.sourceAgentId === activeSourceId || relationship.targetAgentId === activeSourceId
+      );
+      const isPreviewDisconnect = activeSourceId != null && hoverTargetId != null && (
+        (relationship.sourceAgentId === activeSourceId && relationship.targetAgentId === hoverTargetId)
+        || (relationship.sourceAgentId === hoverTargetId && relationship.targetAgentId === activeSourceId)
+      );
+
+      let strokeWidth = 1.5;
+      let stroke = 'hsl(var(--muted-foreground) / 0.35)';
+      let strokeDasharray: string | undefined = '6 4';
+      let nextLabelStyle: React.CSSProperties | undefined;
+
+      if (isConnectMode && activeSourceId) {
+        if (isPreviewDisconnect) {
+          strokeWidth = 2.6;
+          stroke = 'hsl(var(--destructive))';
+          strokeDasharray = undefined;
+          nextLabelStyle = { color: 'hsl(var(--destructive))', borderColor: 'hsl(var(--destructive) / 0.25)' };
+        } else if (touchesActiveSource) {
+          strokeWidth = 2.2;
+          stroke = 'hsl(var(--primary) / 0.78)';
+          strokeDasharray = undefined;
+          nextLabelStyle = { color: 'hsl(var(--primary))', borderColor: 'hsl(var(--primary) / 0.22)' };
+        } else {
+          strokeWidth = 1.1;
+          stroke = 'hsl(var(--muted-foreground) / 0.14)';
+          strokeDasharray = '5 7';
+        }
+      } else if (selectedEdge === relationship.id) {
+        strokeWidth = 2.5;
+        stroke = 'hsl(var(--primary))';
+        strokeDasharray = undefined;
+        nextLabelStyle = { color: 'hsl(var(--primary))', borderColor: 'hsl(var(--primary) / 0.22)' };
+      }
+
+      return {
+        id: relationship.id,
+        source: relationship.sourceAgentId,
+        target: relationship.targetAgentId,
+        label: relationship.label || '',
+        type: 'centerEdge',
+        markerStart: undefined,
+        markerEnd: undefined,
+        style: { strokeWidth, stroke, strokeDasharray },
+        labelStyle: nextLabelStyle,
+      };
+    });
+  }, [activeSourceId, hoverTargetId, isConnectMode, relationships, selectedEdge]);
 
   useEffect(() => {
     setEdges(buildEdges());
@@ -389,14 +401,14 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
   useEffect(() => {
     if (!isOverviewMode) return;
 
-    setIsEditMode(false);
-    setPendingSourceId(null);
+    setInteractionMode('arrange');
+    setActiveSourceId(null);
+    setHoverTargetId(null);
     setSelectedEdge(null);
     setNodes(buildOverviewNodes(allAgents, agentGroups, streamingAgentIds));
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 80);
-  }, [agentGroups, allAgents, fitView, isOverviewMode, overviewKey, setEdges, setNodes]);
+  }, [agentGroups, allAgents, fitView, isOverviewMode, overviewKey, setNodes, streamingAgentIds]);
 
-  // Lightweight streaming state sync for overview nodes (no fitView / reset)
   useEffect(() => {
     if (!isOverviewMode) return;
 
@@ -410,7 +422,7 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
         return node;
       }),
     );
-  }, [isOverviewMode, streamingAgentIds, setNodes]);
+  }, [isOverviewMode, setNodes, streamingAgentIds]);
 
   useEffect(() => {
     if (isOverviewMode || agents.length === 0) return;
@@ -431,12 +443,16 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
   }, [agentIdKey, agents, applyPositions, fitView, isOverviewMode]);
 
   useEffect(() => {
+    initializedRef.current = false;
+  }, [groupId, isOverviewMode]);
+
+  useEffect(() => {
     if (isOverviewMode) return;
 
-    const agentMap = new Map(agents.map((agent) => [agent.id, agent]));
+    const nextAgentMap = new Map(agents.map((agent) => [agent.id, agent]));
     setNodes((existingNodes) =>
       existingNodes.map((node) => {
-        const agent = agentMap.get(node.id);
+        const agent = nextAgentMap.get(node.id);
         if (!agent) return node;
         const newIsStreaming = streamingAgentIds.has(agent.id);
         const group = agent.groupId ? agentGroups.find((g) => g.id === agent.groupId) : undefined;
@@ -449,89 +465,114 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
     );
   }, [agents, agentGroups, isOverviewMode, setNodes, streamingAgentIds]);
 
-  const hasRelationship = useCallback(
-    (sourceAgentId: string, targetAgentId: string) => {
-      return relationships.some(
-        (relationship) =>
-          (relationship.sourceAgentId === sourceAgentId && relationship.targetAgentId === targetAgentId)
-          || (relationship.sourceAgentId === targetAgentId && relationship.targetAgentId === sourceAgentId),
-      );
-    },
-    [relationships],
-  );
-
   useEffect(() => {
     if (isOverviewMode) return;
 
-    const connectedToPending = new Set(
-      pendingSourceId
-        ? relationships
-            .filter(
-              (relationship) => relationship.sourceAgentId === pendingSourceId || relationship.targetAgentId === pendingSourceId,
-            )
-            .map((relationship) => (
-              relationship.sourceAgentId === pendingSourceId ? relationship.targetAgentId : relationship.sourceAgentId
-            ))
-        : [],
-    );
-
     setNodes((existingNodes) =>
       existingNodes.map((node) => {
-        const isPendingSource = node.id === pendingSourceId;
-        const willDisconnect = !isPendingSource && pendingSourceId != null && connectedToPending.has(node.id);
-        const willConnect = !isPendingSource && pendingSourceId != null && !connectedToPending.has(node.id);
+        const isSourceActive = isConnectMode && node.id === activeSourceId;
+        const isPreviewTarget = isConnectMode && hoverTargetId === node.id && node.id !== activeSourceId;
+        const isConnectedToSource = isConnectMode && activeSourceId != null && node.id !== activeSourceId && connectedAgentIds.has(node.id);
+        const previewAction = isPreviewTarget
+          ? (connectedAgentIds.has(node.id) ? 'disconnect' : 'connect')
+          : null;
+        const isDimmed = isConnectMode && activeSourceId != null && !isSourceActive && !isPreviewTarget && !isConnectedToSource;
+        const nextData = {
+          ...node.data,
+          interactionMode,
+          isSourceActive,
+          isConnectedToSource,
+          isPreviewTarget,
+          previewAction,
+          isDimmed,
+        } satisfies AgentNodeData;
 
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            isEditMode,
-            isPendingSource,
-            willConnect: isEditMode ? willConnect : false,
-            willDisconnect: isEditMode ? willDisconnect : false,
-          },
-        };
+        if (
+          node.data?.interactionMode === nextData.interactionMode
+          && node.data?.isSourceActive === nextData.isSourceActive
+          && node.data?.isConnectedToSource === nextData.isConnectedToSource
+          && node.data?.isPreviewTarget === nextData.isPreviewTarget
+          && node.data?.previewAction === nextData.previewAction
+          && node.data?.isDimmed === nextData.isDimmed
+        ) {
+          return node;
+        }
+
+        return { ...node, data: nextData };
       }),
     );
-  }, [isEditMode, isOverviewMode, pendingSourceId, relationships, setNodes]);
+  }, [activeSourceId, connectedAgentIds, hoverTargetId, interactionMode, isConnectMode, isOverviewMode, setNodes]);
+
+  useEffect(() => {
+    if (activeSourceId && !agentIds.has(activeSourceId)) {
+      setActiveSourceId(null);
+    }
+  }, [activeSourceId, agentIds]);
+
+  useEffect(() => {
+    if (hoverTargetId && !agentIds.has(hoverTargetId)) {
+      setHoverTargetId(null);
+    }
+  }, [agentIds, hoverTargetId]);
+
+  const toggleRelationshipBetween = useCallback(
+    (sourceAgentId: string, targetAgentId: string) => {
+      const existing = relationshipBetween(sourceAgentId, targetAgentId);
+      if (existing) {
+        deleteRelationship(existing.id);
+        return;
+      }
+      createRelationship(sourceAgentId, targetAgentId);
+    },
+    [createRelationship, deleteRelationship, relationshipBetween],
+  );
 
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      if (isOverviewMode || !isEditMode) return;
+      if (isOverviewMode) return;
 
-      if (!pendingSourceId) {
-        setPendingSourceId(node.id);
+      setSelectedEdge(null);
+
+      if (!isConnectMode) return;
+
+      if (!activeSourceId) {
+        setActiveSourceId(node.id);
         return;
       }
 
-      if (pendingSourceId === node.id) {
-        setPendingSourceId(null);
+      if (activeSourceId === node.id) {
+        setActiveSourceId(null);
+        setHoverTargetId(null);
         return;
       }
 
-      const existing = relationships.find(
-        (relationship) =>
-          (relationship.sourceAgentId === pendingSourceId && relationship.targetAgentId === node.id)
-          || (relationship.sourceAgentId === node.id && relationship.targetAgentId === pendingSourceId),
-      );
-
-      if (existing) {
-        deleteRelationship(existing.id);
-      } else {
-        createRelationship(pendingSourceId, node.id);
-      }
-
-      setPendingSourceId(null);
+      toggleRelationshipBetween(activeSourceId, node.id);
+      setHoverTargetId(node.id);
     },
-    [createRelationship, deleteRelationship, isEditMode, isOverviewMode, pendingSourceId, relationships],
+    [activeSourceId, isConnectMode, isOverviewMode, toggleRelationshipBetween],
   );
 
-  const toggleEditMode = useCallback(() => {
+  const handleNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
+    if (!isConnectMode || !activeSourceId || node.id === activeSourceId) return;
+    setHoverTargetId(node.id);
+  }, [activeSourceId, isConnectMode]);
+
+  const handleNodeMouseLeave = useCallback((_: React.MouseEvent, node: Node) => {
+    if (hoverTargetId === node.id) {
+      setHoverTargetId(null);
+    }
+  }, [hoverTargetId]);
+
+  const toggleInteractionMode = useCallback(() => {
     if (isOverviewMode) return;
 
-    setIsEditMode((previous) => {
-      if (previous) setPendingSourceId(null);
-      return !previous;
+    setInteractionMode((previous) => {
+      const next = previous === 'arrange' ? 'connect' : 'arrange';
+      if (next === 'arrange') {
+        setActiveSourceId(null);
+        setHoverTargetId(null);
+      }
+      return next;
     });
     setSelectedEdge(null);
   }, [isOverviewMode]);
@@ -545,49 +586,25 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
     updateAgent(node.id, { graphPosition: node.position });
   }, [updateAgent]);
 
-  const handleConnectStart = useCallback((_: unknown, params: { nodeId?: string | null }) => {
-    setSelectedEdge(null);
-    setPendingSourceId(params.nodeId ?? null);
-  }, []);
-
-  const handleConnectEnd = useCallback(() => {
-    setPendingSourceId(null);
-  }, []);
-
-  const isValidConnection = useCallback(
-    (connection: Connection) => {
-      if (isOverviewMode || !isEditMode || !connection.source || !connection.target) return false;
-      if (connection.source === connection.target) return false;
-      return !hasRelationship(connection.source, connection.target);
-    },
-    [hasRelationship, isEditMode, isOverviewMode],
-  );
-
-  const handleConnect = useCallback(
-    (connection: Connection) => {
-      if (isOverviewMode || !isEditMode || !connection.source || !connection.target) return;
-      if (!isValidConnection(connection)) return;
-      createRelationship(connection.source, connection.target);
-      setPendingSourceId(null);
-    },
-    [createRelationship, isEditMode, isOverviewMode, isValidConnection],
-  );
-
   const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
-    if (isOverviewMode) return;
+    if (isOverviewMode || isConnectMode) return;
     setSelectedEdge((previous) => (previous === edge.id ? null : edge.id));
-  }, [isOverviewMode]);
+    setActiveSourceId(null);
+    setHoverTargetId(null);
+  }, [isConnectMode, isOverviewMode]);
 
   const handlePaneClick = useCallback(() => {
     setSelectedEdge(null);
-    setPendingSourceId(null);
-  }, []);
+    setHoverTargetId(null);
+    if (isConnectMode) {
+      setActiveSourceId(null);
+    }
+  }, [isConnectMode]);
 
   const handleDeleteEdge = useCallback(() => {
-    if (selectedEdge) {
-      deleteRelationship(selectedEdge);
-      setSelectedEdge(null);
-    }
+    if (!selectedEdge) return;
+    deleteRelationship(selectedEdge);
+    setSelectedEdge(null);
   }, [deleteRelationship, selectedEdge]);
 
   const handleRelayout = useCallback(() => {
@@ -607,7 +624,7 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
         applyPositions(circleLayout(agents));
         setTimeout(() => fitView({ padding: 0.3, duration: 300 }), 50);
       });
-  }, [agentGroups, agents, allAgents, applyPositions, fitView, isOverviewMode, relationships, setNodes]);
+  }, [agentGroups, agents, allAgents, applyPositions, fitView, isOverviewMode, relationships, setNodes, streamingAgentIds]);
 
   return (
     <div className="flex flex-col h-full w-full">
@@ -632,23 +649,41 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
             <Button
               variant="ghost"
               size="icon"
-              className={`h-7 w-7 ${isEditMode ? 'text-primary bg-primary/10' : ''}`}
-              title={isEditMode ? 'Exit edit mode' : 'Edit connections'}
-              onClick={toggleEditMode}
+              className={`h-7 w-7 ${isConnectMode ? 'text-primary bg-primary/10' : ''}`}
+              title={isConnectMode ? t('agentGraph.exitConnectMode') : t('agentGraph.enterConnectMode')}
+              onClick={toggleInteractionMode}
             >
               <Link2 className="w-3.5 h-3.5" />
             </Button>
           </>
         )}
-        {!isOverviewMode && isEditMode && (
-          <span className="text-xs text-muted-foreground px-1 select-none">
-            {pendingSourceId ? t('agentGraph.editSelectTarget') : t('agentGraph.editSelectSource')}
-          </span>
-        )}
-        {!isOverviewMode && !isEditMode && selectedEdge && (
+        {!isOverviewMode && isConnectMode && (
           <>
             <div className="w-px h-4 bg-border" />
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={handleDeleteEdge}>
+            <span className="text-xs text-muted-foreground px-1 select-none">
+              {activeSourceAgent
+                ? t('agentGraph.connectActive', { name: activeSourceAgent.name, count: connectedAgentIds.size })
+                : t('agentGraph.connectReady')}
+            </span>
+            {activeSourceAgent && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => {
+                  setActiveSourceId(null);
+                  setHoverTargetId(null);
+                }}
+              >
+                {t('agentGraph.clearSource')}
+              </Button>
+            )}
+          </>
+        )}
+        {!isOverviewMode && !isConnectMode && selectedEdge && (
+          <>
+            <div className="w-px h-4 bg-border" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title={t('agentGraph.deleteConnection')} onClick={handleDeleteEdge}>
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </>
@@ -662,7 +697,9 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
       </div>
 
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 text-xs text-muted-foreground/60 select-none">
-        {isOverviewMode ? t('agentGraph.overviewInstructions') : t('agentGraph.instructions')}
+        {isOverviewMode
+          ? t('agentGraph.overviewInstructions')
+          : (isConnectMode ? t('agentGraph.connectInstructions') : t('agentGraph.arrangeInstructions'))}
       </div>
 
       <ReactFlow
@@ -671,23 +708,18 @@ function GraphContent({ onClose, groupId }: GraphContentProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={isOverviewMode ? undefined : handleNodeClick}
-        onNodeDrag={isOverviewMode || isEditMode ? undefined : handleNodeDrag}
-        onNodeDragStop={isOverviewMode || isEditMode ? undefined : handleNodeDragStop}
-        onConnectStart={!isOverviewMode && isEditMode ? handleConnectStart : undefined}
-        onConnectEnd={!isOverviewMode && isEditMode ? handleConnectEnd : undefined}
-        onConnect={!isOverviewMode ? handleConnect : undefined}
-        isValidConnection={isValidConnection}
-        onEdgeClick={!isOverviewMode ? handleEdgeClick : undefined}
+        onNodeMouseEnter={!isOverviewMode && isConnectMode ? handleNodeMouseEnter : undefined}
+        onNodeMouseLeave={!isOverviewMode && isConnectMode ? handleNodeMouseLeave : undefined}
+        onNodeDrag={isOverviewMode || isConnectMode ? undefined : handleNodeDrag}
+        onNodeDragStop={isOverviewMode || isConnectMode ? undefined : handleNodeDragStop}
+        onEdgeClick={!isOverviewMode && !isConnectMode ? handleEdgeClick : undefined}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        nodesDraggable={!isOverviewMode && !isEditMode}
-        nodesConnectable={!isOverviewMode && isEditMode}
-        elementsSelectable={!isOverviewMode}
-        panOnDrag={isOverviewMode ? true : !isEditMode}
-        connectionMode={ConnectionMode.Loose}
-        connectionLineType={ConnectionLineType.Straight}
-        connectionLineComponent={CenterConnectionLine}
+        nodesDraggable={!isOverviewMode && !isConnectMode}
+        nodesConnectable={false}
+        elementsSelectable={!isOverviewMode && !isConnectMode}
+        panOnDrag={isOverviewMode ? true : !isConnectMode}
         defaultEdgeOptions={{ type: 'centerEdge', markerStart: undefined, markerEnd: undefined }}
         fitView
         minZoom={0.2}
